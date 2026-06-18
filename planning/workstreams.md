@@ -47,7 +47,7 @@ agent-desk-researchable vs truly operator-only.
 | A5 Margin model | Per-family contribution incl. operator-hours, at $39-79/yr anchors; annual-first; store-commission sensitivity. Draft now from `pricing-structure.md` | round 1 (draft-ready) | todo |
 | A6 Entity + product-name decision | Resolved. Working repo name = `family-ai-dashboard`; consumer product name TBD. Entity only needed at paid launch / commerce-API gate | A1 | todo |
 | A7 Confidence case (gates G1b) | `research/confidence-case.md`: scorecard vs the MODERATE bar; claims tiered desk-proven/inference/only-field-provable; 2 adversarial rounds. DoD: operator can make go / field-test-first / no-go on the paid path | A1–A5 | todo |
-| A8 Hi-fi UI/UX mockups (gates A3 + deep planning; ADR 0008) | Hi-fi mockups of **Now** (briefing cards) + **Hubs** (Event Hub dossier, incl. card→block deep-link highlight state) via Claude Code (`frontend-design` skill), committed to `designs/`; operator sign-off. **DoD: operator approves the look-and-feel.** This is the immediate next item — blocks A3 and any deep PRD/architecture work | round 1 (done); ADR 0008 | **todo (next)** |
+| A8 Hi-fi UI/UX mockups (gates A3 + deep planning; ADR 0008/0009) | Execute `designs/DESIGN-BRIEF.md` via Claude Code (`frontend-design`): **M3 Expressive** design-system page + full hi-fi **Now** + **Hubs** phone screens (light+dark, incl. card→block deep-link highlight + fallback) + adaptive specs (tablet/foldable/desktop) + a **Wear** tile. Committed to `designs/`; operator sign-off. **DoD per brief §8.** Immediate next item — blocks A3 + deep PRD/architecture | round 1 (done); ADRs 0008, 0009 | **todo (next)** |
 
 ## Phase B — Business strategy → **Gate G2: "Strategy accepted"**
 

@@ -2,16 +2,25 @@
 
 Hi-fi UI/UX mockups. **Design-first gate (ADR 0008):** every surface gets a
 high-fidelity mockup here, authored with Claude Code (`frontend-design`
-skill) and operator-approved, **before** deep planning or build of that
-surface.
+skill), **before** deep planning or build of that surface — operator-approved.
 
-Layout: one subfolder per surface, holding viewable artifacts (HTML/CSS
-prototypes and/or exported images).
+**Design system: Material 3 Expressive, adaptive** (ADR 0009) — vibrant /
+full-expressive visuals, calm behavior. Phone gets full hi-fi; tablet /
+foldable / desktop / Wear OS get adaptive specs + one frame each.
 
-| Surface | Folder | Status |
+➡ **The brief / prompt to produce these: [`DESIGN-BRIEF.md`](DESIGN-BRIEF.md)**
+— hand it to a fresh Claude Code session.
+
+Layout: one subfolder per area, holding viewable artifacts (HTML/CSS
+prototypes; the brief maps components to M3 Compose names).
+
+| Area | Folder | Status |
 |---|---|---|
-| Now (briefing cards) | `now/` | not started — **next** (gates A3) |
-| Hubs (Event Hub dossier + card→block deep-link state) | `hubs/` | not started — **next** (gates A3) |
+| Design system (tokens, type, shape, motion, components) | `design-system/` | not started — **build first** |
+| Now (briefing cards) — light + dark | `now/` | not started |
+| Hubs (list, detail w/ all blocks, deep-link state, fallback) — L+D | `hubs/` | not started |
+| Adaptive (tablet / foldable / desktop specs + 1 frame each) | `adaptive/` | not started |
+| Wear OS (tile + complication) | `wear/` | not started |
 
 Mockups are living references, not contracts — once a surface is built, the
-code is the source of truth for its look.
+Compose code is the source of truth for its look.
