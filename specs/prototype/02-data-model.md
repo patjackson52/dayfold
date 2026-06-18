@@ -1,6 +1,6 @@
 # 02 — Data Model & DB Schema (Postgres DDL)
 
-> Status: **draft → in review**. Concrete DDL from `01-architecture.md` +
+> Status: **reviewed (1 agent) → fixes applied**. Concrete DDL from `01-architecture.md` +
 > `specs/auth-and-family-design.md` + `specs/event-hubs-design.md` (hardened).
 > Postgres. Milestone tags: **[M0]** content/prototype · **[M1]** auth. IDs are
 > `text` (client-supplied stable IDs for content; ULID/uuid for auth rows).
@@ -101,8 +101,12 @@ CREATE TABLE briefing_cards (              -- the "Now" surface
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now(),
   deleted_at  timestamptz,
-  PRIMARY KEY (family_id, id),
-  FOREIGN KEY (family_id, target_hub_id) REFERENCES hubs(family_id, id) ON DELETE SET NULL
+  PRIMARY KEY (family_id, id)
+  -- deep-link targets (hub/section/block) are intentionally UNVALIDATED text:
+  -- no FK (composite SET NULL on a NOT-NULL family_id won't compile, and we
+  -- don't want a write-time cross-row dependency). They resolve ONLY against
+  -- the requester's own tenant-scoped cache, nearest-ancestor fallback. The
+  -- server never dereferences them cross-row, so no IDOR surface.
 );
 ```
 
@@ -111,7 +115,7 @@ CREATE TABLE briefing_cards (              -- the "Now" surface
 ```sql
 CREATE TABLE users (
   id           text PRIMARY KEY,
-  display_name text NOT NULL,
+  display_name text,                         -- nullable: phone-only first-run has no name (fallback derived)
   created_at   timestamptz NOT NULL DEFAULT now(),
   updated_at   timestamptz NOT NULL DEFAULT now(),
   deleted_at   timestamptz
@@ -134,6 +138,7 @@ CREATE TABLE memberships (
   role       role NOT NULL DEFAULT 'adult',
   status     membership_status NOT NULL DEFAULT 'pending',
   joined_at  timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (user_id, family_id)
 );
@@ -185,7 +190,8 @@ CREATE TABLE credentials (                  -- "Connected devices & apps"; also 
   last_used_ip  text,
   created_ua    text,
   created_at    timestamptz NOT NULL DEFAULT now(),
-  revoked_at    timestamptz
+  revoked_at    timestamptz,
+  CHECK (kind <> 'cli' OR family_scope IS NOT NULL)   -- cli creds (incl. M0 token) MUST be family-scoped
 );
 ```
 
@@ -204,8 +210,10 @@ CREATE INDEX ON blocks (family_id, section_id, ord);
 CREATE INDEX ON briefing_cards (family_id, not_before) WHERE deleted_at IS NULL;
 CREATE INDEX ON invites (family_id, status);
 CREATE INDEX ON credentials (user_id) WHERE revoked_at IS NULL;
--- FTS (event-hubs §Markdown): GIN over raw body_md
-CREATE INDEX blocks_body_fts ON blocks USING gin (to_tsvector('english', coalesce(body_md,'')));
+CREATE INDEX ON device_authorizations (expires_at) WHERE status='pending';  -- reaper/sweep
+-- FTS (event-hubs §Markdown): GIN over raw body_md, live rows only
+CREATE INDEX blocks_body_fts ON blocks USING gin (to_tsvector('english', coalesce(body_md,'')))
+  WHERE deleted_at IS NULL;
 ```
 
 ## Integrity rules (enforced in app + DB where possible)
@@ -222,6 +230,39 @@ CREATE INDEX blocks_body_fts ON blocks USING gin (to_tsvector('english', coalesc
   concurrency when multi-writer arrives (M0 = single-writer LWW).
 - **Soft-delete** content (`deleted_at`) so deep-link "that item moved"
   resolves gracefully; hard-delete auth ephemera (device codes swept on expiry).
+
+## Review fixes (applied / to honor in migration)
+
+- **Deletion model is soft-delete-authoritative.** Routine family/user/content
+  deletion = `UPDATE deleted_at`, cascaded **in app**. The `ON DELETE CASCADE`
+  on the content tree (family→hub→section→block/card) is a **hard-purge
+  backstop only**; destructive parents at M1 (`users`, and `families.created_by`)
+  use **`ON DELETE RESTRICT`/`SET NULL`** to prevent accidental hard cascades.
+  Define `families.created_by text REFERENCES users(id) ON DELETE SET NULL` at M1.
+  Do not mix routine deletes with hard cascade.
+- **Last-owner invariant needs a lock** (not a bare `COUNT`): the demote/remove
+  trigger/transaction takes `pg_advisory_xact_lock(hashtext(family_id))` (or
+  `SELECT … FOR UPDATE` the family's owner rows) before checking ≥1 active
+  owner — else concurrent demotions race to zero owners.
+- **Invite claim** (single transaction): the atomic `used_count` bump ALSO flips
+  `status = CASE WHEN used_count+1 >= max_uses THEN 'exhausted' ELSE status END`,
+  **and inserts the `pending` membership in the same transaction**. A separate
+  sweep sets `status='expired'` where `expires_at < now()`.
+- **`hubs.type`** is validated against the bounded template catalog (ADR
+  0004/0006) at the **app layer** (or a `hub_types` lookup table + FK); not free
+  text in practice.
+- **`updated_at` + `version` ownership:** `updated_at` auto-touched by a DB
+  trigger; `version` bumped by the app per write (drives `If-Match`). State this
+  so optimistic-concurrency semantics are reliable.
+- **Empty `text`/`markdown` blocks** are permitted (drafts); add
+  `CHECK (type NOT IN ('text','markdown') OR body_md IS NOT NULL OR body_ref IS NOT NULL)`
+  only if empties should be rejected — deferred.
+- **Scope representation** differs deliberately: `device_authorizations.scope`
+  is single-scope (scalar) for the grant; `credentials.scopes text[]` is
+  multi-scope for the issued credential.
+- **`provenance.credential_id`** stays in `provenance jsonb` for MVP (audit via
+  jsonb); promote to a typed FK column only if credential-level audit queries
+  become hot.
 
 ## Open questions
 - ID format for client-supplied content IDs (ULID recommended) — confirm in 03-api.

@@ -26,8 +26,8 @@ Universal Links). The specs note which milestone each part belongs to.
 | # | Component | Spec file | Status | Next step |
 |---|---|---|---|---|
 | 01 | Architecture overview | `01-architecture.md` | **done (2-agent review applied)** | — |
-| 02 | Data model & DB schema (Postgres DDL) | `02-data-model.md` | **in progress** | DDL from auth+content schemas (incl. briefing_cards, body_md/spill, M0/M1) |
-| 03 | API design (OpenAPI) | `03-api.md` | todo | content (tenant-explicit) + auth + device-grant + invite |
+| 02 | Data model & DB schema (Postgres DDL) | `02-data-model.md` | **done (review applied)** | — |
+| 03 | API design (OpenAPI) | `03-api.md` | **next** | content (tenant-explicit) + auth + device-grant + invite; ref the DDL |
 | 04 | Authentication & token service | `04-auth.md` | todo | Firebase verify → mint, per-request scope/revoke |
 | 05 | Invite system | `05-invite.md` | todo | owner-approved flow, token lifecycle |
 | 06 | Storage (object storage, docs/large markdown) | `06-storage.md` | todo | refs, large-body spill, signed URLs |
@@ -37,9 +37,9 @@ Universal Links). The specs note which milestone each part belongs to.
 
 ## Current
 
-- **Iteration 1:** created this tracker + drafted `01-architecture.md`;
-  dispatched a multi-agent review of the architecture. Next: apply review,
-  then start component 02 (DB DDL).
+- **Done:** 01 architecture (2-agent review applied), 02 DB DDL (review
+  applied). **Next: 03 API design (OpenAPI)** off the DDL — content
+  (tenant-explicit), then M1 auth/invite/device-grant endpoints.
 
 ## Log
 
