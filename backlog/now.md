@@ -34,3 +34,17 @@ The immediate next work = **A8: hi-fi mockups of Now + Hubs** (Claude Code +
 - Event Hubs design + block-level deep-linking (ADR 0006).
 - Prototype scope locked (ADR 0007); design-first gate added (ADR 0008).
 - Inbox swept: INB-1/2/4/5/6/7/8 answered; INB-3 pending operator.
+- Design system = M3 Expressive, adaptive (ADR 0009); design brief shipped;
+  initial Now/Hubs/Auth mockups added; repo public on GitHub.
+- Auth/family/invite architected (ADR 0010) → **5-agent review**
+  (`research/design-review-auth-2026-06.md`) → **hardened (ADR 0011
+  supersedes 0010)**: all-invites-owner-approved, email→push cut, device-
+  grant anti-phishing, no-auto-link, per-request revocation, Firebase dedupe
+  corrected, relational content tables. Spec + Hub schema hardened.
+
+## Auth is a separate later milestone
+
+Per ADR 0011: the **prototype (A3) keeps the single household token** — no
+RFC 8628, no Universal Links. The full auth/family/invite story builds after
+the prototype. A8b (auth mockups, incl. the missing authorize-device screen)
+can be designed now via Claude Design.

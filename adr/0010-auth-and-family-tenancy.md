@@ -2,9 +2,13 @@
 
 ## Status
 
-**Accepted** 2026-06-18 (operator approved in-session). Immutable —
-supersede, do not edit. Platform + architecture decision. Detailed design:
-`specs/auth-and-family-design.md`.
+**Superseded by ADR 0011** (2026-06-18) — a 5-agent design review
+(`research/design-review-auth-2026-06.md`) tripped this ADR's own revisit
+trigger (exploitable flaws in the invite/device-grant flows). The
+architecture stands; ADR 0011 binds the hardening and corrects the identity/
+invite/device-grant decisions. Read 0011, not this, as current.
+
+*(original status: Accepted 2026-06-18, operator approved in-session.)*
 
 ## Context
 

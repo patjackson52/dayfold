@@ -16,4 +16,5 @@ editing it.
 | 0007 | Prototype Scope — Operator-Driven Dumb Renderer | Accepted 2026-06-18 |
 | 0008 | Design-First — Hi-Fi UI/UX Mockups Precede Deep Planning and Build | Accepted 2026-06-18 |
 | 0009 | Design System — Material 3 Expressive, Adaptive, Compose | Accepted 2026-06-18 |
-| 0010 | Auth & Family-Tenancy Architecture (Firebase Auth, M:N membership, RFC 8628 device grant) | Accepted 2026-06-18 (supersedes ADR 0007 single-token clause when built) |
+| 0010 | Auth & Family-Tenancy Architecture (Firebase Auth, M:N membership, RFC 8628 device grant) | **Superseded by 0011** (2026-06-18) |
+| 0011 | Auth & Family-Tenancy Architecture (Hardened) | Accepted 2026-06-18 (supersedes 0010; post-5-agent-review) |

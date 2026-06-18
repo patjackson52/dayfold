@@ -53,6 +53,31 @@ provenance (per block): { source: "claude" | "email" | "user" | "<url>", at }
 Schemas live in `specs/domain-model/schemas/` once this is gate-promoted
 (borrowing ambient-ai's "schema wins over prose" discipline).
 
+**Relational storage (per the auth design review — tenant-scoped, not
+JSON-only):** the JSON shapes above are the *wire* format; storage is
+relational and `family_id`-scoped:
+```
+hubs(id, family_id FK NOT NULL, type, title, status, start?, end?,
+     countdown_to?, version, created_at, updated_at, deleted_at)
+sections(id, hub_id FK, title, order, created_at, updated_at, deleted_at)
+blocks(id, section_id FK, type, payload jsonb, provenance jsonb, version,
+     created_at, updated_at, deleted_at, UNIQUE(hub_id, id))
+```
+- **Tenant-explicit API path:** `PUT /families/{fid}/hubs/{id}` (and
+  `.../sections/{sid}`, `.../blocks/{bid}`). The credential (household token
+  at prototype, minted CLI credential in the product) carries the family
+  scope; the server checks **scope-vs-path** — so the endpoint contract is
+  identical as auth grows (protects ADR 0007's "additive without rework").
+- **Idempotent upsert + concurrency:** client-supplied **stable IDs**;
+  prototype = **single-writer last-write-wins**; carry a `version`/
+  `updated_at` now for optimistic concurrency (`If-Match`) when a 2nd writer
+  appears. **Parent-must-exist** on nested upsert (return 409/404, never
+  orphan). Promote `dates` (start/end/countdownTo) to typed columns (so
+  archival + countdown queries can index them). Soft-delete content
+  (`deleted_at`) to honor graceful deep-link "that item moved" resolution.
+- **provenance** gains `credential_id` (which CLI credential pushed the
+  block) for audit.
+
 ## Template catalog (bounded — ADR 0004 "template-catalog-bounded")
 
 Starter Hub types, each = default sections + checklist skeleton:
