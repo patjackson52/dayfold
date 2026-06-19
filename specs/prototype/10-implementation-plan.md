@@ -10,7 +10,7 @@
 
 | Gate | Blocks | Owner |
 |---|---|---|
-| **INB-9** — API host = TS/Vercel | P0 scaffold | operator |
+| ~~INB-9~~ — **RESOLVED: TypeScript on Vercel (ADR 0018)** | P0 scaffold — unblocked | done |
 | ~~INB-10~~ — **RESOLVED 2026-06-18: M0 = PLAINTEXT** (no E2E; live E2EE = M1 decision, gated by ADR 0017). **Schema freeze UNBLOCKED** — content fields are plaintext, server FTS kept, version = server-bumps. No typed-hole needed at M0. | done |
 | **redux-kotlin coordinates** — ✅ **CONFIRMED** (verification done): all modules exist at `1.0.0-alpha01` (KMP), but it's ~1-day-old → **pin `0.6.2` stable as default**, alpha01 behind a feature flag; code calls **`fieldState`** (not `fieldStateOf`). **INB-11** for the operator's alpha01-vs-stable preference | P3 | resolved; operator preference INB-11 |
 | ADR 0005/0006/0007/0015/0016 ratifications | scope lock | operator (inbox sweep) |

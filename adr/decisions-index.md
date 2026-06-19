@@ -24,3 +24,4 @@ editing it.
 | 0015 | End-to-End Encryption | **Proposed — scoped to M1** (INB-10: M0 = PLAINTEXT; live E2EE is an M1 option gated by ADR 0017) |
 | 0016 | Two-Way Interactive Pull-Loop (reserved, bounded-now) | **Proposed** 2026-06-18 (additive; reasoning stays in the key-holding loop; reserved actions[]/intents) |
 | 0017 | E2E Key-Authenticity + Deploy Trust-Root Boundary | **Proposed** 2026-06-18 (M1 security gate; from the 6-agent review — fake-key MITM + trust-root concentration) |
+| 0018 | API Host — TypeScript on Vercel | Accepted 2026-06-18 (INB-9; CLI/client stay Kotlin; types codegen from schema; Postgres via pooler) |

@@ -9,7 +9,9 @@ Each item: question, context link, **proposed default**, urgency.
 
 ---
 
-- **INB-9 · 2026-06-18 · med · open — Ratify API host = TypeScript/Vercel.**
+- **INB-9 · ANSWERED 2026-06-18 → TypeScript on Vercel** (ADR 0018). CLI/client stay Kotlin; types codegen from schema; Postgres via pooler. **Last P0 gate cleared.**
+
+- **INB-9 (orig) · Ratify API host = TypeScript/Vercel.**
   Spec-build loop (architecture review) recommends the backend API in
   **TypeScript on Vercel** (preserves the ADR 0012 preview→promote→rollback
   deploy-autonomy rail; a JVM API needs a container host + standing cost vs

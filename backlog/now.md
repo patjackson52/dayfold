@@ -31,7 +31,8 @@ The immediate next work = **A8: hi-fi mockups of Now + Hubs** (Claude Code +
   = **briefing-feed only** (Hubs → next slice); redux default **0.6.2**.
 - **Spec suite + impl plan + JSON-schema contract = done; schema freeze
   unblocked.** Ready to build the M0 spine.
-- **One open operator decision before P0 build: INB-9 (API host = TS/Vercel).**
+- **INB-9 RESOLVED → TypeScript on Vercel (ADR 0018). All P0 gates cleared —
+  build can begin (P0 scaffold is agent-autonomous per ADR 0012).**
 - **Next product gaps to write (review): G1 content-authoring-loop runbook
   (`processes/`), G2 usefulness signal, the `payload` $defs, the Claude-Design
   triggers brief + the M3-Expressive signature upgrades.**
