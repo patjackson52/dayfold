@@ -246,6 +246,14 @@ CREATE INDEX ON briefing_cards (family_id, not_before) WHERE deleted_at IS NULL;
 CREATE INDEX ON invites (family_id, status);
 CREATE INDEX ON credentials (user_id) WHERE revoked_at IS NULL;
 CREATE INDEX ON device_authorizations (expires_at) WHERE status='pending';  -- reaper/sweep
+-- [perf review P0] sync keyset index — MUST cover live AND tombstoned rows (no
+-- deleted_at predicate), one per synced table, matching `ORDER BY updated_at, id`:
+CREATE INDEX ON hubs           (family_id, updated_at, id);
+CREATE INDEX ON sections       (family_id, updated_at, id);
+CREATE INDEX ON blocks         (family_id, updated_at, id);
+CREATE INDEX ON briefing_cards (family_id, updated_at, id);
+CREATE INDEX ON places         (family_id, updated_at, id);
+-- without these the keyset sync (03 §sync) is a full scan + filesort on the hot path.
 -- FTS (event-hubs §Markdown): GIN over raw body_md, live rows only.
 -- [M0 / non-E2E ONLY] — dropped under ADR 0015 (server can't index ciphertext);
 -- search moves client-side. Resolve at the INB-10 gate before DDL freeze.

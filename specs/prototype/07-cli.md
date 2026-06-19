@@ -143,5 +143,4 @@ loops, the binary sources `FCK`/token per the headless rules above.
 - Manifest convention (one file per hub vs a tree) — settle with first dogfood.
 - `watch` auto-push vs explicit `push` — likely both, ties to AI-loop use.
 - `FCK` provisioning UX on the operator's machine (if ADR 0015).
-- M0 household token scope: content **read+write** (needed for `--diff`/pull)
-  vs write-only — confirm in 04-auth.
+- *(resolved: M0 token = content:read+write — 04-auth §M0.)*

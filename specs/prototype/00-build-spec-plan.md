@@ -1,5 +1,16 @@
 # Prototype Build-Spec Plan (loop state)
 
+## Milestone glossary (C6 — bind the vocabularies)
+
+| Plain name | M-number | Gate(s) | Scope |
+|---|---|---|---|
+| **prototype / dogfood** | **M0** | G1a | single household, household token, operator's own device, plaintext, **feed-first** (Hubs = D2 decision) |
+| **multi-member product** | **M1** | G1b→G2→G3 | Firebase auth, invite, device-grant, triggers/geofencing, live E2E |
+| **paid launch** | (post-build) | **G-LAUNCH** (post-G4) | first paying family |
+
+"MVP" in ADR 0005 = the **M1** multi-member milestone, NOT the M0 prototype.
+
+
 Driven by the `/loop` (every 30 min). **Each iteration: read this tracker →
 advance the next waterfall step of the current component → update the tracker
 → commit + push.** Goal: enough detail to implement backend, auth, invite,

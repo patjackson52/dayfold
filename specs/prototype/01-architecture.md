@@ -128,6 +128,23 @@ URL minting/replay.
 - **Prod:** agents may promote behind the rails (test-green-before,
   verify-and-rollback-after, log).
 
+## Performance (whole-project review)
+
+- **Postgres pooler is mandatory** (the #1 backend risk): Vercel serverless
+  concurrency exhausts direct PG connections. Use the **Neon serverless driver**
+  (HTTP/WS, no held TCP) OR a **transaction-mode pooler** (Supavisor/PgBouncer);
+  never a long-lived `pg.Pool` per function. Decide at C3 with the provider.
+- **Sync** uses the `(family_id, updated_at, id)` keyset indexes (02); add a
+  cheap **"nothing changed" fast-path** (`EXISTS(... updated_at > cursor)`
+  before assembling the envelope) + client **debounce ≥60s** on foreground-
+  resume — Vercel *invocation count* (not compute) is the cost driver.
+- **Per-request membership re-resolution** (ADR 0011) = **one index-only
+  query** (membership + credential-not-revoked together), never 3 fan-out.
+- **Multi-table sync cursor** = a per-table `(updated_at,id)` struct (03 §sync).
+- Client: decrypt-once-into-cache (M1), stable LazyColumn keys, memoized
+  selectors (+ a recomposition-count CI guard); GC is **DB-driven** (06), never
+  bucket enumeration (ListBucket denied).
+
 ## Tech lean (agent-buildability, C3 — TS host ratify pending)
 
 API = **TypeScript / Vercel** (MCP) · DB = **Neon/Supabase Postgres** · object
