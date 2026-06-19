@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .msr { font-family: 'Material Symbols Rounded'; font-weight: normal; line-height: 1; white-space: nowrap; -webkit-font-smoothing: antialiased; }
+  .msr.fill { font-variation-settings: 'FILL' 1; }
+</style>
+</helmet>
+<div style="font-family:'Figtree',sans-serif;background:#F3E9E5;color:#271814;min-height:100vh;padding:56px 40px 96px;">
+  <div style="max-width:1120px;margin:0 auto;">
+
+    <!-- masthead -->
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:30px;">
+      <a href="Index.dc.html" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-family:'Figtree';font-size:13px;font-weight:600;color:#7A2615;background:#FCEBE6;border:1px solid #EBD3CB;border-radius:999px;padding:6px 13px;"><span class="msr" style="font-size:16px;">arrow_back</span>Index</a>
+      <span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#8C726B;">Brand</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:18px;margin-bottom:18px;">
+      <!-- HERO MARK -->
+      <div style="position:relative;width:72px;height:72px;border-radius:21px;background:linear-gradient(143deg,#FF8A6E,#C0381E);box-shadow:0 10px 28px rgba(192,56,30,0.34);overflow:hidden;">
+        <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFE2D8,#FFB4A3);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+        <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(90,17,0,0.20);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+      </div>
+      <div>
+        <div style="font-family:'Outfit';font-weight:700;font-size:40px;letter-spacing:-0.03em;line-height:1;">Dayfold</div>
+        <div style="font-family:'Figtree';font-size:14px;color:#8C726B;margin-top:4px;">Brand identity · the day, folded into one place</div>
+      </div>
+    </div>
+    <h1 style="font-family:'Outfit';font-weight:600;font-size:46px;line-height:1.06;letter-spacing:-0.025em;margin:0 0 14px;max-width:20ch;">From hearth to fold</h1>
+    <p style="font-family:'Figtree';font-size:16.5px;line-height:1.55;color:#5A423C;max-width:70ch;margin:0 0 40px;">The product gathers your day and tucks it away until it matters — then a card <b>unfolds</b> into the full thing you need. <b>Dayfold</b> names that motion. The mark is a content card with a turned corner: a fold you can open. Same warm M3 Expressive palette as before — only the name and the mark change.</p>
+    <div style="height:1px;background:#D8C2BB;margin:0 0 48px;"></div>
+
+    <!-- ===== 01 NAME ===== -->
+    <section style="margin-bottom:60px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;"><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#C0381E;">01</span><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#8C726B;">The name</span></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+        <sc-for list="{{ nameNotes }}" as="n" hint-placeholder-count="3">
+          <div style="background:#FFF8F6;border:1px solid #EBD3CB;border-radius:22px;padding:22px;">
+            <span class="msr" style="font-size:26px;color:#C0381E;">{{ n.icon }}</span>
+            <div style="font-family:'Outfit';font-weight:600;font-size:17px;margin:12px 0 6px;">{{ n.title }}</div>
+            <div style="font-family:'Figtree';font-size:13.5px;line-height:1.55;color:#5A423C;">{{ n.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </section>
+
+    <!-- ===== 02 LOGOMARK DIRECTIONS ===== -->
+    <section style="margin-bottom:60px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#C0381E;">02</span><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#8C726B;">Logomark — three directions</span></div>
+      <h2 style="font-family:'Outfit';font-weight:600;font-size:28px;letter-spacing:-0.015em;margin:0 0 22px;">Exploring the fold</h2>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;">
+
+        <!-- A: turned corner (chosen) -->
+        <div style="background:#fff;border:2px solid #C0381E;border-radius:24px;padding:26px;position:relative;">
+          <span style="position:absolute;top:16px;right:16px;font-family:'Figtree';font-size:11px;font-weight:700;letter-spacing:0.04em;color:#fff;background:#C0381E;padding:4px 10px;border-radius:999px;">CHOSEN</span>
+          <div style="height:140px;display:flex;align-items:center;justify-content:center;">
+            <div style="position:relative;width:96px;height:96px;border-radius:27px;background:linear-gradient(143deg,#FF8A6E,#C0381E);box-shadow:0 12px 30px rgba(192,56,30,0.30);overflow:hidden;">
+              <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFE2D8,#FFB4A3);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+              <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(90,17,0,0.20);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+            </div>
+          </div>
+          <div style="font-family:'Outfit';font-weight:600;font-size:16px;margin:14px 0 5px;">A · Turned corner</div>
+          <div style="font-family:'Figtree';font-size:13px;line-height:1.5;color:#5A423C;">A content card with a dog-eared corner. Warmest, most literal to "a fold you open." Reads at 16px and as an app icon.</div>
+        </div>
+
+        <!-- B: stacked fold / layers -->
+        <div style="background:#FFF8F6;border:1px solid #EBD3CB;border-radius:24px;padding:26px;">
+          <div style="height:140px;display:flex;align-items:center;justify-content:center;">
+            <div style="position:relative;width:96px;height:96px;">
+              <div style="position:absolute;inset:14px 6px 30px 6px;border-radius:18px;background:#FFC9B8;"></div>
+              <div style="position:absolute;inset:24px 0 18px 0;border-radius:18px;background:#FF8A6E;"></div>
+              <div style="position:absolute;inset:34px 6px 6px 6px;border-radius:18px;background:#C0381E;"></div>
+            </div>
+          </div>
+          <div style="font-family:'Outfit';font-weight:600;font-size:16px;margin:14px 0 5px;">B · Folded layers</div>
+          <div style="font-family:'Figtree';font-size:13px;line-height:1.5;color:#5A423C;">Three stacked panels — the day's layers folded together. Calm, but generic; loses clarity at small sizes.</div>
+        </div>
+
+        <!-- C: unfold chevrons -->
+        <div style="background:#FFF8F6;border:1px solid #EBD3CB;border-radius:24px;padding:26px;">
+          <div style="height:140px;display:flex;align-items:center;justify-content:center;">
+            <div style="width:96px;height:96px;border-radius:27px;background:linear-gradient(143deg,#FF8A6E,#C0381E);display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px rgba(192,56,30,0.30);">
+              <span class="msr" style="font-size:54px;color:#fff;">unfold_more</span>
+            </div>
+          </div>
+          <div style="font-family:'Outfit';font-weight:600;font-size:16px;margin:14px 0 5px;">C · Unfold glyph</div>
+          <div style="font-family:'Figtree';font-size:13px;line-height:1.5;color:#5A423C;">The literal unfold chevrons (also a system icon). Clear motion cue, but feels utilitarian and on-the-nose.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 03 THE MARK IN USE ===== -->
+    <section style="margin-bottom:60px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#C0381E;">03</span><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#8C726B;">The mark · sizes &amp; surfaces</span></div>
+      <h2 style="font-family:'Outfit';font-weight:600;font-size:28px;letter-spacing:-0.015em;margin:0 0 22px;">It holds from favicon to hero</h2>
+
+      <div style="display:flex;gap:18px;flex-wrap:wrap;">
+        <!-- size ramp on light -->
+        <div style="flex:1;min-width:340px;background:#FFF8F6;border:1px solid #EBD3CB;border-radius:24px;padding:28px;">
+          <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#8C726B;margin-bottom:20px;">On light</div>
+          <div style="display:flex;align-items:flex-end;gap:20px;">
+            <sc-for list="{{ sizes }}" as="s" hint-placeholder-count="4">
+              <div style="text-align:center;">
+                <div style="display:flex;align-items:flex-end;justify-content:center;height:64px;">
+                  <div style="position:relative;width:{{ s.px }};height:{{ s.px }};border-radius:{{ s.r }};background:linear-gradient(143deg,#FF8A6E,#C0381E);box-shadow:0 4px 14px rgba(192,56,30,0.26);overflow:hidden;">
+                    <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFE2D8,#FFB4A3);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+                    <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(90,17,0,0.20);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+                  </div>
+                </div>
+                <div style="font-family:'Figtree';font-size:11px;color:#8C726B;margin-top:9px;">{{ s.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <!-- on dark -->
+        <div style="flex:0 0 220px;background:#1A110E;border:1px solid #3D322E;border-radius:24px;padding:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+          <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#A08D87;align-self:flex-start;">On dark</div>
+          <div style="position:relative;width:64px;height:64px;border-radius:19px;background:linear-gradient(143deg,#FFB4A3,#FF5436);box-shadow:0 8px 22px rgba(0,0,0,0.4);overflow:hidden;">
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFF1ED,#FFD9CE);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(95,21,0,0.28);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+          </div>
+          <div style="font-family:'Outfit';font-weight:700;font-size:22px;letter-spacing:-0.03em;color:#FFF8F6;">Dayfold</div>
+        </div>
+        <!-- monochrome -->
+        <div style="flex:0 0 220px;background:#FFF8F6;border:1px solid #EBD3CB;border-radius:24px;padding:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;">
+          <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#8C726B;align-self:flex-start;">Monochrome</div>
+          <div style="position:relative;width:64px;height:64px;border-radius:19px;background:#271814;overflow:hidden;">
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:#6E5B55;clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(0,0,0,0.35);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+          </div>
+          <div style="position:relative;width:64px;height:64px;border-radius:19px;background:#fff;border:1.5px solid #E2C0B8;overflow:hidden;">
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:#F0DFDA;clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(120,90,80,0.16);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 04 WORDMARK & LOCKUPS ===== -->
+    <section style="margin-bottom:60px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#C0381E;">04</span><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#8C726B;">Wordmark &amp; lockups</span></div>
+      <h2 style="font-family:'Outfit';font-weight:600;font-size:28px;letter-spacing:-0.015em;margin:0 0 6px;">Outfit, tight-set</h2>
+      <p style="font-family:'Figtree';font-size:14.5px;line-height:1.55;color:#5A423C;max-width:60ch;margin:0 0 22px;">The wordmark is Outfit 700 at <code style="font-family:monospace;background:#FCEBE6;padding:1px 5px;border-radius:5px;font-size:12px;">-0.03em</code> tracking — the "fold" carries no special glyph, just the system type. Two lockups: horizontal for bars, stacked for splashes.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;">
+        <div style="background:#FFF8F6;border:1px solid #EBD3CB;border-radius:24px;padding:34px;display:flex;align-items:center;gap:16px;">
+          <div style="position:relative;width:48px;height:48px;flex:0 0 48px;border-radius:15px;background:linear-gradient(143deg,#FF8A6E,#C0381E);overflow:hidden;box-shadow:0 5px 16px rgba(192,56,30,0.26);">
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFE2D8,#FFB4A3);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(90,17,0,0.20);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+          </div>
+          <span style="font-family:'Outfit';font-weight:700;font-size:34px;letter-spacing:-0.03em;">Dayfold</span>
+        </div>
+        <div style="background:#FFF8F6;border:1px solid #EBD3CB;border-radius:24px;padding:30px;display:flex;flex-direction:column;align-items:center;gap:14px;">
+          <div style="position:relative;width:54px;height:54px;border-radius:17px;background:linear-gradient(143deg,#FF8A6E,#C0381E);overflow:hidden;box-shadow:0 5px 16px rgba(192,56,30,0.26);">
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFE2D8,#FFB4A3);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+            <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(90,17,0,0.20);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+          </div>
+          <span style="font-family:'Outfit';font-weight:700;font-size:26px;letter-spacing:-0.03em;">Dayfold</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 05 VOICE ===== -->
+    <section style="margin-bottom:60px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#C0381E;">05</span><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#8C726B;">Voice · taglines</span></div>
+      <h2 style="font-family:'Outfit';font-weight:600;font-size:28px;letter-spacing:-0.015em;margin:0 0 22px;">How Dayfold talks</h2>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:18px;">
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <sc-for list="{{ taglines }}" as="t" hint-placeholder-count="4">
+            <div style="background:#FFF8F6;border:1px solid #EBD3CB;border-radius:18px;padding:16px 20px;display:flex;align-items:center;gap:14px;">
+              <span style="font-family:'Figtree';font-size:11px;font-weight:600;color:#8C726B;flex:0 0 64px;">{{ t.use }}</span>
+              <span style="font-family:'Outfit';font-weight:600;font-size:18px;letter-spacing:-0.01em;color:#271814;">{{ t.line }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:#F4ECFB;border:1px solid #E0CDF5;border-radius:22px;padding:24px;">
+          <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#6438AE;margin-bottom:12px;">Tone unchanged</div>
+          <div style="font-family:'Figtree';font-size:13.5px;line-height:1.6;color:#4C2092;">Vibrant, calm, honest, family-warm — the same four tenets. Dayfold just adds the fold metaphor: things are <b>tucked</b> until they matter, then <b>unfold</b>. Avoid "feed", "inbox", "alerts".</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 06 APPLIED ===== -->
+    <section style="margin-bottom:30px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#C0381E;">06</span><span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:#8C726B;">Applied · touchpoints</span></div>
+      <h2 style="font-family:'Outfit';font-weight:600;font-size:28px;letter-spacing:-0.015em;margin:0 0 22px;">App icon · login · notification</h2>
+      <div style="display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;">
+
+        <!-- app icon on homescreen tile -->
+        <div style="flex:0 0 232px;">
+          <div style="font-family:'Figtree';font-size:12px;font-weight:600;color:#8C726B;margin-bottom:10px;">App icon</div>
+          <div style="border-radius:28px;padding:30px;background:linear-gradient(160deg,#2A6FDB,#1F8A5B);display:flex;flex-direction:column;align-items:center;gap:12px;">
+            <div style="position:relative;width:84px;height:84px;border-radius:21px;background:linear-gradient(143deg,#FF8A6E,#C0381E);box-shadow:0 8px 22px rgba(0,0,0,0.3);overflow:hidden;">
+              <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFE2D8,#FFB4A3);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+              <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(90,17,0,0.20);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+            </div>
+            <span style="font-family:'Figtree';font-size:13px;font-weight:600;color:#fff;">Dayfold</span>
+          </div>
+        </div>
+
+        <!-- login splash mini -->
+        <div style="flex:0 0 230px;">
+          <div style="font-family:'Figtree';font-size:12px;font-weight:600;color:#8C726B;margin-bottom:10px;">Login splash</div>
+          <div style="width:230px;height:330px;border-radius:30px;background:#FFF8F6;border:1px solid #EBD3CB;overflow:hidden;display:flex;flex-direction:column;padding:26px 22px;">
+            <div style="position:relative;width:58px;height:58px;border-radius:18px;background:linear-gradient(143deg,#FF8A6E,#C0381E);overflow:hidden;box-shadow:0 8px 20px rgba(192,56,30,0.3);margin-bottom:auto;">
+              <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFE2D8,#FFB4A3);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+              <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(90,17,0,0.20);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+            </div>
+            <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.06em;color:#8C726B;margin-bottom:6px;">DAYFOLD</div>
+            <div style="font-family:'Outfit';font-weight:600;font-size:24px;line-height:1.08;letter-spacing:-0.02em;margin-bottom:8px;">One calm view of family life.</div>
+            <div style="font-family:'Figtree';font-size:12.5px;color:#5A423C;line-height:1.4;">Your day, folded into one place.</div>
+          </div>
+        </div>
+
+        <!-- notification -->
+        <div style="flex:1;min-width:280px;">
+          <div style="font-family:'Figtree';font-size:12px;font-weight:600;color:#8C726B;margin-bottom:10px;">Notification</div>
+          <div style="background:rgba(252,235,230,0.96);border-radius:24px;padding:15px 16px;border:1px solid #EBD3CB;">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:9px;">
+              <div style="position:relative;width:24px;height:24px;border-radius:8px;background:linear-gradient(143deg,#FF8A6E,#C0381E);overflow:hidden;">
+                <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:linear-gradient(225deg,#FFE2D8,#FFB4A3);clip-path:polygon(100% 0,100% 100%,0 0);"></div>
+                <div style="position:absolute;top:0;right:0;width:46%;height:46%;background:rgba(90,17,0,0.20);clip-path:polygon(0 0,100% 100%,0 100%);"></div>
+              </div>
+              <span style="font-family:'Figtree';font-size:12.5px;font-weight:600;color:#5A423C;">Dayfold</span>
+              <span style="font-family:'Figtree';font-size:12.5px;color:#8C726B;">· now</span>
+              <span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px;font-family:'Figtree';font-size:10px;font-weight:500;color:#0B5048;background:#E2F4EF;border-radius:7px;padding:3px 7px;"><span class="msr fill" style="font-size:12px;">verified_user</span>On device</span>
+            </div>
+            <div style="font-family:'Figtree';font-weight:600;font-size:14.5px;color:#271814;line-height:1.3;margin-bottom:2px;">Near Lincoln Market — party list?</div>
+            <div style="font-family:'Figtree';font-size:13px;color:#5A423C;line-height:1.4;">7 items still open. Grab them while you're here.</div>
+          </div>
+          <div style="font-family:'Figtree';font-size:12px;line-height:1.55;color:#8C726B;margin-top:14px;">The mark replaces the old flame everywhere it appeared — masthead, nav rail, login, push notifications and the foldable/desktop drawers. Palette, type and components are untouched.</div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      nameNotes: [
+        { icon:'wb_sunny', title:'Day', body:'Built around today — the briefing, the one day you’re actually living. Not an endless feed.' },
+        { icon:'auto_awesome_motion', title:'Fold', body:'Everything is folded away until it matters, then unfolds into the full detail — the app’s core gesture.' },
+        { icon:'diversity_3', title:'Enfold', body:'A second reading: to enfold the family. Warm, gathering, a little protective — on-brand for a household app.' },
+      ],
+      sizes: [
+        { px:'16px', r:'5px', label:'16 · favicon' },
+        { px:'28px', r:'8px', label:'28 · chip' },
+        { px:'44px', r:'13px', label:'44 · nav' },
+        { px:'64px', r:'19px', label:'64 · header' },
+      ],
+      taglines: [
+        { use:'Primary', line:'One calm view of family life.' },
+        { use:'Brand line', line:'Your day, folded into one place.' },
+        { use:'Now / empty', line:'Nothing to unfold right now.' },
+        { use:'Onboarding', line:'We’ll fold the day in for you.' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

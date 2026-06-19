@@ -53,5 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: "17" }
-      - working-directory: apps/client
-        run: ./gradlew --no-daemon test
+      # TASK-KMP consolidated :client into the single apps/ Gradle build —
+      # apps/client no longer has its own wrapper. Run the module task from apps/.
+      - working-directory: apps
+        run: ./gradlew --no-daemon :client:desktopTest
