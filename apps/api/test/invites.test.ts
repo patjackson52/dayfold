@@ -49,3 +49,136 @@ describe("POST /families/:fid/invites", () => {
     expect((await app.request(`/families/${o.familyId}/invites`,{method:"POST",headers:{...dev,authorization:`Bearer ${o.token}`},body:'{"mode":"link","max_uses":11}'})).status).toBe(400);
   });
 });
+
+// Helper: mint a dev access token for an invitee (no family)
+async function devToken(uid: string): Promise<string> {
+  return (await (await app.request("/auth/dev-token",{method:"POST",headers:dev,body:JSON.stringify({provider:"dev",provider_uid:uid})})).json()).access;
+}
+
+// Helper: owner mints a link invite for their family
+async function mintInvite(ownerToken: string, familyId: string, maxUses=1) {
+  const r = await app.request(`/families/${familyId}/invites`,{method:"POST",headers:{...dev,authorization:`Bearer ${ownerToken}`},body:JSON.stringify({mode:"link",max_uses:maxUses})});
+  return (await r.json()) as { token: string; invite_id: string; role: string };
+}
+
+describe("POST /invites:redeem", () => {
+  it("net-new → 200 pending + used_count bumped", async () => {
+    const o = await ownerOf("redeem-owner-1");
+    const inv = await mintInvite(o.token, o.familyId, 3);
+    const invitee = await devToken("invitee-1");
+
+    const r = await app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${invitee}`},body:JSON.stringify({token:inv.token})});
+    expect(r.status).toBe(200);
+    const b = await r.json();
+    expect(b.status).toBe("pending");
+    expect(b.role).toBe("adult");
+    expect(b.family_id).toBe(o.familyId);
+
+    const row = await q(`SELECT used_count FROM invites WHERE id=$1`,[inv.invite_id]);
+    expect(row.rows[0].used_count).toBe(1);
+  });
+
+  it("two distinct users redeem max_uses=1 → exactly one pending + one 404 (no double-spend)", async () => {
+    const o = await ownerOf("redeem-owner-2");
+    const inv = await mintInvite(o.token, o.familyId, 1);
+    const userA = await devToken("invitee-2a");
+    const userB = await devToken("invitee-2b");
+
+    // Fire both concurrently
+    const [rA, rB] = await Promise.all([
+      app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${userA}`},body:JSON.stringify({token:inv.token})}),
+      app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${userB}`},body:JSON.stringify({token:inv.token})}),
+    ]);
+
+    const statuses = [rA.status, rB.status].sort();
+    expect(statuses).toEqual([200, 404]);
+
+    const row = await q(`SELECT used_count, status FROM invites WHERE id=$1`,[inv.invite_id]);
+    expect(row.rows[0].used_count).toBe(1);
+    expect(row.rows[0].status).toBe("exhausted");
+
+    const pend = await q(`SELECT count(*)::int n FROM memberships WHERE family_id=$1 AND status='pending'`,[o.familyId]);
+    expect(pend.rows[0].n).toBe(1);
+  });
+
+  it("same user re-redeem → 200 idempotent (no extra used_count increment)", async () => {
+    const o = await ownerOf("redeem-owner-3");
+    const inv = await mintInvite(o.token, o.familyId, 5);
+    const invitee = await devToken("invitee-3");
+
+    const r1 = await app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${invitee}`},body:JSON.stringify({token:inv.token})});
+    expect(r1.status).toBe(200);
+
+    const r2 = await app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${invitee}`},body:JSON.stringify({token:inv.token})});
+    expect(r2.status).toBe(200);
+    const b2 = await r2.json();
+    expect(b2.status).toBe("pending");
+
+    const row = await q(`SELECT used_count FROM invites WHERE id=$1`,[inv.invite_id]);
+    expect(row.rows[0].used_count).toBe(1); // only bumped once
+  });
+
+  it("uniform 404 for bad token / expired / revoked", async () => {
+    const invitee = await devToken("invitee-4");
+    const authH = {...dev, authorization:`Bearer ${invitee}`};
+
+    // bad token
+    const r1 = await app.request("/invites:redeem",{method:"POST",headers:authH,body:JSON.stringify({token:"bad-token-xyz"})});
+    expect(r1.status).toBe(404);
+
+    // expired: insert directly
+    const o = await ownerOf("redeem-owner-4");
+    const ownerRow = await q(`SELECT m.user_id FROM memberships m WHERE m.family_id=$1 AND m.role='owner'`,[o.familyId]);
+    const ownerId = ownerRow.rows[0].user_id;
+    const { hashInvite } = await import("../src/auth/invites.ts");
+    const expiredToken = "expired-token-test";
+    await q(`INSERT INTO invites(id,family_id,role,token_hash,mode,max_uses,created_by,expires_at,status)
+             VALUES ('inv_expired',$1,'adult',$2,'link',1,$3, now()-interval'1 second','active')`,[o.familyId,hashInvite(expiredToken),ownerId]);
+    const r2 = await app.request("/invites:redeem",{method:"POST",headers:authH,body:JSON.stringify({token:expiredToken})});
+    expect(r2.status).toBe(404);
+
+    // revoked: active but status=revoked
+    const inv = await mintInvite(o.token, o.familyId, 2);
+    await q(`UPDATE invites SET status='revoked' WHERE id=$1`,[inv.invite_id]);
+    const r3 = await app.request("/invites:redeem",{method:"POST",headers:authH,body:JSON.stringify({token:inv.token})});
+    expect(r3.status).toBe(404);
+  });
+
+  it("role from invite is preserved", async () => {
+    // Insert an adult-role invite with a custom id to confirm role flows through
+    const o = await ownerOf("redeem-owner-5");
+    const ownerRow5 = await q(`SELECT m.user_id FROM memberships m WHERE m.family_id=$1 AND m.role='owner'`,[o.familyId]);
+    const ownerId5 = ownerRow5.rows[0].user_id;
+    const { hashInvite, genInviteToken } = await import("../src/auth/invites.ts");
+    const tok = genInviteToken();
+    await q(`INSERT INTO invites(id,family_id,role,token_hash,mode,max_uses,created_by,expires_at,status)
+             VALUES ('inv_adult5',$1,'adult',$2,'link',1,$3, now()+interval'1 hour','active')`,[o.familyId,hashInvite(tok),ownerId5]);
+    const invitee = await devToken("invitee-5");
+    const r = await app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${invitee}`},body:JSON.stringify({token:tok})});
+    expect(r.status).toBe(200);
+    expect((await r.json()).role).toBe("adult");
+  });
+
+  it("per-account lockout after 5 bad attempts → 429", async () => {
+    const invitee = await devToken("invitee-lockout");
+    const authH = {...dev, authorization:`Bearer ${invitee}`};
+    for (let i=0; i<5; i++) {
+      await app.request("/invites:redeem",{method:"POST",headers:authH,body:JSON.stringify({token:"bad-"+i})});
+    }
+    const r = await app.request("/invites:redeem",{method:"POST",headers:authH,body:JSON.stringify({token:"bad-final"})});
+    expect(r.status).toBe(429);
+  });
+
+  it("pending-cap → 429", async () => {
+    const o = await ownerOf("redeem-owner-cap");
+    const inv = await mintInvite(o.token, o.familyId, 1);
+    // Stuff 20 pending memberships directly (bypass invite flow)
+    for (let i=0; i<20; i++) {
+      await q(`INSERT INTO users(id) VALUES ('u_cap_${i}') ON CONFLICT DO NOTHING`);
+      await q(`INSERT INTO memberships(user_id,family_id,role,status) VALUES ('u_cap_${i}',$1,'adult','pending') ON CONFLICT DO NOTHING`,[o.familyId]);
+    }
+    const invitee = await devToken("invitee-cap");
+    const r = await app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${invitee}`},body:JSON.stringify({token:inv.token})});
+    expect(r.status).toBe(429);
+  });
+});

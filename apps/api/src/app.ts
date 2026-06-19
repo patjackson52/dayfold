@@ -266,6 +266,31 @@ app.post("/families/:fid/invites", async (c) => {
   return c.json({ invite_id: inviteId, token, url: `${new URL(c.req.url).origin}/invite/${token}`, role, mode, expires_at: expires.rows[0].expires_at }, 201);
 });
 
+app.post("/invites:redeem", async (c) => {
+  const t = bearer(c); if (!t) return c.body(null, 401);
+  let sub: string;
+  try { const { verifyAccess } = await import("./auth/tokens.ts"); sub = (await verifyAccess(t)).sub; }
+  catch { return c.body(null, 401); }
+  const { isLocked, recordFailure, resetFailures } = await import("./auth/ratelimit.ts");
+  const key = `account:redeem:${sub}`;
+  if (await isLocked(key)) return c.body(null, 429);
+  const body = await c.req.json().catch(() => null);
+  if (!body?.token) return c.json({ type: "bad-request" }, 400);
+  const { redeem } = await import("./auth/invites.ts");
+  const out = await redeem(body.token, sub);
+  const { audit } = await import("./auth/audit.ts");
+  if ("notfound" in out) { await recordFailure(key, 900, 5, 900); return c.body(null, 404); }
+  if ("capfull" in out) return c.body(null, 429);
+  await resetFailures(key);
+  if ("conflict" in out) {
+    if (out.conflict === "pending") return c.json({ status: "pending" }, 200);
+    return c.json({ type: out.conflict === "active" ? "already-member" : "removed" }, 409);
+  }
+  const fam = await q(`SELECT name FROM families WHERE id=$1`, [out.family_id]);
+  await audit("invite.redeem", { actorUserId: sub, familyId: out.family_id });
+  return c.json({ family_id: out.family_id, family_name: fam.rows[0]?.name, role: out.role, status: "pending" }, 200);
+});
+
 app.get("/families/:fid/sync", async (c) => {
   const fid = c.req.param("fid");
   const a = await authorizeTenant(c, fid);
