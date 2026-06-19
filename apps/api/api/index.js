@@ -489,7 +489,7 @@ app.post("/auth/refresh", async (c) => {
   if ("reuse" in out) return c.body(null, 401);
   const h = hashToken2(out.refresh);
   const row = await q(
-    `SELECT rt.credential_id, c.user_id FROM refresh_tokens rt JOIN credentials c ON c.id=rt.credential_id WHERE rt.token_hash=$1`,
+    `SELECT rt.credential_id, c.user_id FROM refresh_tokens rt JOIN credentials c ON c.id=rt.credential_id WHERE rt.token_hash=$1 AND c.revoked_at IS NULL`,
     [h]
   ).catch(() => null);
   if (!row || row.rowCount === 0) return c.body(null, 401);

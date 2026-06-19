@@ -84,4 +84,29 @@ describe("auth E2E + multitenancy", () => {
     const r = await app.request(`/families/${fam2.familyId}/cards`, { headers: { authorization: `Bearer ${newAccess}` } });
     expect(r.status).toBe(200);
   });
+  it("refresh returns 401 when credential is revoked (I1)", async () => {
+    // Obtain a dev-token (access + refresh) for a fresh user
+    const tokenRes = await app.request("/auth/dev-token", { method: "POST", headers: dev,
+      body: JSON.stringify({ provider: "dev", provider_uid: "revoke-test-user" }) });
+    const { access, refresh } = await tokenRes.json();
+    expect(refresh).toBeTruthy();
+    // Extract credential_id from the access JWT payload (base64url decode middle segment)
+    const payload = JSON.parse(Buffer.from(access.split(".")[1], "base64url").toString());
+    const cid: string = payload.cid;
+    expect(cid).toBeTruthy();
+    // Revoke the credential directly in the DB
+    await q(`UPDATE credentials SET revoked_at=now() WHERE id=$1`, [cid]);
+    // Attempt to refresh — must be rejected even though the refresh token was never consumed
+    const rotRes = await app.request("/auth/refresh", { method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ refresh }) });
+    expect(rotRes.status).toBe(401);
+  });
+  it.skip("KNOWN LIMIT (S4): one user creating a second family — token not bound, 404", async () => {
+    // POST /families binds only the user's null-family_scope credential.
+    // A single user creating a SECOND family gets a confusing 404 on the 2nd
+    // family with their existing token because the credential is already bound
+    // to the first family. This is accepted S1 behavior; S4 redesigns
+    // cred→family binding to allow multiple families per credential.
+  });
 });
