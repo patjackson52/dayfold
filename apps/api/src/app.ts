@@ -64,7 +64,15 @@ app.post("/auth/refresh", async (c) => {
   const { rotate, hashToken } = await import("./auth/refresh.ts");
   const out = await rotate(body?.refresh || "");
   if (!out) return c.body(null, 401);
-  if ("reuse" in out) return c.body(null, 401);
+  if ("refresh" in out) {
+    if ((out as any).graced) {
+      const { audit } = await import("./auth/audit.ts");
+      await audit("refresh.grace_reissued", {});
+    }
+    // fall through to the existing access re-mint (works for graced rows too)
+  } else { // { reuse: true }
+    return c.body(null, 401);
+  }
   // Look up the credential for the new refresh token to re-mint access.
   // rotate() already inserted the new token row; query by hash of nextOpaque.
   const h = hashToken(out.refresh);
