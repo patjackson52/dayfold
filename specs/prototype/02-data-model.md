@@ -154,6 +154,7 @@ CREATE TABLE memberships (
   family_id  text NOT NULL REFERENCES families(id) ON DELETE CASCADE,
   role       role NOT NULL DEFAULT 'adult',
   status     membership_status NOT NULL DEFAULT 'pending',
+  invite_id  text REFERENCES invites(id),    -- which invite this join used (approval display + audit)
   joined_at  timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -174,10 +175,13 @@ CREATE TABLE invites (
   created_by  text NOT NULL REFERENCES users(id),
   created_at  timestamptz NOT NULL DEFAULT now()
 );
--- Atomic claim guard:
--- UPDATE invites SET used_count=used_count+1
---  WHERE id=$1 AND status='active' AND used_count<max_uses AND expires_at>now()
---  RETURNING *;   -- 0 rows ⇒ reject (expired/exhausted/revoked)
+-- Atomic claim guard (keyed on token_hash; redeem only has the token):
+-- INSERT-first (membership ON CONFLICT DO NOTHING) so a no-op conflict does NOT burn a use;
+-- only on a NET-NEW pending membership:
+-- UPDATE invites SET used_count=used_count+1,
+--        status=CASE WHEN used_count+1>=max_uses THEN 'exhausted' ELSE status END
+--  WHERE token_hash=$1 AND status='active' AND used_count<max_uses AND expires_at>now()
+--  RETURNING family_id, role, id;   -- 0 rows ⇒ reject (uniform 404). All in ONE tx. See 05-invite.
 
 CREATE TABLE device_authorizations (
   device_code text PRIMARY KEY,             -- high-entropy, one-time

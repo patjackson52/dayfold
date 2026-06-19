@@ -17,6 +17,19 @@ Each item: question, context link, **proposed default**, urgency.
   schema. Platform choice = ADR-class. **Proposed default:** ratify at C3 as
   an ADR. Confirm or pick Kotlin/JVM + Cloud Run instead.
 
+- **INB-10 · 2026-06-18 · high · open — Adopt E2E encryption (ADR 0015)?**
+  Investigation (`research/e2e-encryption-investigation.md`) verdict:
+  **CONDITIONAL GO** — the dumb-store architecture makes E2EE nearly free;
+  encrypt at M0, distribute keys at M1 (per-member X25519 wrap mapping onto
+  owner-approve). **Why high/now:** it changes the **M0 schema** (content
+  columns become ciphertext, drop the server FTS index) — cheap to lock before
+  real data, expensive to retrofit. Trade-off: loses server-side search;
+  **lost keys = lost data** (recovery = OS keychain + owner-mediated re-grant +
+  owner recovery phrase, no server escrow — this is **values-shaped, your
+  call**). **Proposed default:** accept ADR 0015 → next loop iterations adjust
+  02/05/06/08 specs for the encrypted column split. Accept / amend recovery
+  posture / defer.
+
 - **INB-3 · 2026-06-18 · med · open — Cheapest kill-checks (you, ~2 hrs).**
   Before/while building: (a) run Gemini Daily Brief's school-email→family-
   digest flow yourself; (b) use Maple+ a bit and name what it can't do for a
