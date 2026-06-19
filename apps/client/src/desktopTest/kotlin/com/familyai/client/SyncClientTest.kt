@@ -31,7 +31,9 @@ class SyncClientTest {
     assertEquals("Bearer sec", seenAuth)
   }
 
-  @Test fun `fetchPage throws on non-200`() = runBlocking {
+  // runBlocking<Unit>: assertFailsWith returns the caught Throwable, so without the
+  // explicit Unit this method's return type is Throwable and JUnit silently skips it.
+  @Test fun `fetchPage throws on non-200`() = runBlocking<Unit> {
     val engine = MockEngine { respond("nope", HttpStatusCode.InternalServerError) }
     assertFailsWith<Exception> { client(engine).fetchPage(null) }
   }
