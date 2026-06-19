@@ -32,8 +32,8 @@ Universal Links). The specs note which milestone each part belongs to.
 | 05 | Invite system | `05-invite.md` | **done (2-agent review applied)** | — |
 | 06 | Storage (object storage, docs/large markdown) | `06-storage.md` | **done (review applied)** | — |
 | 07 | CLI tool | `07-cli.md` | **done (review applied)** | — |
-| 08 | Mobile client (CMP) | `08-mobile-client.md` | **draft → in review** (anchored by **ADR 0013**) | apply 2-agent review (architecture + triggers/offline/E2E) |
-| 09 | Security controls + test/verify plan | `09-security-and-test.md` | todo | from the 5-agent review + ADR 0011/0012 |
+| 08 | Mobile client (CMP) | `08-mobile-client.md` | **done (2-agent review applied)** | ⚠ pre-build gate: confirm redux-kotlin alpha1 coordinates |
+| 09 | Security controls + test/verify plan | `09-security-and-test.md` | **next (final)** | consolidate all review findings + ADR 0011/0012 + IDOR/test matrix |
 
 ## Current
 
