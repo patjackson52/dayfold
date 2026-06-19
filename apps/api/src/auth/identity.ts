@@ -27,6 +27,12 @@ export async function findOrCreateUser(idn: Identity): Promise<{ userId: string 
 
   const userId = id("usr");
   const r = await q(
+    // Orphan-users invariant: the CTE's INSERT INTO users always commits its row,
+    // even when the outer INSERT INTO user_identities hits ON CONFLICT DO NOTHING
+    // (i.e. a concurrent caller won the race). That orphan users row has no FK
+    // referencing it and is harmless today. Any future schema work that adds
+    // references to users.id (e.g. a soft-delete flag, audit log FK, etc.) must
+    // either tolerate these orphans or add a cleanup sweep.
     `WITH u AS (INSERT INTO users(id) VALUES ($1) RETURNING id)
      INSERT INTO user_identities(id,user_id,provider,provider_uid,email_verified)
      VALUES ($2, $1, $3, $4, $5)
