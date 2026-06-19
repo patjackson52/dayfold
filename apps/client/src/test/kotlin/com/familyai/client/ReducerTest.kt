@@ -58,4 +58,20 @@ class ReducerTest {
     store.dispatch(SyncSucceeded(SyncResponse(changes = Changes(listOf(Card("x", title = "X"))))))
     assertEquals(1, store.state.cards.size)
   }
+
+  @Test
+  fun `decodes a full SELECT-star sync row without losing feed fields (F3 contract)`() {
+    val body = """{"changes":{"cards":[{"id":"c1","family_id":"fam1","kind":"info","title":"T",
+      "body_md":null,"target_hub_id":"h1","target_section_id":null,"target_block_id":null,
+      "provenance":{"credential_id":"hc","source":"claude"},"triggers":null,"actions":null,
+      "not_before":"2026-06-18T16:00:00Z","expires_at":null,"version":"1",
+      "created_at":"2026-06-18T10:00:00Z","updated_at":"2026-06-18T10:00:00Z","deleted_at":null}]},
+      "tombstones":[{"type":"card","id":"old"}],"next_cursor":"abc","has_more":false}"""
+    val resp = json.decodeFromString(SyncResponse.serializer(), body)
+    val c = resp.changes.cards[0]
+    assertEquals("c1", c.id)
+    assertEquals("h1", c.targetHubId)              // deep-link field survives
+    assertEquals("2026-06-18T16:00:00Z", c.notBefore) // feed-order field survives
+    assertEquals("old", resp.tombstones[0].id)
+  }
 }

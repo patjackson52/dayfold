@@ -1,7 +1,7 @@
 package com.familyai.client
 
 import org.reduxkotlin.Store
-import org.reduxkotlin.createStore
+import org.reduxkotlin.threadsafe.createThreadSafeStore
 
 // Hand-written root reducer (locked decision: no combineReducers). Applies a
 // /sync delta: upsert changed cards by id (preserving order, newest wins),
@@ -25,5 +25,7 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
   else -> state
 }
 
+// [F5] thread-safe store: the SyncClient effect dispatches from Dispatchers.IO
+// while the Compose UI reads on the main thread — needs synchronized dispatch.
 fun createAppStore(initial: AppState = AppState()): Store<AppState> =
-  createStore(::rootReducer, initial)
+  createThreadSafeStore(::rootReducer, initial)

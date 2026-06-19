@@ -14,7 +14,7 @@ repositories {
 }
 
 dependencies {
-  implementation("org.reduxkotlin:redux-kotlin-jvm:0.6.2") // locked: redux-kotlin 0.6.2 stable
+  implementation("org.reduxkotlin:redux-kotlin-threadsafe-jvm:0.6.2") // [F5] threadsafe: UI dispatches sync off-main
   implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
   implementation(compose.desktop.currentOs)
   implementation(compose.material3)

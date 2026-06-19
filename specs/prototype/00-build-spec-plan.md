@@ -38,8 +38,13 @@
 > (hono/vercel handler) + `vercel.json` + db.ts tuned (`pg` → Neon
 > transaction-pooler, no driver swap, F3 preserved; max:1 on Vercel). Handler
 > imports clean, 19 api tests still green; concrete deploy steps in INB-12.
-> **Next unblocked:** F5/F3 client hardening + the content-authoring-loop
-> runbook (G1). Device render (INB-14) + the actual deploy (INB-12) operator-gated.
+> **I-build-12:** closed the
+> last client-review seams — F5 (`redux-kotlin-threadsafe` store, since the UI
+> dispatches sync off-main) + F3 (full-row /sync contract test). 8 client tests
+> green. **ALL component reviews now applied.** **M0 prototype BUILD COMPLETE &
+> CI-green** (server·CLI·client-core·feed-UI, all tested + reviewed +
+> deploy-ready). Remaining: operator-gated device render (INB-14) + cloud deploy
+> (INB-12); one optional doc = the content-authoring-loop runbook (G1).
 
 ## Milestone glossary (C6 — bind the vocabularies)
 
