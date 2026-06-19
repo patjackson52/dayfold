@@ -10,7 +10,15 @@ Populated at bootstrap and by loop close-outs.
 
 ## TASK-SYNC — Persistence & Sync (offline-first client) · ADR 0020
 
-**Status:** ready to build (spec-complete). **Why now:** the shipped M0 client is
+**Status:** IN PROGRESS. **Done (2026-06-19):** step 1 — SQLDelight DB layer
+(`Content.sq` cards+sync_meta, 3.38 dialect for UPSERT) + `ContentStore` wrapper
+(applyDelta txn / activeCards / cursor) + 3 tests green on desktop; **SQLDelight
+toolchain proven on Kotlin 2.3.20**. **Remaining:** (2) wire the shared DB into
+the **Android** compile — the `srcDir` code-sharing can't carry SQLDelight's
+per-variant generated code, so this wants the **proper KMP restructure** of
+`apps/client` (commonMain + android/jvm/ios targets); (3) rewrite `SyncClient`
+network→DB; (4) DB→store bridge + cold-start; (5) foreground poll + WorkManager/
+BGTaskScheduler. **Why now:** the shipped M0 client is
 **in-memory** — round-trips the network every open, no offline, no background
 refresh, no persisted cursor. ADR 0020 + `specs/prototype/08-mobile-client.md`
 §"Data freshness & offline-first sync" spec the target.

@@ -1,0 +1,42 @@
+-- M0 offline cache (ADR 0020): DB is the source of truth. Cards + sync cursor.
+CREATE TABLE card (
+  id          TEXT NOT NULL PRIMARY KEY,
+  kind        TEXT NOT NULL DEFAULT 'info',
+  title       TEXT NOT NULL,
+  body_md     TEXT,
+  source      TEXT,                       -- provenance.source
+  not_before  TEXT,
+  expires_at  TEXT,
+  updated_at  TEXT NOT NULL,
+  deleted     INTEGER NOT NULL DEFAULT 0  -- tombstone flag
+);
+
+CREATE TABLE sync_meta (
+  id             INTEGER NOT NULL PRIMARY KEY DEFAULT 0,
+  cursor         TEXT,
+  last_synced_at TEXT
+);
+
+upsertCard:
+INSERT INTO card(id, kind, title, body_md, source, not_before, expires_at, updated_at, deleted)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+ON CONFLICT(id) DO UPDATE SET
+  kind=excluded.kind, title=excluded.title, body_md=excluded.body_md,
+  source=excluded.source, not_before=excluded.not_before, expires_at=excluded.expires_at,
+  updated_at=excluded.updated_at, deleted=0;
+
+markDeleted:
+UPDATE card SET deleted=1, updated_at=? WHERE id=?;
+
+-- feed query: live cards, not_before NULLS LAST then id (matches the API contract)
+activeCards:
+SELECT id, kind, title, body_md, source, not_before, expires_at
+FROM card WHERE deleted=0
+ORDER BY (not_before IS NULL), not_before, id;
+
+getCursor:
+SELECT cursor FROM sync_meta WHERE id=0;
+
+setCursor:
+INSERT INTO sync_meta(id, cursor, last_synced_at) VALUES (0, ?, ?)
+ON CONFLICT(id) DO UPDATE SET cursor=excluded.cursor, last_synced_at=excluded.last_synced_at;
