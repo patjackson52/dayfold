@@ -22,6 +22,12 @@ bootstrap from validation round 1 (`research/validation-round1-2026-06.md`).
 
 ## Important, not blocking
 
+- **OQ-e2e-encryption:** Adopt end-to-end encryption (CLI encrypts → server
+  stores blind → device decrypts)? Feasible because the server never processes
+  content. Crux = family-content-key distribution across the multi-member +
+  invite + device-grant flows; cost = loses server-side FTS + adds key-loss
+  recovery. → `backlog/next.md` TASK-E2E + `research/e2e-encryption-
+  investigation.md`. ADR-class.
 - **OQ-auth-recovery-floor:** passwordless last-resort recovery (all linked
   methods lost) + its abuse surface. → ADR 0011 / C4 security model.
 - **OQ-family-switcher:** family-switcher UX when the multi-family UI ships
