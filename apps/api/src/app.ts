@@ -101,13 +101,18 @@ app.post("/auth/signout", async (c) => {
 
 app.get("/auth/whoami", async (c) => {
   const t = bearer(c); if (!t) return c.body(null, 401);
-  let sub: string;
-  try { const { verifyAccess } = await import("./auth/tokens.ts"); sub = (await verifyAccess(t)).sub; }
+  let sub: string, cid: string;
+  try { const { verifyAccess } = await import("./auth/tokens.ts"); ({ sub, cid } = await verifyAccess(t)); }
   catch { return c.body(null, 401); }
+  // Fail-closed: verify cred row exists and is not revoked (same as original S3 whoami).
+  const credRow = await q(
+    `SELECT family_scope FROM credentials WHERE id=$1 AND revoked_at IS NULL`, [cid]);
+  if (!credRow || credRow.rowCount === 0) return c.body(null, 401);
+  const family_id: string | null = credRow.rows[0].family_scope ?? null;
   const r = await q(
     `SELECT m.family_id, f.name, m.role, m.status FROM memberships m JOIN families f ON f.id=m.family_id
-     WHERE m.user_id=$1 AND m.status IN ('active','pending') ORDER BY m.joined_at`, [sub]);
-  return c.json({ families: r.rows });
+     WHERE m.user_id=$1 AND m.status IN ('active','pending') ORDER BY m.created_at`, [sub]);
+  return c.json({ family_id, families: r.rows });
 });
 
 app.post("/families", async (c) => {
