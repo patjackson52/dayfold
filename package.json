@@ -1,0 +1,16 @@
+{
+  "name": "family-ai-dashboard",
+  "private": true,
+  "version": "0.0.0-M0",
+  "description": "family-ai-dashboard monorepo (M0). specs/ = source of truth; code under packages/ + apps/.",
+  "workspaces": [
+    "packages/*",
+    "apps/api"
+  ],
+  "scripts": {
+    "codegen": "node packages/schema/codegen.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

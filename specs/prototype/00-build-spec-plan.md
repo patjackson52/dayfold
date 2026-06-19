@@ -1,10 +1,12 @@
 # Prototype Build-Spec Plan (loop state)
 
 > 🔨 **BUILD PHASE (loop `18ff12bf`, started 2026-06-18).** Implementing M0 per
-> `10-implementation-plan.md`. **I-build-1:** schema `payload` $defs authored
-> (codegen prereq, C4 closed); P-1 operator bootstrap escalated (INB-12).
-> **Next:** P0 monorepo skeleton + schema codegen (unblocked — local), while
-> INB-12 (Vercel/Neon accounts) is pending.
+> `10-implementation-plan.md`. **I-build-1:** schema `payload` $defs (C4 closed);
+> P-1 escalated (INB-12). **I-build-2:** monorepo skeleton (root package.json
+> workspaces + .gitignore) + **schema→TS/zod codegen VERIFIED** (16 types from
+> the single source → `apps/api/src/generated/content.ts`). **Next:** Kotlin
+> codegen (quicktype) + the TS API skeleton (P1, local Postgres) — INB-12
+> (Vercel/Neon) still pending for the cloud pipeline.
 
 ## Milestone glossary (C6 — bind the vocabularies)
 

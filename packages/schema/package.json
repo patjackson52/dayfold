@@ -1,0 +1,13 @@
+{
+  "name": "@family-ai/schema",
+  "private": true,
+  "version": "0.0.0-M0",
+  "type": "module",
+  "description": "Single-source content schema → codegen (TS zod + Kotlin) per ADR 0018.",
+  "scripts": {
+    "codegen": "node codegen.mjs"
+  },
+  "devDependencies": {
+    "json-schema-to-zod": "^2.6.1"
+  }
+}

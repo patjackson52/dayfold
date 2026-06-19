@@ -1,0 +1,21 @@
+# node / TS
+node_modules/
+dist/
+*.tsbuildinfo
+.vercel/
+
+# kotlin / gradle
+.gradle/
+build/
+*.iml
+local.properties
+
+# env / secrets (NEVER commit)
+.env
+.env.*
+!.env.example
+
+# os / editor
+.DS_Store
+*.log
+.idea/
