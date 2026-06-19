@@ -30,6 +30,12 @@
 > running on the literal phone** (server·CLI·client-core·feed-UI all green).
 > Remaining = device packaging (INB-14) + cloud deploy (INB-12). Tracked seams:
 > F3 (hand-DTO vs generated), F5 (threadsafe store before off-main dispatch).
+> **I-build-10 (P0 CI):** Gradle wrappers (apps/cli + apps/client, 9.5.1) +
+> `.github/workflows/ci.yml` — 3 jobs (api vitest vs Postgres-service +
+> codegen-freshness guard; cli `./gradlew build`; client `./gradlew test`
+> headless Compose). Codifies the green build on every push. **Next unblocked:**
+> Vercel deploy prep (vercel.json + hono/vercel handler — write-only till
+> INB-12) + F5/F3 hardening.
 
 ## Milestone glossary (C6 — bind the vocabularies)
 
