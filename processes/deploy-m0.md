@@ -1,13 +1,28 @@
 # M0 Cloud Deploy Runbook (INB-12)
 
-> **STATUS 2026-06-18 — Neon DONE (via `neonctl`):** project
-> `spring-waterfall-37999618` (aws-us-west-2, pg17); M0 migration applied (7
-> tables); family `fam_b47fc75bfb5a` + household token provisioned. The
-> **pooled** DSN host is `ep-lively-sun-a6gu4yu6-pooler.us-west-2.aws.neon.tech`.
-> **Verified:** local API pointed at the Neon pooler → CLI `push` → `/sync`
-> round-trip works, `updated_at` keeps microsecond precision (F3 holds on Neon).
-> Secret + DSNs are in `/tmp/neon.env` (local, NOT committed) — they go into
-> Vercel's env at deploy. **Remaining: Vercel** (account + deploy §2).
+> **STATUS 2026-06-18 — ✅ LIVE on Vercel + Neon (via CLI, end to end).**
+> **Neon:** project `spring-waterfall-37999618` (aws-us-west-2, pg17), migration
+> applied, family `fam_b47fc75bfb5a` + token provisioned, pooled host
+> `ep-lively-sun-a6gu4yu6-pooler…`. **Vercel:** project `family-ai-dashboard`,
+> 3 env vars (production), SSO deployment-protection **disabled** (the household
+> token is the auth). **Stable URL: `https://family-ai-dashboard.vercel.app`.**
+> **Verified live:** Kotlin CLI `push` → 200, `GET /sync` returns the cards,
+> no-token → 401, `/health` → 200, microsecond cursor precision holds on Neon.
+>
+> **Three deploy gotchas hit + fixed (update §3 below):**
+> 1. **`.ts`-extension imports** → Vercel didn't trace them (runtime
+>    `ERR_MODULE_NOT_FOUND`). Fix: esbuild-bundle the entry (`src/vercel-entry.ts`)
+>    to a self-contained **`api/index.js`** (`npm run build:fn`, committed).
+> 2. **Committed `.mjs` wasn't registered as a function** (every path hung). Fix:
+>    output the bundle to **`api/index.js`** (not `.mjs`).
+> 3. **Node runtime buffers the request body** → stream adapters (hono/vercel
+>    `handle`, `getRequestListener`) hang on any request *with* a body (GET ok,
+>    PUT hung). Fix: `src/vercel-entry.ts` is a **manual `(req,res)` bridge** that
+>    reads `req.body`/stream → builds a Web `Request` → `app.fetch`.
+>
+> **Redeploy:** `cd apps/api && npm run build:fn && vercel deploy --prod --yes
+> --scope patrick-jacksons-projects-c406a118`. **Remaining: point the phone at
+> the cloud URL** (rebuild the Android app with `FAMILYAI_API=https://family-ai-dashboard.vercel.app`).
 
 Move the M0 API off `localhost` to **Vercel + Neon**. Single household,
 plaintext, household token. Cost target: **$0** (Neon free + Vercel hobby),

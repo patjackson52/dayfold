@@ -16,6 +16,8 @@ types.setTypeParser(1114, (s: string) => s); // timestamp
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: process.env.VERCEL ? 1 : 10,
+  // fail fast instead of hanging if the DB is unreachable (serverless).
+  connectionTimeoutMillis: 10_000,
 });
 
 export function q(text: string, params?: unknown[]) {

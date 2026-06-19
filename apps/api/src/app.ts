@@ -9,6 +9,9 @@ import * as repo from "./repo.ts";
 
 export const app = new Hono();
 
+// Liveness — no auth, no DB (isolates routing/cold-start from the DB path).
+app.get("/health", (c) => c.json({ ok: true, surface: "m0" }));
+
 // [F9] RFC 9457 problem+json error helper.
 function problem(c: any, status: number, type: string, detail?: string) {
   return c.body(JSON.stringify({ type, title: type, status, ...(detail ? { detail } : {}) }),
