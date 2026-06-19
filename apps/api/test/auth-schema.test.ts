@@ -22,10 +22,41 @@ describe("0002_auth schema", () => {
       q(`INSERT INTO user_identities(id,user_id,provider,provider_uid) VALUES ('i2','u1','dev','uid1')`),
     ).rejects.toThrow();
   });
+
   it("membership role CHECK rejects junk; PK prevents dupes", async () => {
     await q(`INSERT INTO families(id,name) VALUES ('fam1','F')`);
     await expect(q(`INSERT INTO memberships(user_id,family_id,role) VALUES ('u1','fam1','king')`)).rejects.toThrow();
     await q(`INSERT INTO memberships(user_id,family_id,role) VALUES ('u1','fam1','owner')`);
-    await expect(q(`INSERT INTO memberships(user_id,family_id,role) VALUES ('u1','fam1','adult')`)).rejects.toThrow();
+    // PK test: same (user_id, family_id) — role is irrelevant, the PK is (user_id, family_id) only
+    await expect(q(`INSERT INTO memberships(user_id,family_id,role) VALUES ('u1','fam1','owner')`)).rejects.toThrow();
+  });
+
+  it("membership status CHECK rejects invalid status values", async () => {
+    // Prereqs: user u2, family fam2 (u1/fam1 already inserted above)
+    await q(`INSERT INTO users(id) VALUES ('u2')`);
+    await q(`INSERT INTO families(id,name) VALUES ('fam2','G')`);
+    await expect(
+      q(`INSERT INTO memberships(user_id,family_id,role,status) VALUES ('u2','fam2','adult','banned')`),
+    ).rejects.toThrow();
+  });
+
+  it("refresh_tokens: valid insert persists; duplicate token_hash (PK) throws", async () => {
+    // Prereq credential: kind='cli' requires family_scope NOT NULL
+    await q(`INSERT INTO families(id,name) VALUES ('fam3','H')`);
+    await q(
+      `INSERT INTO credentials(id,family_scope,kind) VALUES ('cred1','fam3','cli')`,
+    );
+
+    // Valid refresh_token row
+    await q(
+      `INSERT INTO refresh_tokens(token_hash,credential_id,expires_at) VALUES ('hash_abc','cred1', now() + interval '1 hour')`,
+    );
+    const rows = await q(`SELECT token_hash FROM refresh_tokens WHERE token_hash='hash_abc'`);
+    expect(rows.rows).toHaveLength(1);
+
+    // Duplicate token_hash must throw (PK violation)
+    await expect(
+      q(`INSERT INTO refresh_tokens(token_hash,credential_id,expires_at) VALUES ('hash_abc','cred1', now() + interval '2 hours')`),
+    ).rejects.toThrow();
   });
 });
