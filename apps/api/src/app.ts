@@ -101,14 +101,13 @@ app.post("/auth/signout", async (c) => {
 
 app.get("/auth/whoami", async (c) => {
   const t = bearer(c); if (!t) return c.body(null, 401);
-  try {
-    const { verifyAccess } = await import("./auth/tokens.ts");
-    const payload = await verifyAccess(t);
-    // family_scope lives on the credential row; the JWT cid field points to it.
-    const row = await q(`SELECT family_scope FROM credentials WHERE id=$1 AND revoked_at IS NULL`, [payload.cid]);
-    if (!row || row.rowCount === 0) return c.body(null, 401);
-    return c.json({ family_id: row.rows[0].family_scope });
-  } catch { return c.body(null, 401); }
+  let sub: string;
+  try { const { verifyAccess } = await import("./auth/tokens.ts"); sub = (await verifyAccess(t)).sub; }
+  catch { return c.body(null, 401); }
+  const r = await q(
+    `SELECT m.family_id, f.name, m.role, m.status FROM memberships m JOIN families f ON f.id=m.family_id
+     WHERE m.user_id=$1 AND m.status IN ('active','pending') ORDER BY m.joined_at`, [sub]);
+  return c.json({ families: r.rows });
 });
 
 app.post("/families", async (c) => {
@@ -122,8 +121,6 @@ app.post("/families", async (c) => {
   if (!body?.name || typeof body.name !== "string") return c.json({ type: "bad-name" }, 400);
   const { createFamily } = await import("./auth/identity.ts");
   const { familyId } = await createFamily(sub, body.name);
-  // bind the caller's credential to this family so the JWT can write content
-  await q(`UPDATE credentials SET family_scope=$1 WHERE user_id=$2 AND family_scope IS NULL`, [familyId, sub]);
   return c.json({ familyId });
 });
 

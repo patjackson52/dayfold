@@ -62,11 +62,11 @@ export async function createFamily(userId: string, name: string): Promise<{ fami
   return { familyId };
 }
 
-export async function mintCredentialFor(userId: string, familyId: string): Promise<{ credentialId: string }> {
+export async function mintCredentialFor(userId: string): Promise<{ credentialId: string }> {
   const credentialId = id("cred");
   await q(
-    `INSERT INTO credentials(id,user_id,family_scope,kind,scopes) VALUES ($1,$2,$3,'app','{content:read,content:write}')`,
-    [credentialId, userId, familyId],
+    `INSERT INTO credentials(id,user_id,kind,scopes) VALUES ($1,$2,'app','{content:read,content:write}')`,
+    [credentialId, userId],
   );
   return { credentialId };
 }
