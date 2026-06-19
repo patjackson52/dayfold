@@ -21,15 +21,21 @@ class SyncClient(
   fun sync(store: Store<AppState>) {
     store.dispatch(SyncStarted)
     try {
-      val cursor = store.state.cursor
-      val qs = cursor?.let { "?since=" + URLEncoder.encode(it, "UTF-8") } ?: ""
-      val req = HttpRequest.newBuilder(URI.create("$api/families/$familyId/sync$qs"))
-        .header("authorization", "Bearer $secret").GET().build()
-      val res = http.send(req, HttpResponse.BodyHandlers.ofString())
-      if (res.statusCode() != 200) {
-        store.dispatch(SyncFailed("HTTP ${res.statusCode()}")); return
-      }
-      store.dispatch(SyncSucceeded(json.decodeFromString(SyncResponse.serializer(), res.body())))
+      // [review F4] drain all pages — each SyncSucceeded advances the cursor on
+      // commit, so re-reading store.state.cursor walks to the next page.
+      do {
+        val cursor = store.state.cursor
+        val qs = cursor?.let { "?since=" + URLEncoder.encode(it, "UTF-8") } ?: ""
+        val req = HttpRequest.newBuilder(URI.create("$api/families/$familyId/sync$qs"))
+          .header("authorization", "Bearer $secret").GET().build()
+        val res = http.send(req, HttpResponse.BodyHandlers.ofString())
+        if (res.statusCode() != 200) {
+          store.dispatch(SyncFailed("HTTP ${res.statusCode()}")); return
+        }
+        val resp = json.decodeFromString(SyncResponse.serializer(), res.body())
+        store.dispatch(SyncSucceeded(resp))
+        if (!resp.hasMore) break
+      } while (true)
     } catch (e: Exception) {
       store.dispatch(SyncFailed(e.message ?: "sync error"))
     }

@@ -22,9 +22,14 @@
 > (P3 core):** feed client CORE — redux-kotlin **0.6.2** store + hand-written
 > root reducer (/sync delta: upsert+tombstone+cursor) + JDK SyncClient + wire
 > DTOs. **5 tests GREEN**. **Server side + CLI + client-core of G1a all built &
-> verified.** **Next:** Compose Desktop feed preview (headless render proof);
-> the Android-SDK/iOS device shell escalated to INB-14; INB-12 (Vercel/Neon)
-> for cloud deploy. Everything verifies locally meanwhile.
+> verified.** **I-build-9 (P3 UI):** Compose feed UI (`FeedScreen` + desktop
+> shell) + applied the client-core review (F1 feed-order selector, F2
+> not_before/target DTO fields, F4 sync pagination drain). **7 client tests
+> GREEN incl. 2 HEADLESS Compose render tests** — redux→Compose feed render
+> path proven (no device). **G1a stack complete & verified end-to-end except
+> running on the literal phone** (server·CLI·client-core·feed-UI all green).
+> Remaining = device packaging (INB-14) + cloud deploy (INB-12). Tracked seams:
+> F3 (hand-DTO vs generated), F5 (threadsafe store before off-main dispatch).
 
 ## Milestone glossary (C6 — bind the vocabularies)
 

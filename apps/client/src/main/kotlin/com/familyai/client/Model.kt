@@ -12,6 +12,14 @@ data class Card(
   val kind: String = "info",
   val title: String,
   @SerialName("body_md") val bodyMd: String? = null,
+  // [review F2] /sync returns the full row — keep the feed-ordering + deep-link
+  // fields, not just the title. not_before drives feed order (F1); target_* is
+  // the deep-link the render layer will use when Hubs land.
+  @SerialName("not_before") val notBefore: String? = null,
+  @SerialName("expires_at") val expiresAt: String? = null,
+  @SerialName("target_hub_id") val targetHubId: String? = null,
+  @SerialName("target_section_id") val targetSectionId: String? = null,
+  @SerialName("target_block_id") val targetBlockId: String? = null,
 )
 
 @Serializable data class Changes(val cards: List<Card> = emptyList())
