@@ -201,7 +201,7 @@ data class BriefingCard (
     val actions: List<ActionElement>? = null,
 
     /**
-     * [CONTENT/E2E-hole] limited inline markdown only
+     * limited inline markdown only (1MB cap, F8)
      */
     @SerialName("body_md")
     val bodyMd: String? = null,
@@ -222,11 +222,7 @@ data class BriefingCard (
      */
     val target: Target? = null,
 
-    /**
-     * [CONTENT/E2E-hole]
-     */
     val title: String,
-
     val triggers: List<TriggerElement>? = null,
     val version: Long? = null
 )

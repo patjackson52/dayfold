@@ -3,6 +3,7 @@
 import { q } from "./db.ts";
 
 const J = (v: unknown) => (v == null ? null : JSON.stringify(v));
+export const SYNC_LIMIT = 200; // single source for the sync page size (F2)
 
 export async function upsertCard(familyId: string, id: string, b: any) {
   const r = await q(
@@ -41,7 +42,7 @@ export async function softDeleteCard(familyId: string, id: string) {
 
 // keyset over (updated_at, id); INCLUDES tombstones (deleted_at not null) — the
 // trigger bumps updated_at on soft-delete so they sort past the cursor.
-export async function syncCards(familyId: string, su: string | null, si: string | null, limit = 200) {
+export async function syncCards(familyId: string, su: string | null, si: string | null, limit = SYNC_LIMIT) {
   const r = await q(
     `SELECT * FROM briefing_cards WHERE family_id=$1 AND (updated_at, id) > ($2::timestamptz, $3)
      ORDER BY updated_at, id LIMIT $4`,

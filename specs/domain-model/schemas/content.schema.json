@@ -104,8 +104,8 @@
       "properties": {
         "id": { "$ref": "#/$defs/ulid" },
         "kind": { "enum": ["action", "info", "weather", "countdown"], "default": "info" },
-        "title": { "type": "string", "description": "[CONTENT/E2E-hole]" },
-        "body_md": { "type": "string", "description": "[CONTENT/E2E-hole] limited inline markdown only" },
+        "title": { "type": "string", "maxLength": 4096 },
+        "body_md": { "type": "string", "maxLength": 1048576, "description": "limited inline markdown only (1MB cap, F8)" },
         "target": { "type": "object", "description": "deep-link into a hub (resolved client-side vs local cache, nearest-ancestor)",
           "properties": { "hubId": { "type": "string" }, "sectionId": { "type": "string" }, "blockId": { "type": "string" } }, "additionalProperties": false },
         "triggers": { "type": "array", "items": { "$ref": "#/$defs/Trigger" } },

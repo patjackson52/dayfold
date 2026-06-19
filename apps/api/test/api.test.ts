@@ -76,4 +76,22 @@ describe("M0 content API — card round-trip + security (vs live Postgres)", () 
     const row = await r.json();
     expect(row.provenance.credential_id).toBe("hcred");
   });
+
+  it("[F4] malformed sync cursor → 400 (not a silent full re-scan)", async () => {
+    const r = await app.request("/families/fam1/sync?since=not-a-cursor", { headers: AUTH });
+    expect(r.status).toBe(400);
+  });
+
+  it("[F3] sync cursor round-trips (next_cursor → no duplicate/skip)", async () => {
+    const first = await (await app.request("/families/fam1/sync", { headers: AUTH })).json();
+    expect(first.changes.cards.length).toBeGreaterThan(0);
+    const again = await (await app.request(`/families/fam1/sync?since=${encodeURIComponent(first.next_cursor)}`, { headers: AUTH })).json();
+    expect(again.changes.cards.length).toBe(0); // nothing new past the cursor
+  });
+
+  it("[F8] body over 1 MB → 413", async () => {
+    const big = "x".repeat(1_100_000);
+    const r = await put("fam1", "c7", card({ body_md: big }));
+    expect(r.status).toBe(413);
+  });
 });

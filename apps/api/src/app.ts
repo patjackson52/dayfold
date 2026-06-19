@@ -1,6 +1,7 @@
 // M0 content API (feed surface): household-token auth → tenant-explicit
 // card routes + keyset sync. Hono (runs on Vercel + locally + app.request()-testable).
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import { q } from "./db.ts";
 import { constantTimeEqual, stripServerManaged, stampProvenance } from "./security.ts";
 import { BriefingCardSchema } from "./generated/content.ts";
@@ -8,19 +9,32 @@ import * as repo from "./repo.ts";
 
 export const app = new Hono();
 
+// [F9] RFC 9457 problem+json error helper.
+function problem(c: any, status: number, type: string, detail?: string) {
+  return c.body(JSON.stringify({ type, title: type, status, ...(detail ? { detail } : {}) }),
+    status, { "content-type": "application/problem+json" });
+}
+
+// [F8] body-size cap (cost-DoS floor for the <$50/mo cap). Raw 1 MB.
+app.use("*", bodyLimit({ maxSize: 1024 * 1024, onError: (c) => problem(c, 413, "payload-too-large") }));
+
 function bearer(c: any): string | undefined {
   const h = c.req.header("authorization") || "";
   return h.startsWith("Bearer ") ? h.slice(7) : undefined;
 }
 
 // One auth+tenancy gate (M0 household token). Cross-tenant → 404; bad → 401.
+// [F1] FAIL CLOSED: any DB/lookup error → 401, never fail-open.
 async function auth(c: any, fid: string) {
   const token = bearer(c);
   const secret = process.env.HOUSEHOLD_SECRET || "";
   if (!token || !secret || !constantTimeEqual(token, secret)) return { status: 401 as const };
   const credId = process.env.HOUSEHOLD_CREDENTIAL_ID || "";
-  const r = await q(`SELECT * FROM credentials WHERE id=$1 AND revoked_at IS NULL`, [credId]);
-  const cred = r.rows[0];
+  let cred: any;
+  try {
+    const r = await q(`SELECT * FROM credentials WHERE id=$1 AND revoked_at IS NULL`, [credId]);
+    cred = r.rows[0];
+  } catch { return { status: 401 as const }; }
   if (!cred) return { status: 401 as const };
   if (cred.family_scope !== fid) return { status: 404 as const }; // identical body, no enumeration
   return { cred, scopes: (cred.scopes ?? []) as string[] };
@@ -62,13 +76,18 @@ app.get("/families/:fid/sync", async (c) => {
   if ("status" in a) return c.body(null, a.status);
   const cursor = c.req.query("since");
   let su: string | null = null, si: string | null = null;
-  if (cursor) { const [u, i] = Buffer.from(cursor, "base64").toString().split("|"); su = u; si = i; }
+  if (cursor) {
+    // [F4] validate the cursor; malformed → 400 (not a silent full-table re-scan).
+    const parts = Buffer.from(cursor, "base64").toString().split("|");
+    if (parts.length !== 2 || Number.isNaN(Date.parse(parts[0]))) return problem(c, 400, "bad-cursor");
+    su = parts[0]; si = parts[1];
+  }
   const rows = await repo.syncCards(fid, su, si);
   const live = rows.filter((r: any) => !r.deleted_at);
   const tombstones = rows.filter((r: any) => r.deleted_at).map((r: any) => ({ type: "card", id: r.id }));
   const last = rows[rows.length - 1];
-  const next = last
-    ? Buffer.from(`${new Date(last.updated_at).toISOString()}|${last.id}`).toString("base64")
-    : cursor;
-  return c.json({ changes: { cards: live }, tombstones, next_cursor: next, has_more: rows.length >= 200 });
+  // [F3] cursor carries the EXACT Postgres timestamptz string (db.ts type parser
+  // returns it raw) — no JS Date ms-truncation, no skipped rows.
+  const next = last ? Buffer.from(`${last.updated_at}|${last.id}`).toString("base64") : cursor;
+  return c.json({ changes: { cards: live }, tombstones, next_cursor: next, has_more: rows.length >= repo.SYNC_LIMIT });
 });
