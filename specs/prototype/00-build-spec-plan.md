@@ -17,9 +17,14 @@
 > credential + 256-bit secret) — **end-to-end VERIFIED** (provision → that
 > secret PUTs a card → 200 → sync returns it). **✅ P1 COMPLETE: the whole
 > server side of G1a is built + verified** (DDL, content API, auth, provision).
-> **Next: P2 the Kotlin CLI `push`** (needs the Gradle wrapper) — the operator's
-> authoring side. Then P3 feed client = G1a. INB-12 (Vercel/Neon) pending for
-> the cloud deploy (everything verifies locally meanwhile).
+> **I-build-7 (P2):** Kotlin CLI `push` (Kotlin 2.2.20/Gradle 9.5/JDK17) —
+> **full CLI→HTTP→API→Postgres→/sync round-trip VERIFIED live**. **I-build-8
+> (P3 core):** feed client CORE — redux-kotlin **0.6.2** store + hand-written
+> root reducer (/sync delta: upsert+tombstone+cursor) + JDK SyncClient + wire
+> DTOs. **5 tests GREEN**. **Server side + CLI + client-core of G1a all built &
+> verified.** **Next:** Compose Desktop feed preview (headless render proof);
+> the Android-SDK/iOS device shell escalated to INB-14; INB-12 (Vercel/Neon)
+> for cloud deploy. Everything verifies locally meanwhile.
 
 ## Milestone glossary (C6 — bind the vocabularies)
 

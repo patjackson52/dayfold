@@ -45,6 +45,20 @@ Each item: question, context link, **proposed default**, urgency.
   02/05/06/08 specs for the encrypted column split. Accept / amend recovery
   posture / defer.
 
+- **INB-14 · 2026-06-18 · high · open — P3 device-render shell needs your hardware (final G1a step).**
+  The client CORE is built + tested (redux-kotlin 0.6.2 store + /sync reducer,
+  5 tests green). What remains to literally "see the feed on your phone" needs
+  hardware agents can't supply:
+  1. **Android:** the Android SDK + an emulator/device to build & run the
+     Compose app (agent can install the SDK; *seeing* it needs a device or your
+     OK to run an emulator).
+  2. **iOS:** your **Mac + Xcode + Apple Developer** account (P-1) — agents
+     can't build/sign iOS.
+  The loop will next add a **Compose Desktop** preview of the same feed (builds
+  headlessly, no SDK) to prove the render path while the phone targets wait on
+  you. Tell me: install the Android SDK + run an emulator now, or hold for your
+  device?
+
 - **INB-13 · 2026-06-18 · med · open — Trigger designs need a v2 pass (Claude Design).**
   The new trigger/place/notification mockups are complete (14.5/15) + calm, but
   the 3-agent review found a **P0 honesty bug**: the Places/affordance copy says
