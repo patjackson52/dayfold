@@ -37,16 +37,18 @@ data class SyncResponse(
   @SerialName("has_more") val hasMore: Boolean = false,
 )
 
-// Redux state (the whole client state tree at M0 = the briefing feed).
+// Redux state (the whole client state tree at M0 = the briefing feed). The
+// cursor lives in the DB (sync_meta), not here — the store is a projection of the DB.
 data class AppState(
   val cards: List<Card> = emptyList(),
-  val cursor: String? = null,
   val syncing: Boolean = false,
   val error: String? = null,
 )
 
-// Actions.
+// Actions. Card data reaches the store ONLY via CardsLoaded (the DB→store bridge);
+// SyncStarted/SyncSucceeded/SyncFailed carry sync STATUS only.
 sealed interface Action
 data object SyncStarted : Action
-data class SyncSucceeded(val resp: SyncResponse) : Action
+data object SyncSucceeded : Action
 data class SyncFailed(val message: String) : Action
+data class CardsLoaded(val cards: List<Card>) : Action

@@ -1,6 +1,8 @@
 package com.familyai.client
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import app.cash.turbine.test
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -39,5 +41,15 @@ class ContentStoreTest {
 
   @Test fun `fresh db has no cursor`() {
     assertNull(store().cursor())
+  }
+
+  @Test fun `activeCardsFlow emits current rows then re-emits on write`() = runBlocking {
+    val s = store()
+    s.activeCardsFlow().test {
+      assertEquals(emptyList(), awaitItem().map { it.id })           // initial: empty DB
+      s.applyDelta(listOf(card("a", "A")), emptyList(), "c1", "2026-06-18T10:00:00Z")
+      assertEquals(listOf("a"), awaitItem().map { it.id })           // re-emits after write
+      cancelAndIgnoreRemainingEvents()
+    }
   }
 }

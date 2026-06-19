@@ -1,15 +1,18 @@
 package com.familyai.client
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import platform.UIKit.UIViewController
 
-// iOS entry — hosts the SHARED FeedApp in a ComposeUIViewController for a Swift
-// @main app to embed (like the desktop/Android shells). The sync effect + config
-// plumbing (api/family/secret, the iOS analogue of Android BuildConfig) is the
-// TASK-SYNC iOS step; this just proves the shared UI renders from the framework.
+// iOS entry — renders the SHARED FeedApp from the cached DB (bridge only). Sync
+// config plumbing (api/family/secret) is deferred → no resume()/network this slice.
 fun MainViewController(): UIViewController = ComposeUIViewController {
   val store = remember { createAppStore() }
+  val engine = remember {
+    SyncEngine(store, ContentStore(DriverFactory().createDriver()), SyncClient("", "", ""))
+  }
+  DisposableEffect(Unit) { engine.start(); onDispose { engine.stop() } }
   MaterialTheme { FeedApp(store) }
 }
