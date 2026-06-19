@@ -4,9 +4,13 @@
 > `10-implementation-plan.md`. **I-build-1:** schema `payload` $defs (C4 closed);
 > P-1 escalated (INB-12). **I-build-2:** monorepo skeleton (root package.json
 > workspaces + .gitignore) + **schema→TS/zod codegen VERIFIED** (16 types from
-> the single source → `apps/api/src/generated/content.ts`). **Next:** Kotlin
-> codegen (quicktype) + the TS API skeleton (P1, local Postgres) — INB-12
-> (Vercel/Neon) still pending for the cloud pipeline.
+> the single source). **I-build-3:** Kotlin codegen (quicktype) verified — P0
+> codegen complete BOTH languages. **I-build-4 (P1 start):** M0 DDL migration
+> applied clean to **real local Postgres** (7 tables + keyset round-trip);
+> security module (constant-time token compare, mass-assignment strip,
+> provenance stamp) + **6 vitest unit tests GREEN** (incl. generated-zod
+> validation). **Next:** content API routes + token middleware wiring against
+> local PG — INB-12 (Vercel/Neon) pending for the cloud pipeline/preview deploy.
 
 ## Milestone glossary (C6 — bind the vocabularies)
 
