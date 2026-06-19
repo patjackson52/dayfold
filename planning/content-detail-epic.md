@@ -255,9 +255,11 @@ within the ADR 0014 privacy posture; decision recorded.
 the detail in the detail pane.
 **Status:** **BLOCKED on a design pass** — only **phone** detail is designed
 (`Detail-Views.dc.html` is a desktop *catalog*, not an expanded layout). Per
-ADR 0008, hand back to **Claude Design** for an expanded/two-pane detail +
-the fold-gesture behavior at width (does it still container-transform, or become
-a pane swap?). Then build against ADR 0009 adaptive.
+ADR 0008, the design brief is written: **`designs/DESIGN-BRIEF-content-
+adaptive.md`** — hand it to a fresh Claude Design session. It specifies the
+expanded/two-pane detail (`ListDetailPaneScaffold`), the 6 detail-pane types,
+and the fold-gesture-at-width decision (in-pane transform vs shared-axis swap).
+Output → `designs/content/adaptive/`; operator sign-off → unblocks this build.
 **DoD (design):** expanded detail mockup signed off → unblocks the build task.
 
 ---
