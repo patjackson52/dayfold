@@ -2,7 +2,7 @@
 // card routes + keyset sync. Hono (runs on Vercel + locally + app.request()-testable).
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { q } from "./db.ts";
+import { q, pool } from "./db.ts";
 import { stripServerManaged, stampProvenance } from "./security.ts";
 import { BriefingCardSchema } from "./generated/content.ts";
 import * as repo from "./repo.ts";
@@ -317,6 +317,34 @@ app.post("/families/:fid/members/*", async (c) => {
     if (r.rowCount === 1) (await import("./auth/audit.ts")).audit("invite.decline", { actorUserId: g.sub, familyId: fid, detail:{ uid } });
     return c.body(null, r.rowCount === 1 ? 204 : 404);
   }
+});
+
+// [C3] Remove a member — ≥1-owner invariant enforced via row-lock (FOR UPDATE locks
+// the active-owner rows, preventing concurrent double-remove that would leave 0 owners).
+app.delete("/families/:fid/members/:uid", async (c) => {
+  const fid = c.req.param("fid"), uid = c.req.param("uid");
+  const g = await ownerGate(c, fid); if ("status" in g) return c.body(null, g.status);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const owners = await client.query(
+      `SELECT user_id FROM memberships WHERE family_id=$1 AND role='owner' AND status='active' FOR UPDATE`,
+      [fid]
+    );
+    const targetIsOwner = owners.rows.some((r: any) => r.user_id === uid);
+    if (targetIsOwner && (owners.rowCount ?? 0) < 2) {
+      await client.query("ROLLBACK");
+      return c.body(null, 409); // last-owner — refuse removal
+    }
+    const r = await client.query(
+      `UPDATE memberships SET status='removed' WHERE user_id=$1 AND family_id=$2 AND status IN ('active','pending') RETURNING 1`,
+      [uid, fid]
+    );
+    await client.query("COMMIT");
+    if ((r.rowCount ?? 0) !== 1) return c.body(null, 404);
+  } catch (e) { await client.query("ROLLBACK"); throw e; } finally { client.release(); }
+  (await import("./auth/audit.ts")).audit("member.remove", { actorUserId: g.sub, familyId: fid, detail: { uid } });
+  return c.body(null, 204);
 });
 
 app.delete("/families/:fid/invites/:id", async (c) => {

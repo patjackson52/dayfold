@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
@@ -344,5 +344,129 @@ describe("approve / decline / revoke + GET /families/:fid/invites", () => {
     const rows = await q(`SELECT status FROM memberships WHERE user_id=$1 AND family_id=$2`,[inviteeId,o.familyId]);
     expect(rows.rows.length).toBe(1);
     expect(rows.rows[0].status).toBe("active");
+  });
+});
+
+describe("DELETE /families/:fid/members/:uid [C3] — member removal + ≥1-owner row-lock", () => {
+  // Helper: approve a pending member
+  async function approveMember(ownerToken: string, familyId: string, uid: string) {
+    await app.request(`/families/${familyId}/members/${uid}:approve`,{method:"POST",headers:{...dev,authorization:`Bearer ${ownerToken}`}});
+  }
+
+  it("owner removes an active member → 204; that member 403s on family content", async () => {
+    const o = await ownerOf("remove-owner-1");
+    const inv = await mintInvite(o.token, o.familyId);
+    const memberTok = await devToken("remove-member-1");
+    await app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${memberTok}`},body:JSON.stringify({token:inv.token})});
+    const memberId = (await q(`SELECT user_id FROM memberships WHERE family_id=$1 AND status='pending'`,[o.familyId])).rows[0].user_id;
+    await approveMember(o.token, o.familyId, memberId);
+
+    // Verify member can access family content before removal
+    const beforeR = await app.request(`/families/${o.familyId}/cards`,{method:"GET",headers:{...dev,authorization:`Bearer ${memberTok}`}});
+    expect(beforeR.status).toBe(200);
+
+    // Remove member
+    const r = await app.request(`/families/${o.familyId}/members/${memberId}`,{method:"DELETE",headers:{...dev,authorization:`Bearer ${o.token}`}});
+    expect(r.status).toBe(204);
+
+    // Verify membership is removed
+    const row = await q(`SELECT status FROM memberships WHERE user_id=$1 AND family_id=$2`,[memberId,o.familyId]);
+    expect(row.rows[0].status).toBe("removed");
+
+    // Removed member's existing token → 403 on family content (membership re-resolution)
+    const afterR = await app.request(`/families/${o.familyId}/cards`,{method:"GET",headers:{...dev,authorization:`Bearer ${memberTok}`}});
+    expect(afterR.status).toBe(403);
+  });
+
+  it("removing the LAST owner → 409 (invariant: ≥1 owner must remain)", async () => {
+    const o = await ownerOf("remove-last-owner-1");
+
+    // Try to remove the only owner
+    const ownerId = (await q(`SELECT user_id FROM memberships WHERE family_id=$1 AND role='owner' AND status='active'`,[o.familyId])).rows[0].user_id;
+    const r = await app.request(`/families/${o.familyId}/members/${ownerId}`,{method:"DELETE",headers:{...dev,authorization:`Bearer ${o.token}`}});
+    expect(r.status).toBe(409);
+
+    // Owner still active
+    const row = await q(`SELECT status FROM memberships WHERE user_id=$1 AND family_id=$2`,[ownerId,o.familyId]);
+    expect(row.rows[0].status).toBe("active");
+  });
+
+  it("removing unknown uid → 404", async () => {
+    const o = await ownerOf("remove-notfound-1");
+    const r = await app.request(`/families/${o.familyId}/members/nonexistent-uid`,{method:"DELETE",headers:{...dev,authorization:`Bearer ${o.token}`}});
+    expect(r.status).toBe(404);
+  });
+
+  it("non-owner → 403/404 (ownerGate)", async () => {
+    const o = await ownerOf("remove-perm-1");
+    const inv = await mintInvite(o.token, o.familyId);
+    const memberTok = await devToken("remove-perm-member-1");
+    await app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${memberTok}`},body:JSON.stringify({token:inv.token})});
+    const memberId = (await q(`SELECT user_id FROM memberships WHERE family_id=$1 AND status='pending'`,[o.familyId])).rows[0].user_id;
+    await approveMember(o.token, o.familyId, memberId);
+
+    // active member (non-owner) tries to remove someone → 403
+    const ownerId = (await q(`SELECT user_id FROM memberships WHERE family_id=$1 AND role='owner' AND status='active'`,[o.familyId])).rows[0].user_id;
+    const r = await app.request(`/families/${o.familyId}/members/${ownerId}`,{method:"DELETE",headers:{...dev,authorization:`Bearer ${memberTok}`}});
+    expect(r.status).toBe(403);
+  });
+
+  it("concurrent double-remove of two owners → at most one succeeds, ≥1 owner remains", async () => {
+    const o = await ownerOf("remove-concurrent-1");
+
+    // Add a second owner directly (bypass invite: insert active owner membership)
+    await q(`INSERT INTO users(id) VALUES ('u_owner2_concurrent') ON CONFLICT DO NOTHING`);
+    await q(`INSERT INTO memberships(user_id,family_id,role,status,joined_at) VALUES ('u_owner2_concurrent',$1,'owner','active',now()) ON CONFLICT DO NOTHING`,[o.familyId]);
+
+    const owner1Id = (await q(`SELECT user_id FROM memberships WHERE family_id=$1 AND role='owner' AND status='active' ORDER BY joined_at LIMIT 1`,[o.familyId])).rows[0].user_id;
+    const owner2Id = 'u_owner2_concurrent';
+
+    // Concurrently try to remove both owners simultaneously
+    const [r1, r2] = await Promise.all([
+      app.request(`/families/${o.familyId}/members/${owner1Id}`,{method:"DELETE",headers:{...dev,authorization:`Bearer ${o.token}`}}),
+      app.request(`/families/${o.familyId}/members/${owner2Id}`,{method:"DELETE",headers:{...dev,authorization:`Bearer ${o.token}`}}),
+    ]);
+
+    const statuses = [r1.status, r2.status];
+
+    // At least one must be rejected (409) — cannot remove both owners concurrently
+    // The row-lock ensures serialization: one txn sees 2 owners→proceeds, the other
+    // sees 1 owner left after the first commits→ 409 (or sees 2 and proceeds, but
+    // the second commit leaves 0 owners — so the impl must reject).
+    const activeOwners = await q(`SELECT count(*)::int n FROM memberships WHERE family_id=$1 AND role='owner' AND status='active'`,[o.familyId]);
+    expect(activeOwners.rows[0].n).toBeGreaterThanOrEqual(1);
+
+    // At most one removal can succeed (204); if both tried to remove owners, one must 409
+    const successCount = statuses.filter(s => s === 204).length;
+    expect(successCount).toBeLessThanOrEqual(1);
+  });
+
+  // [M3] Device-kill regression: removed member with kind='cli' credential → 403
+  it("[M3] removed member's cli device token → 403 on family content (membership re-resolution)", async () => {
+    const o = await ownerOf("remove-device-kill-owner-1");
+    const inv = await mintInvite(o.token, o.familyId);
+    const memberTok = await devToken("remove-device-kill-member-1");
+    await app.request("/invites:redeem",{method:"POST",headers:{...dev,authorization:`Bearer ${memberTok}`},body:JSON.stringify({token:inv.token})});
+    const memberId = (await q(`SELECT user_id FROM memberships WHERE family_id=$1 AND status='pending'`,[o.familyId])).rows[0].user_id;
+    await approveMember(o.token, o.familyId, memberId);
+
+    // Create a cli-kind credential for the member (simulating a device token)
+    const credId = "cred_cli_" + Math.random().toString(16).slice(2);
+    await q(`INSERT INTO credentials(id,user_id,kind,scopes,family_scope) VALUES ($1,$2,'cli','{content:read}',$3)`,[credId,memberId,o.familyId]);
+    // Mint an access token for this cli credential
+    const { mintAccess } = await import("../src/auth/tokens.ts");
+    const cliToken = await mintAccess({ sub: memberId, cid: credId });
+
+    // cli token works before removal
+    const beforeR = await app.request(`/families/${o.familyId}/cards`,{method:"GET",headers:{"authorization":`Bearer ${cliToken}`}});
+    expect(beforeR.status).toBe(200);
+
+    // Owner removes the member
+    const removeR = await app.request(`/families/${o.familyId}/members/${memberId}`,{method:"DELETE",headers:{...dev,authorization:`Bearer ${o.token}`}});
+    expect(removeR.status).toBe(204);
+
+    // cli device token now → 403 (middleware re-resolves membership each request)
+    const afterR = await app.request(`/families/${o.familyId}/cards`,{method:"GET",headers:{"authorization":`Bearer ${cliToken}`}});
+    expect(afterR.status).toBe(403);
   });
 });
