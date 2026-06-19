@@ -9,6 +9,26 @@ Each item: question, context link, **proposed default**, urgency.
 
 ---
 
+- **INB-15 · ANSWERED 2026-06-19 → ADR 0022 ACCEPTED; D2 = extend in place.**
+  Accepted the typed content library / fold gesture / Dayfold theme. **D2 fork =
+  extend `briefing_cards` (type+payload+detail cols)**; unify into `content_item`
+  deferred to M1 (migrate with E2EE). Build tasks unblocked; index updated to
+  Accepted.
+
+- **INB-16 · ANSWERED 2026-06-19 → Phone mockups SIGNED OFF; adaptive queued.**
+  `Content-Library`, `Detail-Phone`, `Tap-To-Detail`, `Brand` approved → ADR 0008
+  gate cleared for phone surfaces (CL-0…CL-7 may build). **Queued:** a Claude-
+  Design pass for the adaptive two-pane detail (CL-10 stays blocked on it).
+
+- **INB-17 · ANSWERED 2026-06-19 → "Dayfold" confirmed** as the product name
+  (repo slug stays `family-ai-dashboard`). CL-0 theme + brand copy proceed under
+  Dayfold. Product-naming decision recorded; fold into ADR 0022 D5 on accept.
+
+- **INB-18 · ANSWERED 2026-06-19 → M0 ships ALL 6 content types.** Operator
+  widened the review's recommended 2-type (file+invite) slice for full-surface
+  coverage sooner. Build order stays CL-0→CL-1(spike, 6 payloads)→CL-2(extend)→
+  CL-4→CL-5(6 cards)→CL-6→CL-7(base transition); CL-3/8/9-realmaps/10 deferred.
+
 - **INB-9 · ANSWERED 2026-06-18 → TypeScript on Vercel** (ADR 0018). CLI/client stay Kotlin; types codegen from schema; Postgres via pooler. **Last P0 gate cleared.**
 
 - **INB-9 (orig) · Ratify API host = TypeScript/Vercel.**

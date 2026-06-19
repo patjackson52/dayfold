@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .msr { font-family: 'Material Symbols Rounded'; font-weight: normal; line-height: 1; white-space: nowrap; -webkit-font-smoothing: antialiased; }
+  .msr.fill { font-variation-settings: 'FILL' 1; }
+  .ttd-scroll::-webkit-scrollbar { width: 0; height: 0; }
+  .ttd-card { transition: transform .14s cubic-bezier(.2,0,0,1); cursor: pointer; }
+  .ttd-card:active { transform: scale(0.975); }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#E9DDD7;font-family:'Figtree',sans-serif;color:#271814;padding:44px 32px 72px;display:flex;flex-direction:column;align-items:center;">
+
+  <!-- intro -->
+  <div style="text-align:center;max-width:620px;margin-bottom:26px;">
+    <div style="display:flex;align-items:center;gap:11px;justify-content:center;margin-bottom:14px;">
+      <a href="Index.dc.html" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-family:'Figtree';font-size:13px;font-weight:600;color:#7A2615;background:#FCEBE6;border:1px solid #EBD3CB;border-radius:999px;padding:6px 13px;"><span class="msr" style="font-size:16px;">arrow_back</span>Content library</a>
+      <span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#8C726B;">C · Live prototype</span>
+    </div>
+    <h1 style="font-family:'Outfit';font-weight:600;font-size:32px;letter-spacing:-0.02em;margin:0 0 8px;">Tap a card — watch it open</h1>
+    <p style="font-family:'Figtree';font-size:15px;line-height:1.55;color:#5A423C;margin:0 0 16px;">Every item in Now opens to its full Detail through an M3 Expressive container transform: the card itself grows into the screen. Tap any card, then the back arrow to return.</p>
+    <div style="display:inline-flex;background:#FFF8F6;border:1px solid #D8C2BB;border-radius:999px;padding:4px;gap:2px;">
+      <span onClick="{{ setLight }}" style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-size:13px;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;background:{{ lightPillBg }};color:{{ lightPillFg }};"><span class="msr" style="font-size:16px;">light_mode</span>Light</span>
+      <span onClick="{{ setDark }}" style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-size:13px;font-weight:600;padding:8px 16px;border-radius:999px;cursor:pointer;background:{{ darkPillBg }};color:{{ darkPillFg }};"><span class="msr" style="font-size:16px;">dark_mode</span>Dark</span>
+    </div>
+  </div>
+
+  <!-- phone -->
+  <div ref="{{ phoneRef }}" style="width:390px;height:844px;border-radius:44px;overflow:hidden;background:{{ c.surface }};box-shadow:0 24px 60px rgba(39,24,20,0.28);position:relative;display:flex;flex-direction:column;">
+
+    <!-- status bar -->
+    <div style="height:48px;flex:0 0 48px;display:flex;align-items:center;justify-content:space-between;padding:0 26px;background:{{ c.surface }};z-index:30;position:relative;">
+      <span style="font-family:'Figtree';font-weight:600;font-size:14px;color:{{ c.onSurface }};">9:41</span>
+      <div style="display:flex;align-items:center;gap:7px;color:{{ c.onSurface }};">
+        <span class="msr fill" style="font-size:17px;">signal_cellular_alt</span>
+        <span class="msr fill" style="font-size:16px;">wifi</span>
+        <span class="msr fill" style="font-size:19px;">battery_full</span>
+      </div>
+    </div>
+
+    <!-- feed -->
+    <div class="ttd-scroll" style="flex:1;overflow-y:auto;">
+      <div style="padding:6px 22px 12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <span style="font-family:'Figtree';font-size:13px;font-weight:600;letter-spacing:0.02em;color:{{ c.onSurfaceVar }};">SATURDAY · JUN 20</span>
+          <span style="width:34px;height:34px;border-radius:999px;background:{{ c.primaryContainer }};color:{{ c.onPrimaryContainer }};display:flex;align-items:center;justify-content:center;font-family:'Outfit';font-weight:600;font-size:14px;">P</span>
+        </div>
+        <h1 style="font-family:'Outfit';font-weight:600;font-size:29px;line-height:1.08;letter-spacing:-0.02em;color:{{ c.onSurface }};margin:0 0 3px;">Good morning, Pat</h1>
+        <p style="font-family:'Figtree';font-size:14px;color:{{ c.onSurfaceVar }};margin:0;">Tap any card to open it</p>
+      </div>
+
+      <div style="padding:4px 16px 24px;display:flex;flex-direction:column;gap:13px;">
+        <sc-for list="{{ cards }}" as="card" hint-placeholder-count="6">
+          <div class="ttd-card" onClick="{{ card.onOpen }}" style="background:{{ card.bg }};border-radius:26px;padding:17px 19px;">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-weight:600;font-size:11.5px;background:{{ card.kickBg }};color:{{ card.kickFg }};padding:5px 10px;border-radius:8px;"><span class="msr" style="font-size:14px;">{{ card.kickIcon }}</span>{{ card.kicker }}</span>
+            </div>
+            <div style="font-family:'Outfit';font-weight:600;font-size:17px;line-height:1.2;color:{{ card.titleFg }};margin-bottom:5px;">{{ card.title }}</div>
+            <div style="font-family:'Figtree';font-size:13px;line-height:1.45;color:{{ card.bodyFg }};margin-bottom:13px;">{{ card.body }}</div>
+
+            <sc-if value="{{ card.isGeo }}" hint-placeholder-val="{{ false }}">
+              <div style="border-radius:15px;overflow:hidden;margin-bottom:13px;">
+                <div style="height:88px;position:relative;background:{{ c.mapBg }};background-image:linear-gradient({{ c.mapLine }} 1px,transparent 1px),linear-gradient(90deg,{{ c.mapLine }} 1px,transparent 1px);background-size:24px 24px;">
+                  <div style="position:absolute;left:-6%;top:58%;width:74%;height:11px;background:{{ c.mapRoad }};transform:rotate(-15deg);border-radius:3px;"></div>
+                  <div style="position:absolute;left:20%;top:66%;width:46%;height:5px;background:{{ c.secondary }};transform:rotate(-15deg);border-radius:999px;"></div>
+                  <div style="position:absolute;left:60%;top:36%;transform:translate(-50%,-100%);"><span class="msr fill" style="font-size:28px;color:{{ c.primary }};">location_on</span></div>
+                </div>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <span style="display:inline-flex;align-items:center;gap:6px;background:{{ card.btnBg }};color:{{ card.btnFg }};font-family:'Figtree';font-weight:600;font-size:13px;padding:9px 15px;border-radius:999px;"><span class="msr {{ card.btnFill }}" style="font-size:16px;">{{ card.btnIcon }}</span>{{ card.btn }}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-family:'Figtree';font-size:10.5px;font-weight:500;color:{{ c.provFg }};background:{{ c.provBg }};border:1px solid {{ c.provBorder }};border-radius:8px;padding:5px 8px;"><span class="msr" style="font-size:13px;">{{ card.provIcon }}</span>{{ card.provText }}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <!-- bottom nav -->
+    <div style="flex:0 0 84px;background:{{ c.navBg }};display:flex;align-items:flex-start;justify-content:space-around;padding:12px 30px 0;z-index:20;position:relative;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
+        <span style="display:flex;align-items:center;justify-content:center;width:60px;height:32px;border-radius:999px;background:{{ c.navActivePill }};"><span class="msr fill" style="font-size:23px;color:{{ c.navActiveIcon }};">today</span></span>
+        <span style="font-family:'Figtree';font-weight:600;font-size:12px;color:{{ c.navActiveLabel }};">Now</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:5px;">
+        <span style="display:flex;align-items:center;justify-content:center;width:60px;height:32px;"><span class="msr" style="font-size:23px;color:{{ c.navInactive }};">dashboard</span></span>
+        <span style="font-family:'Figtree';font-weight:500;font-size:12px;color:{{ c.navInactive }};">Hubs</span>
+      </div>
+    </div>
+
+    <!-- scrim -->
+    <div style="position:absolute;inset:48px 0 0 0;background:rgba(0,0,0,0.18);z-index:38;pointer-events:none;opacity:{{ scrimOpacity }};transition:opacity .34s cubic-bezier(.2,0,0,1);"></div>
+
+    <!-- morphing container (geometry animated imperatively via ref) -->
+    <div ref="{{ surfRef }}" style="position:absolute;z-index:40;overflow:hidden;top:{{ surfaceTop }};left:{{ surfaceLeft }};width:{{ surfaceWidth }};height:{{ surfaceHeight }};border-radius:{{ surfaceRadius }};background:{{ surfaceBg }};opacity:{{ surfaceOpacity }};pointer-events:{{ surfacePE }};box-shadow:0 12px 34px rgba(39,24,20,0.20);">
+      <div style="position:absolute;inset:0;opacity:{{ detailOpacity }};transition:opacity .3s ease;">
+        <dc-import name="Detail-Phone" type="{{ openType }}" mode="{{ mode }}" on-back="{{ onBack }}" hint-size="100%,100%"></dc-import>
+      </div>
+    </div>
+
+    <!-- home indicator -->
+    <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:130px;height:5px;border-radius:3px;background:{{ c.onSurface }};opacity:0.28;z-index:50;"></div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:470,&quot;height&quot;:1000},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;'light' | 'dark'&quot;}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.phoneRef = React.createRef();
+    this.surfRef = React.createRef();
+    this.state = { mode: props.mode === 'dark' ? 'dark' : 'light', open: false, shown: false, type: 'file', rect: null };
+    this._morph = 'top .46s cubic-bezier(.2,0,0,1),left .46s cubic-bezier(.2,0,0,1),width .46s cubic-bezier(.2,0,0,1),height .46s cubic-bezier(.2,0,0,1),border-radius .46s cubic-bezier(.2,0,0,1)';
+  }
+  frame(r, radius) {
+    return { top: r.top + 'px', left: r.left + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: radius };
+  }
+  open(type, e) {
+    if (this.state.open) return;
+    const cardEl = e && e.currentTarget;
+    const phoneEl = this.phoneRef.current;
+    let rect = { top: 200, left: 16, width: 358, height: 200 };
+    if (cardEl && phoneEl) {
+      const cr = cardEl.getBoundingClientRect();
+      const pr = phoneEl.getBoundingClientRect();
+      rect = { top: cr.top - pr.top, left: cr.left - pr.left, width: cr.width, height: cr.height };
+    }
+    const full = { top: 48, left: 0, width: 390, height: 796 };
+    const gen = (this._gen = (this._gen || 0) + 1);
+    clearTimeout(this._t1); clearTimeout(this._t2);
+    // render the surface at the card rect, then animate to full via WAAPI (compositor — not render-batched)
+    this.setState({ open: true, type, rect, shown: false });
+    this._t1 = setTimeout(() => {
+      if (this._gen !== gen) return;
+      const el = this.surfRef.current;
+      if (el && el.animate) {
+        el.animate([this.frame(rect, '26px'), this.frame(full, '0px')],
+          { duration: 460, easing: 'cubic-bezier(.2,0,0,1)', fill: 'forwards' });
+      }
+      this.setState({ shown: true });   // holes settle to full, matching the animation end
+    }, 60);
+  }
+  close() {
+    if (!this.state.open) return;
+    const el = this.surfRef.current;
+    const rect = this.state.rect;
+    const full = { top: 48, left: 0, width: 390, height: 796 };
+    const gen = (this._gen = (this._gen || 0) + 1);
+    const finish = () => { if (this._gen === gen) this.setState({ open: false }); };
+    this.setState({ shown: false });    // holes settle back to the card rect
+    clearTimeout(this._t1); clearTimeout(this._t2);
+    if (el && el.animate && rect) {
+      const a = el.animate([this.frame(full, '0px'), this.frame(rect, '26px')],
+        { duration: 420, easing: 'cubic-bezier(.2,0,0,1)', fill: 'forwards' });
+      a.onfinish = finish;
+    }
+    this._t2 = setTimeout(finish, 440);
+  }
+  renderVals() {
+    const mode = this.state.mode;
+    const light = {
+      surface:'#FFF8F6', surfaceContainer:'#FCEBE6', surfaceContainerHigh:'#F6E5E0',
+      onSurface:'#271814', onSurfaceVar:'#5A423C',
+      primary:'#C0381E', onPrimary:'#FFFFFF', primaryContainer:'#FFDAD2', onPrimaryContainer:'#5A1100',
+      secondary:'#00796F', onSecondary:'#FFFFFF', secondaryContainer:'#9DF2E4', onSecondaryContainer:'#00201C',
+      tertiary:'#6438AE', tertiaryContainer:'#ECDCFF', onTertiaryContainer:'#23005C',
+      provFg:'#4C2092', provBg:'#F4ECFB', provBorder:'#E0CDF5',
+      mapBg:'#EAE0DB', mapLine:'#DBCBC4', mapRoad:'#CDB9B1',
+      navBg:'#F6E5E0', navActivePill:'#FFDAD2', navActiveIcon:'#5A1100', navActiveLabel:'#271814', navInactive:'#5A423C',
+    };
+    const dark = {
+      surface:'#1A110E', surfaceContainer:'#271D1A', surfaceContainerHigh:'#322824',
+      onSurface:'#F0DFDA', onSurfaceVar:'#D8C2BB',
+      primary:'#FFB4A3', onPrimary:'#5F1500', primaryContainer:'#9A2A12', onPrimaryContainer:'#FFDAD2',
+      secondary:'#50DBC9', onSecondary:'#00382F', secondaryContainer:'#005048', onSecondaryContainer:'#A8F4E7',
+      tertiary:'#D3BBFF', tertiaryContainer:'#4C2092', onTertiaryContainer:'#ECDCFF',
+      provFg:'#D3BBFF', provBg:'#2A1F3D', provBorder:'#4C2092',
+      mapBg:'#231A16', mapLine:'#322824', mapRoad:'#3D332E',
+      navBg:'#271D1A', navActivePill:'#9A2A12', navActiveIcon:'#FFDAD2', navActiveLabel:'#F0DFDA', navInactive:'#A08D87',
+    };
+    const c = mode === 'dark' ? dark : light;
+
+    const card = (type, bg, titleFg, bodyFg, kickBg, kickFg, kickIcon, kicker, title, body, btn, btnIcon, btnBg, btnFg, provIcon, provText, btnFill, isGeo) => ({
+      type, bg, titleFg, bodyFg, kickBg, kickFg, kickIcon, kicker, title, body, btn, btnIcon, btnBg, btnFg,
+      provIcon, provText, btnFill: btnFill || '', isGeo: !!isGeo,
+      onOpen: (e) => this.open(type, e),
+    });
+
+    const cards = [
+      card('invite', c.primaryContainer, c.onPrimaryContainer, c.onPrimaryContainer, c.primary, c.onPrimary, 'mark_email_unread',
+        'INVITATION · RSVP', 'Maya’s party — reply by Thursday', 'Saturday 3pm at home. 12 guests; 8 have replied.',
+        'Details', 'arrow_outward', c.primary, c.onPrimary, 'mail', 'From email'),
+      card('geo', c.surfaceContainer, c.onSurface, c.onSurfaceVar, c.secondaryContainer, c.onSecondaryContainer, 'directions_car',
+        'OUTING · LEAVE 2:40', 'Riverside Park — 8 min away', 'Rain backup for the party.',
+        'Navigate', 'navigation', c.secondary, c.onSecondary, 'event', 'Calendar', 'fill', true),
+      card('email', c.surfaceContainer, c.onSurface, c.onSurfaceVar, c.tertiaryContainer, c.onTertiaryContainer, 'mark_email_unread',
+        'EMAIL · REPLY BY THU', 'School RSVP needs a reply by Thursday', 'Field-trip permission for Maya — yes or no.',
+        'Reply', 'reply', c.tertiary, mode==='dark'?'#3A0080':'#fff', 'mail', 'From email'),
+      card('file', c.surfaceContainer, c.onSurface, c.onSurfaceVar, c.secondaryContainer, c.onSecondaryContainer, 'description',
+        'PDF · DUE THU', 'Permission slip — sign by Thursday', 'Lincoln Elementary field trip. The slip is attached.',
+        'Open', 'open_in_new', c.secondary, c.onSecondary, 'mail', 'From email'),
+      card('contact', c.surfaceContainer, c.onSurface, c.onSurfaceVar, c.secondaryContainer, c.onSecondaryContainer, 'local_shipping',
+        'VENDOR · DELIVERS 1PM', 'Jake’s Rentals delivers at 1pm', 'Bouncy castle for the party.',
+        'Call', 'call', c.secondary, c.onSecondary, 'mail', 'From email', 'fill'),
+      card('link', c.surfaceContainer, c.onSurface, c.onSurfaceVar, c.tertiaryContainer, c.onTertiaryContainer, 'public',
+        'FORM · CLOSES FRI', 'Soccer registration closes Friday', '8 fields, about 3 minutes.',
+        'Open form', 'open_in_new', c.tertiary, mode==='dark'?'#3A0080':'#fff', 'bookmark', 'You saved'),
+    ];
+
+    const open = this.state.open;
+    const shown = this.state.shown;
+    const grown = open && shown;
+    const r = this.state.rect || { top: 200, left: 16, width: 358, height: 200 };
+    const px = (n) => n + 'px';
+    const cardBg = (cards.find(x => x.type === this.state.type) || {}).bg || c.surfaceContainer;
+
+    return {
+      c, mode,
+      phoneRef: this.phoneRef,
+      surfRef: this.surfRef,
+      setLight: () => this.setState({ mode: 'light' }),
+      setDark: () => this.setState({ mode: 'dark' }),
+      lightPillBg: mode === 'light' ? c.secondaryContainer : 'transparent',
+      lightPillFg: mode === 'light' ? c.onSecondaryContainer : '#5A423C',
+      darkPillBg: mode === 'dark' ? '#3D2D28' : 'transparent',
+      darkPillFg: mode === 'dark' ? '#F0DFDA' : '#5A423C',
+      cards,
+      openType: this.state.type || 'file',
+      onBack: () => this.close(),
+      scrimOpacity: grown ? 1 : 0,
+      surfaceBg: cardBg,
+      surfaceOpacity: open ? 1 : 0,
+      surfacePE: open ? 'auto' : 'none',
+      surfaceTop: grown ? '48px' : px(r.top),
+      surfaceLeft: grown ? '0px' : px(r.left),
+      surfaceWidth: grown ? '390px' : px(r.width),
+      surfaceHeight: grown ? '796px' : px(r.height),
+      surfaceRadius: grown ? '0px' : '26px',
+      detailOpacity: grown ? 1 : 0,
+    };
+  }
+}
+</script>
+</body>
+</html>

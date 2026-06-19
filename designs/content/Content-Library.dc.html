@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .msr { font-family: 'Material Symbols Rounded'; font-weight: normal; line-height: 1; white-space: nowrap; -webkit-font-smoothing: antialiased; }
+  .msr.fill { font-variation-settings: 'FILL' 1; }
+</style>
+</helmet>
+<div style="width:max-content;min-width:100%;min-height:100vh;box-sizing:border-box;padding:48px;background:#E9DDD7;font-family:'Figtree',sans-serif;color:#271814;">
+
+  <!-- header -->
+  <div style="margin-bottom:40px;max-width:860px;">
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:14px;">
+      <a href="Index.dc.html" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-family:'Figtree';font-size:13px;font-weight:600;color:#7A2615;background:#FCEBE6;border:1px solid #EBD3CB;border-radius:999px;padding:6px 13px;"><span class="msr" style="font-size:16px;">arrow_back</span>Content library</a>
+      <span style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#8C726B;">A · Content types</span>
+    </div>
+    <h1 style="font-family:'Outfit';font-weight:600;font-size:40px;letter-spacing:-0.02em;margin:0 0 10px;">The thing you need, surfaced where you need it</h1>
+    <p style="font-family:'Figtree';font-size:15.5px;line-height:1.55;color:#5A423C;margin:0 0 16px;max-width:82ch;">The problem: the form, the Drive folder, the ticket, the receipt, the email — scattered across a dozen apps and searched for at the worst moment. The fix: Claude files each as a typed content item. Every type renders the same way wherever it lands — a glanceable card in <b>Now</b>, a block inside a <b>Hub</b>, and a full <b>Detail</b> view on tap. The <b>use case</b> decides the data it carries and the trigger that decides when it shows.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;">
+      <span style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-size:12.5px;font-weight:600;background:#FFE7E0;color:#7A2615;padding:6px 12px;border-radius:999px;"><span class="msr" style="font-size:15px;">today</span>Now card</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-size:12.5px;font-weight:600;background:#EFE4FB;color:#4C2092;padding:6px 12px;border-radius:999px;"><span class="msr" style="font-size:15px;">dashboard</span>Hub block</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-size:12.5px;font-weight:600;background:#D8F5EE;color:#005048;padding:6px 12px;border-radius:999px;"><span class="msr" style="font-size:15px;">crop_free</span>Detail on tap</span>
+      <a href="Detail-Views.dc.html" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-family:'Figtree';font-size:12.5px;font-weight:600;background:#FFF8F6;color:#5A423C;border:1px solid #D8C2BB;padding:6px 12px;border-radius:999px;">See all detail views<span class="msr" style="font-size:15px;">arrow_forward</span></a>
+    </div>
+  </div>
+
+  <!-- column legend -->
+  <div style="display:flex;gap:24px;margin-bottom:14px;padding-left:392px;">
+    <div style="flex:none;width:312px;font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#8C726B;display:flex;align-items:center;gap:6px;"><span class="msr" style="font-size:15px;color:#C0381E;">today</span>In Now</div>
+    <div style="flex:none;width:312px;font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#8C726B;display:flex;align-items:center;gap:6px;"><span class="msr" style="font-size:15px;color:#6438AE;">dashboard</span>In a Hub</div>
+    <div style="flex:none;width:330px;font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:#8C726B;display:flex;align-items:center;gap:6px;"><span class="msr" style="font-size:15px;color:#00796F;">data_object</span>Data · provenance · trigger · when</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:20px;">
+    <sc-for list="{{ types }}" as="t" hint-placeholder-count="6">
+      <section style="background:#FFF8F6;border:1px solid #EBD3CB;border-radius:28px;padding:24px;display:flex;gap:24px;align-items:stretch;">
+
+        <!-- type label rail -->
+        <div style="flex:none;width:344px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+            <div style="width:48px;height:48px;border-radius:15px;background:{{ t.accentBg }};display:flex;align-items:center;justify-content:center;"><span class="msr fill" style="font-size:25px;color:{{ t.accentFg }};">{{ t.icon }}</span></div>
+            <div>
+              <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.06em;color:#C0381E;">{{ t.num }}</div>
+              <div style="font-family:'Outfit';font-weight:600;font-size:19px;letter-spacing:-0.01em;line-height:1.1;">{{ t.name }}</div>
+            </div>
+          </div>
+          <p style="font-family:'Figtree';font-size:13.5px;line-height:1.55;color:#5A423C;margin:0 0 14px;">{{ t.tagline }}</p>
+          <div style="background:#FCEBE6;border-radius:14px;padding:12px 14px;">
+            <div style="font-family:'Figtree';font-size:10.5px;font-weight:600;letter-spacing:0.05em;color:#8C726B;margin-bottom:7px;">PRIMARY ACTIONS</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;">
+              <sc-for list="{{ t.actions }}" as="a" hint-placeholder-count="3">
+                <span style="display:inline-flex;align-items:center;gap:5px;font-family:'Figtree';font-size:11.5px;font-weight:600;background:#FFF8F6;border:1px solid #E2C0B8;color:#3D2D28;padding:5px 9px;border-radius:8px;"><span class="msr" style="font-size:14px;color:{{ t.accentSolid }};">{{ a.icon }}</span>{{ a.label }}</span>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <!-- divider -->
+        <div style="flex:none;width:1px;background:#EBD3CB;"></div>
+
+        <!-- IN NOW -->
+        <div style="flex:none;width:312px;">
+          <div style="background:{{ t.nowBg }};border-radius:24px;padding:18px;">
+            <div style="display:flex;align-items:center;gap:9px;margin-bottom:11px;flex-wrap:wrap;">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-weight:600;font-size:11.5px;background:{{ t.nowKickBg }};color:{{ t.nowKickFg }};padding:5px 10px;border-radius:8px;"><span class="msr {{ t.nowKickFill }}" style="font-size:14px;">{{ t.nowKickIcon }}</span>{{ t.nowKicker }}</span>
+            </div>
+            <div style="font-family:'Outfit';font-weight:600;font-size:17px;line-height:1.2;color:{{ t.nowTitleFg }};margin-bottom:6px;">{{ t.nowTitle }}</div>
+            <div style="font-family:'Figtree';font-size:13px;line-height:1.45;color:{{ t.nowBodyFg }};margin-bottom:13px;">{{ t.nowBody }}</div>
+
+            <!-- geo strip -->
+            <sc-if value="{{ t.isGeo }}" hint-placeholder-val="{{ false }}">
+              <div style="border-radius:16px;overflow:hidden;margin-bottom:13px;">
+                <div style="height:92px;position:relative;background:#EAE0DB;background-image:linear-gradient(#DBCBC4 1px,transparent 1px),linear-gradient(90deg,#DBCBC4 1px,transparent 1px);background-size:24px 24px;">
+                  <div style="position:absolute;left:-6%;top:58%;width:74%;height:11px;background:#CDB9B1;transform:rotate(-15deg);border-radius:3px;"></div>
+                  <div style="position:absolute;left:20%;top:66%;width:46%;height:5px;background:#00796F;transform:rotate(-15deg);border-radius:999px;"></div>
+                  <div style="position:absolute;left:60%;top:34%;transform:translate(-50%,-100%);"><span class="msr fill" style="font-size:30px;color:#C0381E;">location_on</span></div>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- invite RSVP -->
+            <sc-if value="{{ t.isInvite }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:8px;margin-bottom:13px;">
+                <span style="flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;background:#C0381E;color:#fff;font-family:'Figtree';font-weight:600;font-size:13px;padding:9px;border-radius:999px;"><span class="msr" style="font-size:16px;">check</span>Yes</span>
+                <span style="flex:1;display:inline-flex;align-items:center;justify-content:center;background:#FFF8F6;color:#5A423C;font-family:'Figtree';font-weight:600;font-size:13px;padding:9px;border-radius:999px;">No</span>
+              </div>
+            </sc-if>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <span style="display:inline-flex;align-items:center;gap:6px;background:{{ t.nowBtnBg }};color:{{ t.nowBtnFg }};font-family:'Figtree';font-weight:600;font-size:13px;padding:9px 15px;border-radius:999px;"><span class="msr {{ t.nowBtnFill }}" style="font-size:16px;">{{ t.nowBtnIcon }}</span>{{ t.nowBtn }}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;font-family:'Figtree';font-size:10.5px;font-weight:500;color:{{ t.provFg }};background:{{ t.provBg }};border:1px solid {{ t.provBorder }};border-radius:8px;padding:5px 8px;"><span class="msr" style="font-size:13px;">{{ t.provIcon }}</span>{{ t.provShort }}</span>
+            </div>
+          </div>
+          <sc-if value="{{ t.isGeo }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;padding:0 4px;">
+              <span class="msr" style="font-size:16px;color:#00796F;margin-top:1px;">dashboard_customize</span>
+              <span style="font-family:'Figtree';font-size:11.5px;line-height:1.45;color:#5A423C;">Also embeds as a <b>map strip</b> inside any card — see the contact &amp; invite Hub blocks.</span>
+            </div>
+          </sc-if>
+        </div>
+
+        <!-- IN A HUB -->
+        <div style="flex:none;width:312px;">
+          <!-- standard row -->
+          <sc-if value="{{ t.hubRow }}" hint-placeholder-val="{{ true }}">
+            <div style="background:#FCEBE6;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;">
+              <span style="width:40px;height:40px;flex:0 0 40px;border-radius:12px;background:{{ t.hubIconBg }};display:flex;align-items:center;justify-content:center;"><span class="msr {{ t.hubIconFill }}" style="font-size:21px;color:{{ t.hubIconFg }};">{{ t.hubIcon }}</span></span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-family:'Figtree';font-weight:600;font-size:14px;color:#271814;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.hubTitle }}</div>
+                <div style="font-family:'Figtree';font-size:12px;color:#5A423C;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.hubSub }}</div>
+              </div>
+              <sc-if value="{{ t.hubChip }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;align-items:center;gap:4px;font-family:'Figtree';font-size:10.5px;font-weight:600;background:{{ t.hubChipBg }};color:{{ t.hubChipFg }};padding:4px 8px;border-radius:7px;">{{ t.hubChipText }}</span></sc-if>
+              <sc-if value="{{ t.hubTrailIcon }}" hint-placeholder-val="{{ false }}"><span class="msr" style="font-size:19px;color:#5A423C;">{{ t.hubTrail }}</span></sc-if>
+            </div>
+          </sc-if>
+          <!-- contact row with reach buttons -->
+          <sc-if value="{{ t.isContact }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FCEBE6;border-radius:18px;padding:14px 16px;display:flex;align-items:center;gap:13px;">
+              <div style="width:42px;height:42px;flex:0 0 42px;border-radius:999px;background:#FFDAD2;display:flex;align-items:center;justify-content:center;font-family:'Outfit';font-weight:600;font-size:15px;color:#5A1100;">JR</div>
+              <div style="flex:1;min-width:0;"><div style="font-family:'Figtree';font-weight:600;font-size:14px;color:#271814;">Jake's Rentals</div><div style="font-family:'Figtree';font-size:12px;color:#5A423C;">Bouncy castle · 1pm</div></div>
+              <div style="display:flex;gap:7px;">
+                <span style="width:38px;height:38px;border-radius:999px;background:#9DF2E4;display:flex;align-items:center;justify-content:center;"><span class="msr fill" style="font-size:19px;color:#00201C;">call</span></span>
+                <span style="width:38px;height:38px;border-radius:999px;background:#9DF2E4;display:flex;align-items:center;justify-content:center;"><span class="msr fill" style="font-size:19px;color:#00201C;">chat</span></span>
+              </div>
+            </div>
+          </sc-if>
+          <!-- geo location block with embedded strip -->
+          <sc-if value="{{ t.isGeo }}" hint-placeholder-val="{{ false }}">
+            <div style="background:#FCEBE6;border-radius:18px;overflow:hidden;">
+              <div style="height:96px;position:relative;background:#EAE0DB;background-image:linear-gradient(#DBCBC4 1px,transparent 1px),linear-gradient(90deg,#DBCBC4 1px,transparent 1px);background-size:24px 24px;">
+                <div style="position:absolute;left:38%;top:42%;width:60%;height:11px;background:#CDB9B1;transform:rotate(-18deg);border-radius:3px;"></div>
+                <div style="position:absolute;left:50%;top:48%;transform:translate(-50%,-100%);"><span class="msr fill" style="font-size:30px;color:#C0381E;">location_on</span></div>
+              </div>
+              <div style="padding:12px 15px;display:flex;align-items:center;gap:10px;">
+                <div style="flex:1;"><div style="font-family:'Figtree';font-weight:600;font-size:13.5px;color:#271814;">Riverside Park · Shelter B</div><div style="font-family:'Figtree';font-size:11.5px;color:#5A423C;">8 min · booked</div></div>
+                <span style="display:inline-flex;align-items:center;gap:4px;font-family:'Figtree';font-size:12px;font-weight:600;color:#C0381E;">Directions<span class="msr" style="font-size:15px;">arrow_outward</span></span>
+              </div>
+            </div>
+          </sc-if>
+          <div style="font-family:'Figtree';font-size:11.5px;line-height:1.5;color:#8C726B;margin-top:11px;padding:0 4px;">{{ t.hubNote }}</div>
+        </div>
+
+        <!-- divider -->
+        <div style="flex:none;width:1px;background:#EBD3CB;"></div>
+
+        <!-- SPEC -->
+        <div style="flex:none;width:330px;">
+          <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.05em;color:#8C726B;margin-bottom:7px;">DATA IT CARRIES</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;">
+            <sc-for list="{{ t.data }}" as="d" hint-placeholder-count="6">
+              <span style="font-family:'Figtree';font-size:11.5px;font-weight:500;background:#F6E5E0;color:#3D2D28;padding:5px 10px;border-radius:8px;">{{ d }}</span>
+            </sc-for>
+          </div>
+
+          <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.05em;color:#8C726B;margin-bottom:7px;">SOURCE &amp; PROVENANCE</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+            <span style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-size:12px;font-weight:600;color:{{ t.provFg }};background:{{ t.provBg }};border:1px solid {{ t.provBorder }};border-radius:8px;padding:6px 10px;"><span class="msr" style="font-size:15px;">{{ t.provIcon }}</span>{{ t.provLong }}</span>
+          </div>
+
+          <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.05em;color:#8C726B;margin-bottom:7px;">TRIGGER LOGIC</div>
+          <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;">
+            <sc-for list="{{ t.trigger }}" as="r" hint-placeholder-count="2">
+              <div style="display:flex;align-items:flex-start;gap:8px;"><span class="msr" style="font-size:16px;color:{{ r.color }};margin-top:1px;">{{ r.icon }}</span><span style="font-family:'Figtree';font-size:12.5px;line-height:1.45;color:#3D2D28;">{{ r.text }}</span></div>
+            </sc-for>
+          </div>
+
+          <div style="font-family:'Figtree';font-size:11px;font-weight:600;letter-spacing:0.05em;color:#8C726B;margin-bottom:7px;">WHEN IT'S SHOWN</div>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <sc-for list="{{ t.when }}" as="w" hint-placeholder-count="3">
+              <div style="display:flex;align-items:flex-start;gap:8px;"><span class="msr" style="font-size:16px;color:#00796F;margin-top:1px;">{{ w.icon }}</span><span style="font-family:'Figtree';font-size:12.5px;line-height:1.45;color:#3D2D28;">{{ w.text }}</span></div>
+            </sc-for>
+          </div>
+        </div>
+
+      </section>
+    </sc-for>
+  </div>
+
+  <!-- footer note -->
+  <div style="margin-top:34px;max-width:880px;background:#FFF8F6;border:1px solid #EBD3CB;border-radius:22px;padding:22px 26px;display:flex;align-items:flex-start;gap:14px;">
+    <span class="msr" style="font-size:22px;color:#6438AE;margin-top:1px;">extension</span>
+    <div style="font-family:'Figtree';font-size:13.5px;line-height:1.55;color:#5A423C;">One renderer, many types. A content item is data + a type; the app picks the card, block and detail layout from the type. New use cases — tickets, receipts, boarding passes — slot in by adding a type, not a screen. Visuals here are <b>light</b>; every surface ships light + dark (see the detail views).</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const teal   = { bg:'#9DF2E4', fg:'#00201C', solid:'#00796F' };
+    const violet = { bg:'#ECDCFF', fg:'#23005C', solid:'#6438AE' };
+    const coral  = { bg:'#FFDAD2', fg:'#5A1100', solid:'#C0381E' };
+    const provViolet = { fg:'#4C2092', bg:'#F4ECFB', border:'#E0CDF5' };
+    const provTeal   = { fg:'#0B5048', bg:'#E2F4EF', border:'#BFE3DC' };
+
+    const T = (o) => o;
+    return {
+      types: [
+        T({ num:'01', name:'Saved file / document', icon:'description', accentBg:teal.bg, accentFg:teal.fg, accentSolid:teal.solid,
+          tagline:'A PDF, a scan, a Drive folder — the permission slip or contract you would otherwise dig through an inbox for.',
+          actions:[{icon:'open_in_new',label:'Open'},{icon:'ios_share',label:'Share'},{icon:'add',label:'Add to Hub'}],
+          nowBg:'#FCEBE6', nowTitleFg:'#271814', nowBodyFg:'#5A423C',
+          nowKicker:'PDF · DUE THU', nowKickIcon:'description', nowKickFill:'', nowKickBg:'#9DF2E4', nowKickFg:'#00201C',
+          nowTitle:'Permission slip — sign by Thursday', nowBody:'Lincoln Elementary field trip. The slip is attached and ready to open.',
+          nowBtn:'Open', nowBtnIcon:'open_in_new', nowBtnFill:'', nowBtnBg:'#00796F', nowBtnFg:'#fff',
+          provIcon:'mail', provShort:'From email', provLong:'From your email attachment', provFg:provTeal.fg, provBg:provTeal.bg, provBorder:provTeal.border,
+          hubRow:true, isGeo:false, isInvite:false, isContact:false,
+          hubIcon:'description', hubIconFill:'', hubIconBg:'#9DF2E4', hubIconFg:'#00201C', hubTitle:'Invitation.pdf', hubSub:'240 KB · 2 pages',
+          hubChip:false, hubTrailIcon:true, hubTrail:'open_in_new',
+          hubNote:'Lives in the Hub’s Files & links section; tap opens the page preview.',
+          data:['filename','MIME type','size','pages','source app','owner','modified','shared with'],
+          trigger:[{icon:'schedule',color:'#C0381E',text:'Due-date on the file → surfaces the day before in Now.'},{icon:'near_me',color:'#00796F',text:'Optional place (e.g. drop at school office).'}],
+          when:[{icon:'today',text:'In Now when its deadline approaches.'},{icon:'dashboard',text:'Always in its Hub’s Files section.'},{icon:'search',text:'Searchable by name, source or content.'}],
+        }),
+        T({ num:'02', name:'Saved link / website / form', icon:'link', accentBg:violet.bg, accentFg:violet.fg, accentSolid:violet.solid,
+          tagline:'That website, registration form or shared doc you bookmarked or were sent — kept with a preview, not buried in tabs.',
+          actions:[{icon:'open_in_new',label:'Open'},{icon:'content_copy',label:'Copy'},{icon:'add',label:'Add to Hub'}],
+          nowBg:'#FCEBE6', nowTitleFg:'#271814', nowBodyFg:'#5A423C',
+          nowKicker:'FORM · CLOSES FRI', nowKickIcon:'public', nowKickFill:'', nowKickBg:'#ECDCFF', nowKickFg:'#23005C',
+          nowTitle:'Soccer registration closes Friday', nowBody:'8 fields, about 3 minutes. Sign Leo up for the fall season.',
+          nowBtn:'Open form', nowBtnIcon:'open_in_new', nowBtnFill:'', nowBtnBg:'#6438AE', nowBtnFg:'#fff',
+          provIcon:'bookmark', provShort:'You saved', provLong:'Link you saved', provFg:provViolet.fg, provBg:provViolet.bg, provBorder:provViolet.border,
+          hubRow:true, isGeo:false, isInvite:false, isContact:false,
+          hubIcon:'link', hubIconFill:'', hubIconBg:'#ECDCFF', hubIconFg:'#23005C', hubTitle:'Registration form', hubSub:'riversideyouth.org',
+          hubChip:false, hubTrailIcon:true, hubTrail:'arrow_outward',
+          hubNote:'Forms show a close-by date; plain links just a domain + favicon.',
+          data:['URL','title','domain','description','type (page/form)','field count','close date','saved date'],
+          trigger:[{icon:'schedule',color:'#C0381E',text:'Form close-date → reminder before it closes.'},{icon:'near_me',color:'#00796F',text:'Optional place for location-bound links.'}],
+          when:[{icon:'today',text:'In Now when a form is closing soon.'},{icon:'dashboard',text:'In the Hub’s Files & links section.'},{icon:'search',text:'Searchable by title or domain.'}],
+        }),
+        T({ num:'03', name:'Invitation / RSVP', icon:'celebration', accentBg:coral.bg, accentFg:coral.fg, accentSolid:coral.solid,
+          tagline:'A party, a wedding, a school event — with the reply built in so an RSVP never slips past its deadline.',
+          actions:[{icon:'how_to_reg',label:'RSVP'},{icon:'event',label:'Calendar'},{icon:'navigation',label:'Directions'}],
+          nowBg:'#FFDAD2', nowTitleFg:'#5A1100', nowBodyFg:'#7A3322',
+          nowKicker:'INVITATION · RSVP', nowKickIcon:'mark_email_unread', nowKickFill:'', nowKickBg:'#C0381E', nowKickFg:'#fff',
+          nowTitle:'Maya’s party — reply by Thursday', nowBody:'Saturday 3pm at home. 12 guests; 8 have replied.',
+          nowBtn:'Details', nowBtnIcon:'arrow_outward', nowBtnFill:'', nowBtnBg:'#C0381E', nowBtnFg:'#fff',
+          provIcon:'mail', provShort:'From email', provLong:'From your email', provFg:provTeal.fg, provBg:provTeal.bg, provBorder:provTeal.border,
+          hubRow:true, isGeo:false, isInvite:true, isContact:false,
+          hubIcon:'celebration', hubIconFill:'fill', hubIconBg:'#FFDAD2', hubIconFg:'#5A1100', hubTitle:'Birthday party', hubSub:'Sat · 3:00 PM · home',
+          hubChip:true, hubChipText:'RSVP’D', hubChipBg:'#9DF2E4', hubChipFg:'#00201C', hubTrailIcon:false,
+          hubNote:'The Hub’s anchor event; the RSVP chip tracks your answer.',
+          data:['event name','host','date / time','location','RSVP deadline','status','guest count','dress / notes'],
+          trigger:[{icon:'how_to_reg',color:'#C0381E',text:'RSVP-by date → nags gently until you answer.'},{icon:'event',color:'#00796F',text:'Event time → day-of reminder + directions.'}],
+          when:[{icon:'today',text:'In Now until you RSVP, then again day-of.'},{icon:'dashboard',text:'Top of its Hub as the anchor event.'},{icon:'event_available',text:'Clears from Now once answered.'}],
+        }),
+        T({ num:'04', name:'Contact / vendor', icon:'contacts', accentBg:coral.bg, accentFg:coral.fg, accentSolid:coral.solid,
+          tagline:'The caterer, the rental company, the coach — reachable in one tap, attached to the event they belong to.',
+          actions:[{icon:'call',label:'Call'},{icon:'navigation',label:'Directions'},{icon:'person_add',label:'Save'}],
+          nowBg:'#FCEBE6', nowTitleFg:'#271814', nowBodyFg:'#5A423C',
+          nowKicker:'VENDOR · DELIVERS 1PM', nowKickIcon:'local_shipping', nowKickFill:'', nowKickBg:'#9DF2E4', nowKickFg:'#00201C',
+          nowTitle:'Jake’s Rentals delivers at 1pm', nowBody:'Bouncy castle for the party. Call if you need to move the window.',
+          nowBtn:'Call', nowBtnIcon:'call', nowBtnFill:'fill', nowBtnBg:'#00796F', nowBtnFg:'#fff',
+          provIcon:'mail', provShort:'From email', provLong:'From your email', provFg:provTeal.fg, provBg:provTeal.bg, provBorder:provTeal.border,
+          hubRow:false, isGeo:false, isInvite:false, isContact:true,
+          hubNote:'Sits in the Hub’s Contacts; call & text are inline on the row.',
+          data:['name','company','role','phone','email','address','hours','linked event','notes'],
+          trigger:[{icon:'schedule',color:'#C0381E',text:'Delivery / appointment window → day-of surfacing.'},{icon:'near_me',color:'#00796F',text:'Vendor address as a place for directions.'}],
+          when:[{icon:'today',text:'In Now when their task or delivery is due.'},{icon:'dashboard',text:'In the Hub’s Contacts section.'},{icon:'search',text:'Searchable by name or company.'}],
+        }),
+        T({ num:'05', name:'Geo-info · map + navigation', icon:'pin_drop', accentBg:teal.bg, accentFg:teal.fg, accentSolid:teal.solid,
+          tagline:'An outing today? A map preview with one-tap navigation — standalone, or as a strip embedded inside any other card.',
+          actions:[{icon:'navigation',label:'Navigate'},{icon:'content_copy',label:'Copy address'},{icon:'ios_share',label:'Share ETA'}],
+          nowBg:'#FCEBE6', nowTitleFg:'#271814', nowBodyFg:'#5A423C',
+          nowKicker:'OUTING · LEAVE 2:40', nowKickIcon:'directions_car', nowKickFill:'', nowKickBg:'#9DF2E4', nowKickFg:'#00201C',
+          nowTitle:'Riverside Park — 8 min away', nowBody:'Rain backup for the party.',
+          nowBtn:'Navigate', nowBtnIcon:'navigation', nowBtnFill:'fill', nowBtnBg:'#00796F', nowBtnFg:'#fff',
+          provIcon:'event', provShort:'Calendar', provLong:'From your calendar', provFg:provTeal.fg, provBg:provTeal.bg, provBorder:provTeal.border,
+          hubRow:false, isGeo:true, isInvite:false, isContact:false,
+          hubNote:'A location block in the Hub; the same strip can ride inside other cards.',
+          data:['place name','address','coordinates','ETA / distance','travel mode','parking','linked event','leave-by'],
+          trigger:[{icon:'schedule',color:'#C0381E',text:'Linked event → computes a leave-by time.'},{icon:'near_me',color:'#00796F',text:'Place trigger → lights up when you’re near.'}],
+          when:[{icon:'today',text:'In Now on outing days, as a standalone card.'},{icon:'dashboard',text:'As a location block inside a Hub.'},{icon:'widgets',text:'As an embedded strip within other cards.'}],
+        }),
+        T({ num:'06', name:'Email you need', icon:'mail', accentBg:violet.bg, accentFg:violet.fg, accentSolid:violet.solid,
+          tagline:'The actual message — sender, body, attachments — so the email you’d hunt your inbox for is just here, ready to reply.',
+          actions:[{icon:'reply',label:'Reply'},{icon:'open_in_new',label:'Open in Mail'},{icon:'add',label:'Add to Hub'}],
+          nowBg:'#FCEBE6', nowTitleFg:'#271814', nowBodyFg:'#5A423C',
+          nowKicker:'EMAIL · REPLY BY THU', nowKickIcon:'mark_email_unread', nowKickFill:'', nowKickBg:'#ECDCFF', nowKickFg:'#23005C',
+          nowTitle:'School RSVP needs a reply by Thursday', nowBody:'Field-trip permission for Maya — yes or no.',
+          nowBtn:'Reply', nowBtnIcon:'reply', nowBtnFill:'', nowBtnBg:'#6438AE', nowBtnFg:'#fff',
+          provIcon:'mail', provShort:'From email', provLong:'From your email', provFg:provTeal.fg, provBg:provTeal.bg, provBorder:provTeal.border,
+          hubRow:true, isGeo:false, isInvite:false, isContact:false,
+          hubIcon:'mail', hubIconFill:'', hubIconBg:'#ECDCFF', hubIconFg:'#23005C', hubTitle:'Lincoln Elementary', hubSub:'Permission slip · Mon',
+          hubChip:false, hubTrailIcon:true, hubTrail:'chevron_right',
+          hubNote:'Threads collapse to one row; the attachment splits into a file item.',
+          data:['from','to','subject','date','thread length','body','attachments','labels'],
+          trigger:[{icon:'schedule',color:'#C0381E',text:'Deadline parsed from the message → surfaces in time.'},{icon:'priority_high',color:'#00796F',text:'Needs-a-reply detection from the content.'}],
+          when:[{icon:'today',text:'In Now while an action is owed by its deadline.'},{icon:'dashboard',text:'In the relevant Hub if tied to an event.'},{icon:'search',text:'Searchable by sender or subject.'}],
+        }),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

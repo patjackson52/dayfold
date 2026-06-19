@@ -8,6 +8,32 @@ Populated at bootstrap and by loop close-outs.
 > = `INB-N` in `operator-inbox.md`. High-level phases = `planning/workstreams.md`.
 > No issue tracker yet (workstream D2 deferred).
 
+## CONTENT LIBRARY + DETAIL + FOLD GESTURE (ADR 0022 — Accepted 2026-06-19)
+
+From the Claude Design import (`designs/content/*`, `designs/Brand.dc.html`).
+**Full breakdown + DoD + file touchpoints: `planning/content-detail-epic.md`.**
+**Gates CLEARED (INB-15/16/17/18):** ADR 0022 accepted · **D2 = extend
+`briefing_cards` in place** (unify→M1) · phone mockups signed off (ADR 0008) ·
+name **Dayfold** confirmed · **M0 ships all 6 content types**. Ready to promote
+to `now.md` and build (order in the epic). **Only CL-10 (adaptive) stays
+blocked** behind a queued Claude-Design expanded-detail pass.
+
+- **TASK-CL-0** — Dayfold M3 theme (color/type/shape/motion, light+dark). No
+  schema dep; starts after G-DESIGN.
+- **TASK-CL-1** — Schema + codegen: 6 typed content types with **fully
+  generated payload `$defs`** (kills the deferred `payload`/`$defs` gap).
+- **TASK-CL-2** — Server: typed storage + nested validation + keyset sync.
+- **TASK-CL-3** — CLI + Claude-skill typed authoring (the content-API wedge).
+- **TASK-CL-4** — Client data: typed model + SQLDelight + store.
+- **TASK-CL-5** — Client UI: 6 typed Now cards (light+dark, inline actions).
+- **TASK-CL-6** — Client UI: DetailScreen (per-type hero + provenance/privacy).
+- **TASK-CL-7** — Fold gesture: container transform (SharedTransitionLayout;
+  predictive-back needs Compose-MP ≥1.10 — sub-task/risk).
+- **TASK-CL-8** — Related-edges (cross-links / attachment↔email).
+- **TASK-CL-9** — Map-render strategy spike (ADR 0014 privacy posture).
+- **TASK-CL-10** — Adaptive two-pane detail — **BLOCKED** on a Claude-Design
+  expanded-detail pass (design gap; phone-only designed).
+
 ## AUTH (ADR 0021 — S1→S3→S2→S4→S5/S6)
 
 **AUTH-S3 (CLI device grant, RFC 8628) — ✅ DONE (branch `auth-s3`, pending merge)
