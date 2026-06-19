@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .msr { font-family: 'Material Symbols Rounded'; font-weight: normal; line-height: 1; white-space: nowrap; -webkit-font-smoothing: antialiased; }
+  .msr.fill { font-variation-settings: 'FILL' 1; }
+  a.card { transition: transform .18s cubic-bezier(.2,0,0,1), box-shadow .18s; text-decoration:none; }
+  a.card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(39,24,20,0.16); }
+</style>
+</helmet>
+<div style="min-height:100vh;background:#F3E9E5;font-family:'Figtree',sans-serif;color:#271814;padding:64px 40px 80px;">
+  <div style="max-width:1080px;margin:0 auto;">
+
+    <div style="display:flex;align-items:center;gap:11px;margin-bottom:22px;">
+      <a href="../Index.dc.html" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-family:'Figtree';font-size:13px;font-weight:600;color:#7A2615;background:#FCEBE6;border:1px solid #EBD3CB;border-radius:999px;padding:6px 13px;"><span class="msr" style="font-size:16px;">arrow_back</span>Hearth index</a>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:24px;">
+      <div style="width:52px;height:52px;border-radius:17px;background:linear-gradient(135deg,#FF8A6E,#C0381E);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(192,56,30,0.32);"><span class="msr fill" style="font-size:30px;color:#fff;">inventory_2</span></div>
+      <div>
+        <div style="font-family:'Outfit';font-weight:600;font-size:24px;letter-spacing:-0.01em;">Content types — Now, Hub &amp; Detail</div>
+        <div style="font-family:'Figtree';font-size:13px;color:#8C726B;">Dayfold · the content library · ADR 0015</div>
+      </div>
+    </div>
+
+    <h1 style="font-family:'Outfit';font-weight:600;font-size:clamp(34px,5vw,52px);line-height:1.05;letter-spacing:-0.025em;margin:0 0 16px;max-width:21ch;">A library of content, surfaced where you need it</h1>
+    <p style="font-family:'Figtree';font-size:17px;line-height:1.55;color:#5A423C;max-width:66ch;margin:0 0 14px;">The file, link, invite, contact, map or email you'd otherwise hunt across a dozen apps — filed by Claude as a typed content item. Each type renders the same three ways: a glanceable card in <b>Now</b>, a block in a <b>Hub</b>, and a full <b>Detail</b> on tap, opened with a Material 3 Expressive container transform. The use case drives the data and the trigger that decides when it shows.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:48px;">
+      <span style="display:inline-flex;align-items:center;gap:6px;font-family:'Figtree';font-size:13px;font-weight:500;background:#FFDAD2;color:#5A1100;padding:7px 13px;border-radius:999px;">6 content types</span>
+      <span style="font-family:'Figtree';font-size:13px;font-weight:500;background:#9DF2E4;color:#00201C;padding:7px 13px;border-radius:999px;">Light + dark</span>
+      <span style="font-family:'Figtree';font-size:13px;font-weight:500;background:#ECDCFF;color:#23005C;padding:7px 13px;border-radius:999px;">Container transform</span>
+      <span style="font-family:'Figtree';font-size:13px;font-weight:500;background:#FCEBE6;color:#7A2615;padding:7px 13px;border-radius:999px;border:1px solid #EBD3CB;">One renderer, many types</span>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;">
+      <sc-for list="{{ links }}" as="l" hint-placeholder-count="3">
+        <a class="card" href="{{ l.href }}" style="background:{{ l.bg }};border:1px solid {{ l.border }};border-radius:28px;padding:26px;display:flex;flex-direction:column;min-height:230px;color:inherit;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:auto;">
+            <div style="width:54px;height:54px;border-radius:17px;background:{{ l.iconBg }};display:flex;align-items:center;justify-content:center;"><span class="msr fill" style="font-size:28px;color:{{ l.iconFg }};">{{ l.icon }}</span></div>
+            <span class="msr" style="font-size:24px;color:{{ l.arrow }};">arrow_outward</span>
+          </div>
+          <div style="margin-top:22px;">
+            <div style="font-family:'Figtree';font-size:12px;font-weight:600;letter-spacing:0.05em;color:{{ l.kicker }};margin-bottom:6px;">{{ l.kick }}</div>
+            <div style="font-family:'Outfit';font-weight:600;font-size:21px;letter-spacing:-0.01em;margin-bottom:6px;line-height:1.12;">{{ l.title }}</div>
+            <div style="font-family:'Figtree';font-size:13.5px;line-height:1.5;color:{{ l.body }};">{{ l.desc }}</div>
+          </div>
+        </a>
+      </sc-for>
+    </div>
+
+    <div style="margin-top:40px;background:#FFF8F6;border:1px solid #EBD3CB;border-radius:22px;padding:22px 26px;display:flex;align-items:flex-start;gap:14px;">
+      <span class="msr fill" style="font-size:22px;color:#6438AE;margin-top:1px;">extension</span>
+      <div style="font-family:'Figtree';font-size:13.5px;line-height:1.55;color:#5A423C;">A content item is just <b>data + a type</b>; the app picks the card, block and detail layout from the type. New use cases — tickets, receipts, boarding passes — slot in by adding a type, not a new screen. The detail's anatomy is constant: hero (the content itself), metadata, actions, provenance, related.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      links: [
+        { href:'Content-Library.dc.html', kick:'A · CONTENT TYPES', kicker:'#7A2615', title:'The type catalog', desc:'All 6 types across Now card, Hub block and Detail — with the full data, provenance, trigger logic and when-shown rules for each.', icon:'category', iconBg:'#C0381E', iconFg:'#fff', bg:'#FFE7E0', border:'#F4CDC2', arrow:'#C0381E', body:'#7A3322' },
+        { href:'Detail-Views.dc.html', kick:'B · DETAIL VIEWS', kicker:'#005048', title:'The detail screens', desc:'The full-screen detail for every type in light + dark — hero, metadata, actions, provenance and related items, with hero notes per type.', icon:'crop_free', iconBg:'#00796F', iconFg:'#fff', bg:'#D8F5EE', border:'#A8E5DA', arrow:'#00796F', body:'#1A4540' },
+        { href:'Tap-To-Detail.dc.html', kick:'C · LIVE PROTOTYPE', kicker:'#4C2092', title:'Tap to open', desc:'A working Now feed where every card grows into its detail through the container transform. Tap a card, then back. Light + dark.', icon:'touch_app', iconBg:'#6438AE', iconFg:'#fff', bg:'#EFE4FB', border:'#DECBF3', arrow:'#6438AE', body:'#3F2A6E' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

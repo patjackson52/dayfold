@@ -8,6 +8,31 @@ Populated at bootstrap and by loop close-outs.
 > = `INB-N` in `operator-inbox.md`. High-level phases = `planning/workstreams.md`.
 > No issue tracker yet (workstream D2 deferred).
 
+## CONTENT LIBRARY + DETAIL + FOLD GESTURE (ADR 0022 — Proposed)
+
+From the Claude Design import (`designs/content/*`, `designs/Brand.dc.html`).
+**Full breakdown + DoD + file touchpoints: `planning/content-detail-epic.md`.**
+**Gated:** operator must accept **ADR 0022** (incl. the D2 storage fork:
+unify `content_item` vs extend `briefing_cards`) + sign off the imported
+mockups (ADR 0008) before the build tasks start. Brand *name* "Dayfold" =
+separate operator call (G-NAME).
+
+- **TASK-CL-0** — Dayfold M3 theme (color/type/shape/motion, light+dark). No
+  schema dep; starts after G-DESIGN.
+- **TASK-CL-1** — Schema + codegen: 6 typed content types with **fully
+  generated payload `$defs`** (kills the deferred `payload`/`$defs` gap).
+- **TASK-CL-2** — Server: typed storage + nested validation + keyset sync.
+- **TASK-CL-3** — CLI + Claude-skill typed authoring (the content-API wedge).
+- **TASK-CL-4** — Client data: typed model + SQLDelight + store.
+- **TASK-CL-5** — Client UI: 6 typed Now cards (light+dark, inline actions).
+- **TASK-CL-6** — Client UI: DetailScreen (per-type hero + provenance/privacy).
+- **TASK-CL-7** — Fold gesture: container transform (SharedTransitionLayout;
+  predictive-back needs Compose-MP ≥1.10 — sub-task/risk).
+- **TASK-CL-8** — Related-edges (cross-links / attachment↔email).
+- **TASK-CL-9** — Map-render strategy spike (ADR 0014 privacy posture).
+- **TASK-CL-10** — Adaptive two-pane detail — **BLOCKED** on a Claude-Design
+  expanded-detail pass (design gap; phone-only designed).
+
 ## AUTH (ADR 0021 — S1→S3→S2→S4→S5/S6)
 
 **AUTH-S1 (Tenancy & token backbone) — ✅ DONE + MERGED** to `main` 2026-06-19
