@@ -183,6 +183,48 @@ app.post("/device/token", async (c) => {
   return c.json({ error: out.error }, 400);
 });
 
+async function deviceOwnerGate(c: any, fid: string) {
+  const a = await authorizeTenant(c, fid);
+  if ("status" in a) return { status: a.status };
+  if (a.role !== "owner") return { status: 403 };
+  if (a.cred.kind !== "app") return { status: 403 }; // [C2] reject cli/content-only
+  return { sub: a.userId as string };
+}
+
+app.post("/families/:fid/device/approve", async (c) => {
+  const fid = c.req.param("fid");
+  const g = await deviceOwnerGate(c, fid);
+  if ("status" in g) return c.body(null, g.status);
+  const { isLocked, recordFailure, resetFailures } = await import("./auth/ratelimit.ts");
+  const { audit } = await import("./auth/audit.ts");
+  const lockKey = `account:approve:${g.sub}`;
+  if (await isLocked(lockKey)) { await audit("device.lockout", { actorUserId: g.sub }); return c.body(null, 429); }
+  const body = await c.req.json().catch(() => null);
+  if (!body?.user_code) return c.json({ type: "bad-request" }, 400);
+  const r = await q(
+    `UPDATE device_authorizations SET status='approved', user_id=$1, family_id=$2, approved_at=now()
+     WHERE user_code=$3 AND status='pending' AND expires_at > now() RETURNING device_code`,
+    [g.sub, fid, body.user_code],
+  );
+  if (r.rowCount !== 1) { await recordFailure(lockKey, 900, 5, 900); return c.body(null, 404); } // uniform
+  await resetFailures(lockKey);
+  const { clientIp } = await import("./auth/ratelimit.ts");
+  await audit("device.approve", { actorUserId: g.sub, familyId: fid, detail: { ip: clientIp(c) } });
+  return c.body(null, 204);
+});
+
+app.post("/families/:fid/device/deny", async (c) => {
+  const fid = c.req.param("fid");
+  const g = await deviceOwnerGate(c, fid);
+  if ("status" in g) return c.body(null, g.status);
+  const body = await c.req.json().catch(() => null);
+  if (!body?.user_code) return c.json({ type: "bad-request" }, 400);
+  const r = await q(`UPDATE device_authorizations SET status='denied' WHERE user_code=$1 AND status='pending' AND expires_at > now() RETURNING device_code`, [body.user_code]);
+  const { audit } = await import("./auth/audit.ts");
+  if (r.rowCount === 1) await audit("device.deny", { actorUserId: g.sub, familyId: fid });
+  return c.body(null, r.rowCount === 1 ? 204 : 404);
+});
+
 app.get("/families/:fid/sync", async (c) => {
   const fid = c.req.param("fid");
   const a = await authorizeTenant(c, fid);
