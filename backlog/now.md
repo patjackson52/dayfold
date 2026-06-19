@@ -47,11 +47,12 @@ initial Now mockups in `designs/`. ADR 0008 **still governs unbuilt surfaces**:
   pooler). Tracker: `specs/prototype/00-build-spec-plan.md`.
 - **Blocked only on operator gates for literal G1a:** **INB-12** (create Vercel +
   Neon → deploy, recipe in inbox) · **INB-14** (Android SDK/device; iOS = Mac).
-- **NEXT BUILD SLICE — "Persistence & Sync" (ADR 0020, spec'd in 08 §Data
-  freshness).** Closes the in-memory→offline-first gap: SQLDelight (KMP) DB as
-  source of truth, unidirectional network→DB→store→UI, instant offline cold
-  start, foreground poll (~30–60 s; push later), background sync (Android
-  WorkManager / iOS BGTaskScheduler). Operator-directed 2026-06-19.
+- **NEXT BUILD SLICE — `TASK-KMP` (restructure apps/client → true KMP module).**
+  Prerequisite that unblocks both Android-offline (TASK-SYNC step 2+) and iOS.
+  Pick up fresh (operator-directed 2026-06-19). Then `TASK-SYNC` (offline-first:
+  SQLDelight DB-as-SoT, unidirectional network→DB→store→UI, instant offline cold
+  start, foreground poll, WorkManager/BGTask). **DB layer + ContentStore already
+  built + tested on desktop (TASK-SYNC step 1); SQLDelight proven on Kotlin 2.3.20.**
 - **Deferred by design (operator, 2026-06-19): G1 content-authoring loop ("the
   brains") = much-later milestone; interim authoring = operator + Claude Code via
   the CLI.**

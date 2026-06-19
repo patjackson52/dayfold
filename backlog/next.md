@@ -8,6 +8,42 @@ Populated at bootstrap and by loop close-outs.
 > = `INB-N` in `operator-inbox.md`. High-level phases = `planning/workstreams.md`.
 > No issue tracker yet (workstream D2 deferred).
 
+## TASK-KMP — Restructure apps/client into a true KMP module (prerequisite)
+
+**Status:** ready (next session). **Blocks:** TASK-SYNC step 2+ (Android offline
+DB) and the **iOS** shell. **Why:** today `apps/androidApp` borrows `apps/client`
+source via `srcDir` — which **can't carry SQLDelight's per-variant generated
+code** (proven in TASK-SYNC step 1), and there's no iOS target. The fix is to
+make `apps/client` a real Compose-Multiplatform module: `commonMain` (shared
+logic + UI) + `androidTarget` / `jvm("desktop")` / iOS targets.
+
+**Scope:**
+1. Convert `apps/client` to `kotlin("multiplatform")` + `com.android.library` +
+   `org.jetbrains.compose` + `kotlin.plugin.compose`. Source sets: `commonMain`
+   (Model, Reducer, Selectors, CardRender, FeedScreen, FeedApp, ContentStore,
+   SyncClient), `androidMain` (driver + WorkManager), `desktopMain` (Main.kt +
+   JdbcSqliteDriver), `iosMain` (NativeSqliteDriver + BGTaskScheduler glue).
+2. **SQLDelight in commonMain** (`generateAsync`? no — sync drivers); remove the
+   `srcDir` borrow + the `ContentStore`/`Main.kt` excludes in `apps/androidApp`
+   (which becomes a thin `:androidApp` depending on `:client`, or fold the
+   Android entry into `androidMain` + an `application` module).
+3. **HTTP cross-platform:** `SyncClient` currently uses `java.net.HttpURLConnection`
+   (works on desktop+Android, **NOT iOS**). Swap to **ktor-client** (`cio`/`okhttp`
+   desktop+android, `darwin` iOS) in commonMain — or keep an `expect/actual`
+   HTTP fn. ktor is the clean call.
+4. iOS app target (needs the operator's Mac/Xcode — escalate that part).
+
+**Gotchas already solved (don't re-derive — see `processes/agent-dev-loop.md`):**
+redux-kotlin alpha01 on Kotlin **2.3.20**; `store.selectorState{}` is an
+**extension**; `redux-kotlin-granular` added explicitly; SQLDelight **2.3.2** +
+**sqlite-3-38 dialect** (UPSERT); devtools `debugImplementation` inapp /
+`releaseImplementation` inapp-noop; JDK 17; compose-MP **1.9.3** (watch the
+AGP↔Kotlin↔compose-MP matrix when it becomes a KMP+android-library build).
+
+**DoD:** one `:client` KMP module; `commonMain` holds all shared code incl.
+SQLDelight + sync; android/desktop build from it (no srcDir, no excludes); tests
++ snapshots still green; iOS target compiles (run gated on Mac).
+
 ## TASK-SYNC — Persistence & Sync (offline-first client) · ADR 0020
 
 **Status:** IN PROGRESS. **Done (2026-06-19):** step 1 — SQLDelight DB layer
