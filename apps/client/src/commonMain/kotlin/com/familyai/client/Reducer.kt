@@ -8,25 +8,13 @@ import org.reduxkotlin.devtools.DevToolsConfig
 import org.reduxkotlin.devtools.devTools
 import org.reduxkotlin.threadsafe.createThreadSafeStore
 
-// Hand-written root reducer (locked decision: no combineReducers). Applies a
-// /sync delta: upsert changed cards by id (preserving order, newest wins),
-// remove tombstoned ids, advance the cursor.
+// Hand-written root reducer (locked decision: no combineReducers). Card data
+// arrives only via CardsLoaded (DB→store bridge); sync actions carry status only.
 fun rootReducer(state: AppState, action: Any): AppState = when (action) {
   is SyncStarted -> state.copy(syncing = true, error = null)
+  is SyncSucceeded -> state.copy(syncing = false, error = null)
   is SyncFailed -> state.copy(syncing = false, error = action.message)
-  is SyncSucceeded -> {
-    val byId = LinkedHashMap<String, Card>()
-    state.cards.forEach { byId[it.id] = it }
-    action.resp.changes.cards.forEach { byId[it.id] = it }            // upsert
-    action.resp.tombstones.filter { it.type == "card" }
-      .forEach { byId.remove(it.id) }                                  // delete
-    state.copy(
-      cards = byId.values.toList(),
-      cursor = action.resp.nextCursor ?: state.cursor,
-      syncing = false,
-      error = null,
-    )
-  }
+  is CardsLoaded -> state.copy(cards = action.cards)   // DB is truth → full replace
   else -> state
 }
 
@@ -37,7 +25,7 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
 private val actionLog = middleware<AppState> { store, next, action ->
   val r = next(action)
   val s = store.state
-  println("[redux] ${action::class.simpleName} → cards=${s.cards.size} syncing=${s.syncing} error=${s.error} cursor=${s.cursor?.take(10)}")
+  println("[redux] ${action::class.simpleName} → cards=${s.cards.size} syncing=${s.syncing} error=${s.error}")
   r
 }
 

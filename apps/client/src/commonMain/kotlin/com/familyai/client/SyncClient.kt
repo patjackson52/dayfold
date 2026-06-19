@@ -7,12 +7,9 @@ import io.ktor.client.request.parameter
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.Json
-import org.reduxkotlin.Store
-
-// Pulls /sync (M0 household token) and dispatches the delta into the store.
+// Transport layer for the /sync endpoint (M0 household token).
 // ktor-client = cross-platform HTTP (cio desktop · okhttp android · darwin iOS),
-// so this stays in commonMain (was java.net, JVM-only). suspend → the shells call
-// it directly inside their LaunchedEffect coroutine (no Dispatchers.IO wrap).
+// so this stays in commonMain. fetchPage is called by SyncEngine.
 class SyncClient(
   private val api: String,
   private val familyId: String,
@@ -28,27 +25,5 @@ class SyncClient(
     }
     if (resp.status.value != 200) throw IllegalStateException("HTTP ${resp.status.value}")
     return json.decodeFromString(SyncResponse.serializer(), resp.bodyAsText())
-  }
-
-  suspend fun sync(store: Store<AppState>) {
-    store.dispatch(SyncStarted)
-    try {
-      // [F4] drain all pages — each SyncSucceeded advances the cursor on commit.
-      do {
-        val cursor = store.state.cursor
-        val resp = http.get("$api/families/$familyId/sync") {
-          if (cursor != null) parameter("since", cursor)
-          header("authorization", "Bearer $secret")
-        }
-        if (resp.status.value != 200) {
-          store.dispatch(SyncFailed("HTTP ${resp.status.value}")); return
-        }
-        val parsed = json.decodeFromString(SyncResponse.serializer(), resp.bodyAsText())
-        store.dispatch(SyncSucceeded(parsed))
-        if (!parsed.hasMore) break
-      } while (true)
-    } catch (e: Exception) {
-      store.dispatch(SyncFailed(e.message ?: "sync error"))
-    }
   }
 }
