@@ -1,7 +1,12 @@
 package com.familyai.client
 
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
 import app.cash.sqldelight.db.SqlDriver
 import com.familyai.client.db.ContentDb
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 // The local SQLDelight DB = the single source of truth (ADR 0020). The sync
 // engine writes here; the UI projects from here. Driver is injected per platform
@@ -28,6 +33,18 @@ class ContentStore(driver: SqlDriver) {
       notBefore = it.not_before, expiresAt = it.expires_at,
     )
   }
+
+  /** Reactive feed projection — emits current active cards and re-emits on any card-table write. */
+  fun activeCardsFlow(): Flow<List<Card>> =
+    q.activeCards().asFlow().mapToList(Dispatchers.Default).map { rows ->
+      rows.map {
+        Card(
+          id = it.id, kind = it.kind, title = it.title, bodyMd = it.body_md,
+          provenance = it.source?.let { s -> Provenance(s) },
+          notBefore = it.not_before, expiresAt = it.expires_at,
+        )
+      }
+    }
 
   fun cursor(): String? = q.getCursor().executeAsOneOrNull()?.cursor
 

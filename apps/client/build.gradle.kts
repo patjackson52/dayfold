@@ -38,6 +38,8 @@ kotlin {
         implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
         implementation("app.cash.sqldelight:runtime:2.3.2")
+        implementation("app.cash.sqldelight:coroutines-extensions:2.3.2")
+        implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.1")
         implementation("io.ktor:ktor-client-core:3.1.1")
         implementation(compose.runtime)
         implementation(compose.foundation)
@@ -69,6 +71,8 @@ kotlin {
         @OptIn(ExperimentalComposeLibrary::class)
         implementation(compose.uiTest)
         implementation("app.cash.sqldelight:sqlite-driver:2.3.2")
+        implementation("io.ktor:ktor-client-mock:3.1.1")
+        implementation("app.cash.turbine:turbine:1.2.0")
       }
     }
   }
