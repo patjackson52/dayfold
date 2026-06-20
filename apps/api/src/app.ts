@@ -2,7 +2,7 @@
 // card routes + keyset sync. Hono (runs on Vercel + locally + app.request()-testable).
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { q } from "./db.ts";
+import { q, pool } from "./db.ts";
 import { stripServerManaged, stampProvenance } from "./security.ts";
 import { BriefingCardSchema } from "./generated/content.ts";
 import * as repo from "./repo.ts";
@@ -101,14 +101,18 @@ app.post("/auth/signout", async (c) => {
 
 app.get("/auth/whoami", async (c) => {
   const t = bearer(c); if (!t) return c.body(null, 401);
-  try {
-    const { verifyAccess } = await import("./auth/tokens.ts");
-    const payload = await verifyAccess(t);
-    // family_scope lives on the credential row; the JWT cid field points to it.
-    const row = await q(`SELECT family_scope FROM credentials WHERE id=$1 AND revoked_at IS NULL`, [payload.cid]);
-    if (!row || row.rowCount === 0) return c.body(null, 401);
-    return c.json({ family_id: row.rows[0].family_scope });
-  } catch { return c.body(null, 401); }
+  let sub: string, cid: string;
+  try { const { verifyAccess } = await import("./auth/tokens.ts"); ({ sub, cid } = await verifyAccess(t)); }
+  catch { return c.body(null, 401); }
+  // Fail-closed: verify cred row exists and is not revoked (same as original S3 whoami).
+  const credRow = await q(
+    `SELECT family_scope FROM credentials WHERE id=$1 AND revoked_at IS NULL`, [cid]);
+  if (!credRow || credRow.rowCount === 0) return c.body(null, 401);
+  const family_id: string | null = credRow.rows[0].family_scope ?? null;
+  const r = await q(
+    `SELECT m.family_id, f.name, m.role, m.status FROM memberships m JOIN families f ON f.id=m.family_id
+     WHERE m.user_id=$1 AND m.status IN ('active','pending') ORDER BY m.created_at`, [sub]);
+  return c.json({ family_id, families: r.rows });
 });
 
 app.post("/families", async (c) => {
@@ -122,8 +126,6 @@ app.post("/families", async (c) => {
   if (!body?.name || typeof body.name !== "string") return c.json({ type: "bad-name" }, 400);
   const { createFamily } = await import("./auth/identity.ts");
   const { familyId } = await createFamily(sub, body.name);
-  // bind the caller's credential to this family so the JWT can write content
-  await q(`UPDATE credentials SET family_scope=$1 WHERE user_id=$2 AND family_scope IS NULL`, [familyId, sub]);
   return c.json({ familyId });
 });
 
@@ -195,7 +197,7 @@ app.post("/device/token", async (c) => {
   return c.json({ error: out.error }, 400);
 });
 
-async function deviceOwnerGate(c: any, fid: string) {
+async function ownerGate(c: any, fid: string) {
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return { status: a.status };
   if (a.role !== "owner") return { status: 403 };
@@ -205,7 +207,7 @@ async function deviceOwnerGate(c: any, fid: string) {
 
 app.post("/families/:fid/device/approve", async (c) => {
   const fid = c.req.param("fid");
-  const g = await deviceOwnerGate(c, fid);
+  const g = await ownerGate(c, fid);
   if ("status" in g) return c.body(null, g.status);
   const { isLocked, recordFailure, resetFailures } = await import("./auth/ratelimit.ts");
   const { audit } = await import("./auth/audit.ts");
@@ -227,7 +229,7 @@ app.post("/families/:fid/device/approve", async (c) => {
 
 app.post("/families/:fid/device/deny", async (c) => {
   const fid = c.req.param("fid");
-  const g = await deviceOwnerGate(c, fid);
+  const g = await ownerGate(c, fid);
   if ("status" in g) return c.body(null, g.status);
   const body = await c.req.json().catch(() => null);
   if (!body?.user_code) return c.json({ type: "bad-request" }, 400);
@@ -235,6 +237,135 @@ app.post("/families/:fid/device/deny", async (c) => {
   const { audit } = await import("./auth/audit.ts");
   if (r.rowCount === 1) await audit("device.deny", { actorUserId: g.sub, familyId: fid });
   return c.body(null, r.rowCount === 1 ? 204 : 404);
+});
+
+app.post("/families/:fid/invites", async (c) => {
+  const fid = c.req.param("fid");
+  const g = await ownerGate(c, fid);
+  if ("status" in g) return c.body(null, g.status);
+  const body = await c.req.json().catch(() => null);
+  const mode = body?.mode;
+  if (mode !== "qr" && mode !== "link") return c.json({ type: "bad-mode" }, 400);
+  const role = body?.role ?? "adult";
+  if (role !== "adult") return c.json({ type: "bad-role" }, 400);          // never owner/teen
+  const maxUses = mode === "qr" ? 1 : Math.trunc(body?.max_uses ?? 1);
+  if (maxUses < 1 || maxUses > 10) return c.json({ type: "bad-max-uses" }, 400);
+  const { clientIp, hit } = await import("./auth/ratelimit.ts");
+  if (!(await hit(`owner:mint:${g.sub}`, 600, 20)).ok) return c.body(null, 429);
+  // live-invite + pending caps (expires_at-filtered) [I3]
+  const caps = await q(
+    `SELECT (SELECT count(*) FROM invites WHERE family_id=$1 AND status='active' AND expires_at>now()) AS inv,
+            (SELECT count(*) FROM memberships WHERE family_id=$1 AND status='pending') AS pend`, [fid]);
+  if (Number(caps.rows[0].inv) >= 10 || Number(caps.rows[0].pend) >= 20) return c.body(null, 429);
+  const { createInvite } = await import("./auth/invites.ts");
+  const { inviteId, token } = await createInvite(fid, g.sub, mode, role, maxUses);
+  const { audit } = await import("./auth/audit.ts");
+  await audit("invite.mint", { actorUserId: g.sub, familyId: fid, detail: { mode, role, max_uses: maxUses } });
+  const expires = await q(`SELECT expires_at FROM invites WHERE id=$1`, [inviteId]);
+  c.header("cache-control", "no-store, no-transform");                    // BREACH: raw token
+  return c.json({ invite_id: inviteId, token, url: `${new URL(c.req.url).origin}/invite/${token}`, role, mode, expires_at: expires.rows[0].expires_at }, 201);
+});
+
+app.post("/invites:redeem", async (c) => {
+  const t = bearer(c); if (!t) return c.body(null, 401);
+  let sub: string;
+  try { const { verifyAccess } = await import("./auth/tokens.ts"); sub = (await verifyAccess(t)).sub; }
+  catch { return c.body(null, 401); }
+  const { isLocked, recordFailure, resetFailures } = await import("./auth/ratelimit.ts");
+  const key = `account:redeem:${sub}`;
+  if (await isLocked(key)) return c.body(null, 429);
+  const body = await c.req.json().catch(() => null);
+  if (!body?.token) return c.json({ type: "bad-request" }, 400);
+  const { redeem } = await import("./auth/invites.ts");
+  const out = await redeem(body.token, sub);
+  const { audit } = await import("./auth/audit.ts");
+  if ("notfound" in out) { await recordFailure(key, 900, 5, 900); return c.body(null, 404); }
+  if ("capfull" in out) return c.body(null, 429);
+  await resetFailures(key);
+  if ("conflict" in out) {
+    if (out.conflict === "pending") return c.json({ status: "pending" }, 200);
+    return c.json({ type: out.conflict === "active" ? "already-member" : "removed" }, 409);
+  }
+  const fam = await q(`SELECT name FROM families WHERE id=$1`, [out.family_id]);
+  await audit("invite.redeem", { actorUserId: sub, familyId: out.family_id });
+  return c.json({ family_id: out.family_id, family_name: fam.rows[0]?.name, role: out.role, status: "pending" }, 200);
+});
+
+// Member action routes: POST /families/:fid/members/<uid>:approve  and  :<uid>:decline
+// Hono treats ':uid:approve' as a single param name that greedily matches anything,
+// so we use a single wildcard route and dispatch on the ':action' suffix.
+app.post("/families/:fid/members/*", async (c) => {
+  const fid = c.req.param("fid");
+  // Extract the trailing segment after /members/ from the raw URL path
+  const pathname = new URL(c.req.url).pathname;
+  const membersPrefix = `/families/${fid}/members/`;
+  const seg: string = pathname.startsWith(membersPrefix) ? pathname.slice(membersPrefix.length) : "";
+  const colonIdx = seg.lastIndexOf(":");
+  if (colonIdx === -1) return c.body(null, 404);
+  const uid = seg.slice(0, colonIdx);
+  const action = seg.slice(colonIdx + 1);
+  if (action !== "approve" && action !== "decline") return c.body(null, 404);
+  const g = await ownerGate(c, fid); if ("status" in g) return c.body(null, g.status);
+  if (action === "approve") {
+    const r = await q(`UPDATE memberships SET status='active', joined_at=now() WHERE user_id=$1 AND family_id=$2 AND status='pending' RETURNING role`, [uid, fid]);
+    if (r.rowCount === 1) { (await import("./auth/audit.ts")).audit("invite.approve", { actorUserId: g.sub, familyId: fid, detail:{ uid } }); return c.body(null, 204); }
+    const cur = await q(`SELECT status FROM memberships WHERE user_id=$1 AND family_id=$2`, [uid, fid]);
+    if (cur.rowCount === 0) return c.body(null, 404);
+    return c.body(null, cur.rows[0].status === "active" ? 200 : 409);
+  } else {
+    const r = await q(`UPDATE memberships SET status='removed' WHERE user_id=$1 AND family_id=$2 AND status='pending' RETURNING 1`, [uid, fid]);
+    if (r.rowCount === 1) (await import("./auth/audit.ts")).audit("invite.decline", { actorUserId: g.sub, familyId: fid, detail:{ uid } });
+    return c.body(null, r.rowCount === 1 ? 204 : 404);
+  }
+});
+
+// [C3] Remove a member — ≥1-owner invariant enforced via row-lock (FOR UPDATE locks
+// the active-owner rows, preventing concurrent double-remove that would leave 0 owners).
+app.delete("/families/:fid/members/:uid", async (c) => {
+  const fid = c.req.param("fid"), uid = c.req.param("uid");
+  const g = await ownerGate(c, fid); if ("status" in g) return c.body(null, g.status);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const owners = await client.query(
+      `SELECT user_id FROM memberships WHERE family_id=$1 AND role='owner' AND status='active' FOR UPDATE`,
+      [fid]
+    );
+    const targetIsOwner = owners.rows.some((r: any) => r.user_id === uid);
+    if (targetIsOwner && (owners.rowCount ?? 0) < 2) {
+      await client.query("ROLLBACK");
+      return c.body(null, 409); // last-owner — refuse removal
+    }
+    const r = await client.query(
+      `UPDATE memberships SET status='removed' WHERE user_id=$1 AND family_id=$2 AND status IN ('active','pending') RETURNING 1`,
+      [uid, fid]
+    );
+    await client.query("COMMIT");
+    if ((r.rowCount ?? 0) !== 1) return c.body(null, 404);
+  } catch (e) { await client.query("ROLLBACK"); throw e; } finally { client.release(); }
+  (await import("./auth/audit.ts")).audit("member.remove", { actorUserId: g.sub, familyId: fid, detail: { uid } });
+  return c.body(null, 204);
+});
+
+app.delete("/families/:fid/invites/:id", async (c) => {
+  const fid = c.req.param("fid"), iid = c.req.param("id");
+  const g = await ownerGate(c, fid); if ("status" in g) return c.body(null, g.status);
+  const r = await q(`UPDATE invites SET status='revoked' WHERE id=$1 AND family_id=$2 AND status='active' RETURNING 1`, [iid, fid]);
+  if (r.rowCount === 1) (await import("./auth/audit.ts")).audit("invite.revoke", { actorUserId: g.sub, familyId: fid, detail:{ invite_id: iid } });
+  return c.body(null, 204);                                               // sticky: no-op if already non-active
+});
+
+app.get("/families/:fid/invites", async (c) => {
+  const fid = c.req.param("fid");
+  const g = await ownerGate(c, fid); if ("status" in g) return c.body(null, g.status);
+  const invites = await q(`SELECT id, role, mode, max_uses, used_count, expires_at, created_at FROM invites WHERE family_id=$1 AND status='active' AND expires_at>now() ORDER BY created_at DESC`, [fid]);
+  const pending = await q(
+    `SELECT m.user_id AS uid, u.display_name, ui.provider, ui.provider_uid, ui.email_verified,
+            m.role, m.invite_id, m.created_at AS requested_at
+       FROM memberships m JOIN users u ON u.id=m.user_id
+       LEFT JOIN user_identities ui ON ui.user_id=m.user_id
+      WHERE m.family_id=$1 AND m.status='pending' ORDER BY m.created_at`, [fid]);
+  return c.json({ invites: invites.rows, pending: pending.rows });        // [I4] identity in the queue
 });
 
 app.get("/families/:fid/sync", async (c) => {

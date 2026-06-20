@@ -25,6 +25,9 @@ beforeAll(async () => {
   await q(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`);
   await q(readFileSync(resolve(here, "../migrations/0001_m0_init.sql"), "utf8"));
   await q(readFileSync(resolve(here, "../migrations/0002_auth.sql"), "utf8"));
+  await q(readFileSync(resolve(here, "../migrations/0003_device_grant.sql"), "utf8"));
+  await q(readFileSync(resolve(here, "../migrations/0004_refresh_grace.sql"), "utf8"));
+  await q(readFileSync(resolve(here, "../migrations/0005_invites.sql"), "utf8"));
 });
 afterAll(async () => { await pool.end(); });
 
@@ -102,19 +105,44 @@ describe("auth E2E + multitenancy", () => {
       body: JSON.stringify({ refresh }) });
     expect(rotRes.status).toBe(401);
   });
-  it.skip("KNOWN LIMIT (S4): one user creating a second family — token not bound, 404", async () => {
-    // POST /families binds only the user's null-family_scope credential.
-    // A single user creating a SECOND family gets a confusing 404 on the 2nd
-    // family with their existing token because the credential is already bound
-    // to the first family. This is accepted S1 behavior; S4 redesigns
-    // cred→family binding to allow multiple families per credential.
+  it("whoami returns families + family_id=null for app (family-agnostic) creds", async () => {
+    const t = await devToken("who");
+    const fam = await (await app.request("/families", { method:"POST", headers:{...dev, authorization:`Bearer ${t}`}, body: JSON.stringify({name:"WhoFam"}) })).json();
+    const who = await (await app.request("/auth/whoami", { headers:{ authorization:`Bearer ${t}` } })).json();
+    expect(who.families.map((f:any)=>f.family_id)).toContain(fam.familyId);
+    expect(who.families.find((f:any)=>f.family_id===fam.familyId).role).toBe("owner");
+    expect(who.family_id).toBeNull(); // app creds have no family_scope
   });
-  it("whoami returns family_id for a valid device-flow token", async () => {
-    const t = await devToken("whoami-user");
-    const fam = await (await app.request("/families", { method: "POST", headers: { ...dev, authorization: `Bearer ${t}` },
-      body: JSON.stringify({ name: "Whoami Fam" }) })).json();
-    const r = await app.request("/auth/whoami", { headers: { authorization: `Bearer ${t}` } });
-    expect(r.status).toBe(200);
-    expect((await r.json()).family_id).toBe(fam.familyId);
+
+  it("whoami returns family_id=cred.family_scope for cli (device-bound) creds", async () => {
+    // Create a user + family to bind the cli cred to.
+    const t = await devToken("cli-whoami-user");
+    const fam = await (await app.request("/families", { method:"POST", headers:{...dev, authorization:`Bearer ${t}`}, body: JSON.stringify({name:"CliFam"}) })).json();
+    // Decode the access token to get cid.
+    const payload = JSON.parse(Buffer.from(t.split(".")[1], "base64url").toString());
+    const appCredId: string = payload.cid;
+    // Insert a cli credential bound to that family (simulates device/token redeem).
+    const cliCredId = "cred_cli_test_" + Math.random().toString(16).slice(2);
+    await q(
+      `INSERT INTO credentials(id,user_id,family_scope,kind,scopes) VALUES ($1,$2,$3,'cli','{content:read,content:write}')`,
+      [cliCredId, payload.sub, fam.familyId],
+    );
+    // Mint an access JWT for the cli cred.
+    const { mintAccess } = await import("../src/auth/tokens.ts");
+    const cliToken = await mintAccess({ sub: payload.sub, cid: cliCredId });
+    // whoami with the cli token must return family_id = the bound family.
+    const who = await (await app.request("/auth/whoami", { headers:{ authorization:`Bearer ${cliToken}` } })).json();
+    expect(who.family_id).toBe(fam.familyId);
+    expect(who.families.map((f:any)=>f.family_id)).toContain(fam.familyId);
+  });
+
+  it("one app token works across TWO families (S1 two-family limit cleared)", async () => {
+    const t = await devToken("multi");
+    const a = await (await app.request("/families",{method:"POST",headers:{...dev,authorization:`Bearer ${t}`},body:JSON.stringify({name:"A"})})).json();
+    const b = await (await app.request("/families",{method:"POST",headers:{...dev,authorization:`Bearer ${t}`},body:JSON.stringify({name:"B"})})).json();
+    for (const fid of [a.familyId, b.familyId]) {
+      const put = await app.request(`/families/${fid}/cards/c1`,{method:"PUT",headers:{...dev,authorization:`Bearer ${t}`},body:JSON.stringify({kind:"info",title:"hi",provenance:{source:"dev",at:"2026-06-18T10:00:00Z"}})});
+      expect(put.status).toBe(200);
+    }
   });
 });
