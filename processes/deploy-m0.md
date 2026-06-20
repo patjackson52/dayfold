@@ -40,9 +40,11 @@ created + authed the accounts, I can drive the Vercel MCP for the deploy).
    - **Direct** (for migrations + provisioning) — host like `ep-xxx.<region>.aws.neon.tech`.
    - **Pooled** (for the app) — host with **`-pooler`** + `?sslmode=require`
      (transaction mode; this is the one ADR 0018 mandates for the serverless API).
-3. **[AGENT/YOU]** Apply the schema with the **direct** URL:
+3. **[AGENT/YOU]** Apply the schema with the **direct** URL — **all migrations
+   in order** (0002–0004 add the auth/device surface; 0005 adds the typed
+   content columns, CL-2):
    ```
-   psql "<DIRECT_URL>" -f apps/api/migrations/0001_m0_init.sql
+   for m in apps/api/migrations/000*.sql; do psql "<DIRECT_URL>" -f "$m"; done
    ```
 4. **[AGENT/YOU]** Provision a family + household token against Neon (direct URL):
    ```

@@ -36,7 +36,28 @@ blocked** behind a queued Claude-Design expanded-detail pass.
   **static** payload typing (`z.infer`=`any`) → a codegen pass to emit
   `z.discriminatedUnion`; (c) pre-existing `$ref`→`z.any` for id/version/provenance
   (separate codegen issue, not CL-1).
-- **TASK-CL-2** — Server: typed storage + nested validation + keyset sync.
+- **TASK-CL-2** — Server: typed storage + nested validation + keyset sync. ✅
+  **DONE** (branch `cl-2-server-typed-storage` off `cl-next`) 2026-06-20.
+  Migration `0005_typed_content.sql` extends `briefing_cards` IN PLACE (D2):
+  nullable `type`/`payload`(jsonb)/`privacy`(jsonb)/`hub_ref` + a `type`-enum
+  CHECK. `repo.upsertCard` carries all 4 (wire `hubRef`→`hub_ref`); `SELECT *`
+  serves them on GET/`/sync` (pg auto-parses jsonb→object). New
+  `content-validation.ts :: crossValidateCard` resolves the **CL-1 follow (a)**:
+  zod validates `type`+`payload` *independently*, so the key↔type tie is
+  enforced ONLY here — typed-iff-payload + payload-key === `type`, legacy
+  kind-only cards still valid; mismatch/orphan → 422. Keyset/tombstone/cursor
+  invariants untouched (no index/trigger change). New `typed-content.test.ts` (7
+  tests: 6-type round-trip incl. sync, mismatch 422, orphan 422, back-compat,
+  tombstone, tenancy-404, cursor-stability); 0005 added to api/auth-e2e/
+  device-approve harnesses. **Full api suite 80 pass / 1 pre-existing skip
+  (14 files); codegen idempotent; `deploy-m0.md` migration step updated to apply
+  all `000*.sql`.** Twice-reviewed (pre-impl adversarial spec review caught the
+  auth-e2e/device-approve harness breakage; final whole-branch review = SHIP).
+  Spec: `docs/superpowers/specs/2026-06-20-cl-2-server-typed-storage-design.md`.
+  **CL-1 follows still open:** (b) static payload typing (`z.infer`=`any`) →
+  codegen `z.discriminatedUnion`; (c) `$ref`→`z.any` for id/version/provenance.
+  **Pending: merge `cl-2-server-typed-storage` → `cl-next`.** **NEXT = CL-4**
+  (client data: typed model + SQLDelight + store).
 - **TASK-CL-3** — CLI + Claude-skill typed authoring (the content-API wedge).
 - **TASK-CL-4** — Client data: typed model + SQLDelight + store.
 - **TASK-CL-5** — Client UI: 6 typed Now cards (light+dark, inline actions).
