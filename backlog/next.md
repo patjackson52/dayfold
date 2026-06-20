@@ -56,8 +56,8 @@ blocked** behind a queued Claude-Design expanded-detail pass.
   Spec: `docs/superpowers/specs/2026-06-20-cl-2-server-typed-storage-design.md`.
   **CL-1 follows still open:** (b) static payload typing (`z.infer`=`any`) →
   codegen `z.discriminatedUnion`; (c) `$ref`→`z.any` for id/version/provenance.
-  **Pending: merge `cl-2-server-typed-storage` → `cl-next`.** **NEXT = CL-4**
-  (client data: typed model + SQLDelight + store).
+  **Integrated into `cl-next`** (ff-merge `8f11301`, local; not pushed). **NEXT =
+  CL-4** (client data: typed model + SQLDelight + store).
 - **TASK-CL-3** — CLI + Claude-skill typed authoring (the content-API wedge).
 - **TASK-CL-4** — Client data: typed model + SQLDelight + store.
 - **TASK-CL-5** — Client UI: 6 typed Now cards (light+dark, inline actions).
