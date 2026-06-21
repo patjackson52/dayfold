@@ -141,4 +141,41 @@ class AuthClientTest {
     val ex = assertFailsWith<AuthHttpException> { client(engine).redeemInvite("A", "t") }
     assertEquals(401, ex.status)
   }
+
+  // ── owner-side approvals ──
+  @Test fun `familyApprovals parses the pending queue with the bearer`() = runBlocking {
+    var path = ""; var auth: String? = null
+    val engine = MockEngine { req ->
+      path = req.url.encodedPath; auth = req.headers[HttpHeaders.Authorization]
+      respond(
+        """{"invites":[],"pending":[
+          {"uid":"u9","display_name":"Sam Rivera","role":"adult","provider":"google","requested_at":"2026-06-21T10:00:00Z"}]}""",
+        HttpStatusCode.OK, jsonCt,
+      )
+    }
+    val pending = client(engine).familyApprovals("ACCESS", "fam1")
+    assertEquals("/families/fam1/invites", path)
+    assertEquals("Bearer ACCESS", auth)
+    assertEquals(1, pending.size)
+    assertEquals("u9", pending[0].uid)
+    assertEquals("Sam Rivera", pending[0].displayName)
+  }
+
+  @Test fun `approveMember posts the colon-action path and accepts 204`() = runBlocking {
+    var path = ""
+    val engine = MockEngine { req -> path = req.url.encodedPath; respond("", HttpStatusCode.NoContent) }
+    client(engine).approveMember("ACCESS", "fam1", "u9")
+    assertEquals("/families/fam1/members/u9:approve", path)
+  }
+
+  @Test fun `declineMember accepts 204`() = runBlocking<Unit> {
+    val engine = MockEngine { respond("", HttpStatusCode.NoContent) }
+    client(engine).declineMember("ACCESS", "fam1", "u9")   // no throw
+  }
+
+  @Test fun `approveMember throws on 404 (no longer pending)`() = runBlocking<Unit> {
+    val engine = MockEngine { respond("", HttpStatusCode.NotFound) }
+    val ex = assertFailsWith<AuthHttpException> { client(engine).approveMember("A", "f", "u") }
+    assertEquals(404, ex.status)
+  }
 }

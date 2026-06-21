@@ -43,6 +43,7 @@ class AuthClient(
     val role: String? = null,
   )
   @Serializable private data class ConflictResp(val type: String? = null)
+  @Serializable private data class ApprovalsResp(val pending: List<PendingMember> = emptyList())
 
   /** POST /auth/dev-token (Bearer DEV_AUTH_SECRET) → a real backend session. Dev/test only. */
   suspend fun devToken(provider: String, providerUid: String, devSecret: String): Session {
@@ -113,7 +114,36 @@ class AuthClient(
       else -> throw AuthHttpException(resp.status.value, "invites:redeem")
     }
   }
+
+  /** GET /families/{fid}/invites (owner-gated) → the pending-approval queue. */
+  suspend fun familyApprovals(access: String, fid: String): List<PendingMember> {
+    val resp = http.get("$api/families/$fid/invites") { header("authorization", "Bearer $access") }
+    if (resp.status.value != 200) throw AuthHttpException(resp.status.value, "family-invites")
+    return json.decodeFromString(ApprovalsResp.serializer(), resp.bodyAsText()).pending
+  }
+
+  /** Owner approves a pending member → their membership goes active. */
+  suspend fun approveMember(access: String, fid: String, uid: String) = memberAction(access, fid, uid, "approve")
+
+  /** Owner declines a pending member. */
+  suspend fun declineMember(access: String, fid: String, uid: String) = memberAction(access, fid, uid, "decline")
+
+  private suspend fun memberAction(access: String, fid: String, uid: String, action: String) {
+    val resp = http.post("$api/families/$fid/members/$uid:$action") { header("authorization", "Bearer $access") }
+    // 204 done · 200 already-active (idempotent) — both fine; 4xx/5xx surface.
+    if (resp.status.value !in 200..204) throw AuthHttpException(resp.status.value, "member-$action")
+  }
 }
+
+// A member awaiting the owner's approval (GET /families/{fid}/invites → pending[]).
+@Serializable
+data class PendingMember(
+  val uid: String,
+  @SerialName("display_name") val displayName: String? = null,
+  val role: String = "adult",
+  val provider: String? = null,
+  @SerialName("requested_at") val requestedAt: String? = null,
+)
 
 // Outcome of redeeming an invite (server status → typed result). Pending =
 // success: a membership awaiting owner approval (familyId/Name null when the
