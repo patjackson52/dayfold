@@ -67,6 +67,8 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
     )
   }
   is AuthOpFailed -> state.copy(authBusy = false, authError = action.message)
+  is OpenAccount -> state.copy(route = Route.Account)    // overlay on the signed-in Feed
+  is CloseAccount -> state.copy(route = routeFor(state.session, state.families))  // back to the gate
   is SignedOut -> AppState(route = Route.SignIn)        // clear session + feed
   // SignOutRequested is an effect trigger (AuthEngine); no state change until SignedOut.
 

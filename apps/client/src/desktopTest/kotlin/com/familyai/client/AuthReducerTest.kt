@@ -79,6 +79,16 @@ class AuthReducerTest {
     assertFalse(s.authBusy); assertEquals("name taken", s.authError); assertEquals(Route.CreateFamily, s.route)
   }
 
+  @Test fun `open then close account overlays the signed-in Feed`() {
+    val signedIn = AppState(session = sess, families = listOf(active), activeFamilyId = "fam1", route = Route.Feed)
+    val opened = rootReducer(signedIn, OpenAccount)
+    assertEquals(Route.Account, opened.route)
+    assertEquals(sess, opened.session)                 // session/family untouched
+    val closed = rootReducer(opened, CloseAccount)
+    assertEquals(Route.Feed, closed.route)             // back through the gate
+    assertEquals("fam1", closed.activeFamilyId)
+  }
+
   @Test fun `sign-out clears session and feed back to SignIn`() {
     val signedIn = AppState(
       cards = listOf(Card("c", title = "T")), session = sess,

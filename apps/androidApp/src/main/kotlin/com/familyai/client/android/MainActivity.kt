@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
           onPlatformAction = actions::perform,
           onSignIn = { provider -> lifecycleScope.launch { authEngine.signIn(provider); syncEngine.syncNow() } },
           onCreateFamily = { name -> lifecycleScope.launch { authEngine.createFamily(name); syncEngine.syncNow() } },
+          onSignOut = { lifecycleScope.launch { authEngine.signOut() } },
         )
       }
     }

@@ -150,7 +150,7 @@ data class FamilyMembership(
 // The app's first navigation surface (ADR 0013: f(state)→UI, no nav library).
 // Family-null is a Feed SUBSTATE (the active family has no members yet), not a
 // route — keeps the gate minimal.
-enum class Route { Loading, SignIn, CreateFamily, Feed }
+enum class Route { Loading, SignIn, CreateFamily, Feed, Account }
 
 // Redux state (client state tree). The feed cursor lives in the DB (sync_meta),
 // not here — the store is a projection of the DB. The auth fields below are the
@@ -199,5 +199,7 @@ data class MembershipsLoaded(val families: List<FamilyMembership>) : Action // �
 data class CreateFamilyRequested(val name: String) : Action
 data class FamilyCreated(val familyId: String, val name: String) : Action   // → Feed (owner, active)
 data class AuthOpFailed(val message: String) : Action
+data object OpenAccount : Action                           // Feed → Account (signed-in overlay)
+data object CloseAccount : Action                          // Account → back to the route gate (Feed)
 data object SignOutRequested : Action
 data object SignedOut : Action                             // clears session + feed → SignIn
