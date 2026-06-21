@@ -54,4 +54,40 @@ class FeedSnapshotTest {
 
   @Test
   fun emptyFeedSnapshot() = snapshot("feed-empty", AppState())
+
+  // ── CL-5: the 6 typed Now cards, light + dark ──────────────────────────────
+
+  private val typedFeed = AppState(cards = listOf(
+    Card("file", kind = "action", title = "Permission slip — sign by Thursday",
+      provenance = Provenance("email"), type = "file", privacy = CardPrivacy("on_device"),
+      payload = Payload(file = FilePayload(filename = "permission.pdf", mime = "application/pdf", size = 240000, pages = 2,
+        docRef = "https://drive.example/abc"))),
+    Card("link", kind = "action", title = "Soccer registration closes Friday",
+      provenance = Provenance("user"), type = "link",
+      payload = Payload(link = LinkPayload(url = "https://riversideyouth.org/reg", domain = "riversideyouth.org", kind = "form", fieldCount = 8))),
+    Card("invite", kind = "action", title = "Maya's party — reply by Thursday",
+      provenance = Provenance("email"), type = "invite", privacy = CardPrivacy("on_device"),
+      payload = Payload(invite = InvitePayload(eventName = "Maya's party", host = "The Garcias", rsvpState = "none", guestCount = 12, confirmedCount = 8))),
+    Card("contact", kind = "action", title = "Jake's Rentals delivers at 1pm",
+      provenance = Provenance("email"), type = "contact",
+      payload = Payload(contact = ContactPayload(name = "Jake's Rentals", company = "Jake's Rentals", role = "Bouncy castle", phone = "+15551234567"))),
+    Card("geo", kind = "action", title = "Riverside Park — 8 min away",
+      provenance = Provenance("user"), type = "geo",
+      payload = Payload(geo = GeoPayload(label = "Riverside Park", address = "Shelter B", etaMin = 8, travelMode = "driving"))),
+    Card("email", kind = "action", title = "School RSVP needs a reply by Thursday",
+      provenance = Provenance("email"), type = "email",
+      payload = Payload(email = EmailPayload(from = "Lincoln Elementary", fromAddr = "office@lincoln.edu", subject = "Field trip permission", threadLen = 2))),
+  ))
+
+  @Test fun typedCardsSnapshot() = snapshot("cards-typed", typedFeed)
+  @Test fun typedCardsDarkSnapshot() = snapshot("cards-typed-dark", typedFeed, dark = true)
+
+  // invite RSVP display-only: each authored state renders the right highlighted chip
+  private fun inviteWith(state: String) = AppState(cards = listOf(
+    Card("inv", kind = "action", title = "Maya's party", provenance = Provenance("email"),
+      type = "invite", payload = Payload(invite = InvitePayload(eventName = "Maya's party", rsvpState = state))),
+  ))
+  @Test fun inviteRsvpNoneSnapshot() = snapshot("invite-rsvp-none", inviteWith("none"))
+  @Test fun inviteRsvpYesSnapshot() = snapshot("invite-rsvp-yes", inviteWith("yes"))
+  @Test fun inviteRsvpNoSnapshot() = snapshot("invite-rsvp-no", inviteWith("no"))
 }

@@ -81,7 +81,27 @@ blocked** behind a queued Claude-Design expanded-detail pass.
   M0 cache has **no SQLDelight migration** → clear-app-data on schema change
   (post-M0). **NEXT = CL-5** (6 typed Now cards, light+dark) — gated on CL-0
   theme (done) + this.
-- **TASK-CL-5** — Client UI: 6 typed Now cards (light+dark, inline actions).
+- **TASK-CL-5** — Client UI: 6 typed Now cards. ✅ **DONE** (branch
+  `cl-5-typed-now-cards` → integrated into `cl-next`) 2026-06-20. `cards/`
+  package: `CardAction` (closed union, **no backend-mutating variant** — read-only
+  ADR 0020), pure `TypedCardLogic` (accent/kicker/body/primary-action
+  derivations, unit-tested), `TypedCards` (6 composables + shared chrome +
+  `TypedCardItem` dispatcher). `FeedScreen` dispatches `type!=null`→typed else
+  legacy `CardItem`; unknown type → safe generic. Visuals run off MaterialTheme
+  **roles** (light+dark correct); invite = coral `primaryContainer` + **solid**
+  accent + **display-only** Yes/No RSVP; contact = avatar + inline Call/Text +
+  Details primary; geo = stylized map strip (no SDK/key/leak). a11y: 48dp
+  targets, decorative tiles `clearAndSetSemantics`, RSVP `contentDescription`.
+  **46 desktop tests green** (TypedCardLogic 5, snapshots 8 incl. 6-type
+  light+dark + 3 RSVP states — PNGs visually verified); **Android + iOS-sim
+  compile**. Twice-reviewed (pre-impl: dropped write-affordances/unknown-type
+  crash risk/a11y; final: caught invite tile-vanish → solid-accent fix). Spec:
+  `docs/superpowers/specs/2026-06-20-cl-5-typed-now-cards-design.md`.
+  **Cut to follows (M0):** per-card loading-skeleton / urgent / dismissed-on-
+  answer states; Material-Symbols glyphs (CL-0b); date-relative kickers.
+  **NEXT = CL-6** (DetailScreen + redux nav). **CL-6 prerequisite:** the
+  `expect/actual PlatformActions` effect layer (perform `CardAction`) — wire
+  `onAction` (currently no-op) through middleware (ADR 0013 Rule E) in each shell.
 - **TASK-CL-6** — Client UI: DetailScreen (per-type hero + provenance/privacy).
 - **TASK-CL-7** — Fold gesture: container transform (SharedTransitionLayout;
   predictive-back needs Compose-MP ≥1.10 — sub-task/risk).

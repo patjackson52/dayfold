@@ -15,6 +15,8 @@ import org.reduxkotlin.compose.selectorState
 fun FeedApp(store: Store<AppState>) {
   val state by store.selectorState { it }
   DayfoldTheme {
-    FeedScreen(state)
+    // CL-5: cards emit CardActions; the platform effect layer (expect/actual
+    // PlatformActions, routed via middleware per ADR 0013) wires in here at CL-6.
+    FeedScreen(state, onAction = {})
   }
 }

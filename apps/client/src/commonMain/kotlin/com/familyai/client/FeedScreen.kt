@@ -19,12 +19,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.familyai.client.cards.CardAction
+import com.familyai.client.cards.TypedCardItem
 
 // M0 feed-only render: the briefing-card list from redux state. Shared
 // Composable (commonMain-compatible) — the Android/iOS/desktop shells host it.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FeedScreen(state: AppState) {
+fun FeedScreen(state: AppState, onAction: (CardAction) -> Unit = {}) {
   Scaffold(topBar = { TopAppBar(title = { Text("Today") }) }) { pad ->
     if (state.cards.isEmpty()) {
       Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
@@ -36,7 +38,12 @@ fun FeedScreen(state: AppState) {
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        items(feedCards(state), key = { it.id }) { card -> CardItem(card) }
+        // CL-5: typed cards dispatch by type; kind-only/legacy cards keep the
+        // generic CardItem (back-compat — unknown types render via the typed
+        // dispatcher's safe generic fallback, never crash).
+        items(feedCards(state), key = { it.id }) { card ->
+          if (card.type != null) TypedCardItem(card, onAction) else CardItem(card)
+        }
       }
     }
   }
