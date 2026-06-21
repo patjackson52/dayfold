@@ -73,6 +73,25 @@ class AuthEngine(
     store.dispatch(SignedOut)
   }
 
+  /** Redeem an invite token (slice-2): success = a pending membership awaiting
+   *  owner approval; everything else maps to a join-result the UI renders. */
+  suspend fun redeemInvite(token: String) = mutex.withLock {
+    store.dispatch(RedeemRequested(token))
+    val session = store.state.session
+    if (session == null) { store.dispatch(InviteRejected("error")); return@withLock }
+    try {
+      when (val res = callWithRefresh(session) { authClient.redeemInvite(it.access, token) }) {
+        is RedeemResult.Pending -> store.dispatch(InviteRedeemed(res.familyName))
+        RedeemResult.Expired -> store.dispatch(InviteRejected("expired"))
+        RedeemResult.Locked -> store.dispatch(InviteRejected("locked"))
+        RedeemResult.AlreadyMember -> store.dispatch(InviteRejected("already"))
+        RedeemResult.Removed -> store.dispatch(InviteRejected("removed"))
+      }
+    } catch (e: Exception) {
+      store.dispatch(InviteRejected("error"))            // transient 401/5xx/network → join-retry
+    }
+  }
+
   /** Current access token (for the SyncClient token provider, wired at T6). */
   fun accessToken(): String? = store.state.session?.access
 

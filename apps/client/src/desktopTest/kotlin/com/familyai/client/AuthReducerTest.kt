@@ -89,6 +89,18 @@ class AuthReducerTest {
     assertEquals("fam1", closed.activeFamilyId)
   }
 
+  @Test fun `invitee-join outcomes (waiting then dismiss, and a rejection)`() {
+    var s = rootReducer(AppState(session = sess), RedeemRequested("tok"))
+    assertTrue(s.joinBusy); assertNull(s.joinOutcome)
+    s = rootReducer(s, InviteRedeemed("The Jacksons"))
+    assertFalse(s.joinBusy); assertEquals("waiting", s.joinOutcome); assertEquals("The Jacksons", s.joinFamilyName)
+    val cleared = rootReducer(s, JoinDismissed)
+    assertNull(cleared.joinOutcome); assertNull(cleared.joinFamilyName)
+
+    val rejected = rootReducer(rootReducer(AppState(), RedeemRequested("t")), InviteRejected("expired"))
+    assertEquals("expired", rejected.joinOutcome); assertFalse(rejected.joinBusy)
+  }
+
   @Test fun `sign-out clears session and feed back to SignIn`() {
     val signedIn = AppState(
       cards = listOf(Card("c", title = "T")), session = sess,

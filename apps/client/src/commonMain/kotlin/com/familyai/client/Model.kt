@@ -173,6 +173,11 @@ data class AppState(
   val route: Route = Route.Loading,
   val authBusy: Boolean = false,
   val authError: String? = null,
+  // invitee-join (S5 slice-2). outcome: null | waiting | expired | locked |
+  // already | removed | error — the join screen renders the matching A8b state.
+  val joinBusy: Boolean = false,
+  val joinOutcome: String? = null,
+  val joinFamilyName: String? = null,
 )
 
 // Actions. Card data reaches the store ONLY via CardsLoaded (the DB→store bridge);
@@ -203,3 +208,9 @@ data object OpenAccount : Action                           // Feed → Account (
 data object CloseAccount : Action                          // Account → back to the route gate (Feed)
 data object SignOutRequested : Action
 data object SignedOut : Action                             // clears session + feed → SignIn
+// invitee-join (S5 slice-2). RedeemRequested is an effect trigger (AuthEngine);
+// InviteRedeemed/Rejected carry the outcome the join screen renders.
+data class RedeemRequested(val token: String) : Action
+data class InviteRedeemed(val familyName: String?) : Action   // success → pending, waiting for approval
+data class InviteRejected(val reason: String) : Action        // expired | locked | already | removed | error
+data object JoinDismissed : Action                            // leave a join result

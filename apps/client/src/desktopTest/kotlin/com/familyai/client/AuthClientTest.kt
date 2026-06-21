@@ -100,4 +100,45 @@ class AuthClientTest {
     val ex = assertFailsWith<AuthHttpException> { client(engine).createFamily("ACCESS", "") }
     assertEquals(400, ex.status)
   }
+
+  // ── redeemInvite: status → RedeemResult ──
+  @Test fun `redeemInvite 200 fresh success is Pending with family info`() = runBlocking {
+    var path = ""; var sent = ""
+    val engine = MockEngine { req ->
+      path = req.url.encodedPath; sent = body(req)
+      respond("""{"family_id":"fam1","family_name":"The Jacksons","role":"adult","status":"pending"}""", HttpStatusCode.OK, jsonCt)
+    }
+    val r = client(engine).redeemInvite("ACCESS", "tok123")
+    assertEquals("/invites:redeem", path)
+    assertTrue(sent.contains("\"token\":\"tok123\""), "body was: $sent")
+    assertEquals(RedeemResult.Pending("fam1", "The Jacksons", "adult"), r)
+  }
+
+  @Test fun `redeemInvite 200 already-requested is Pending with nulls`() = runBlocking {
+    val engine = MockEngine { respond("""{"status":"pending"}""", HttpStatusCode.OK, jsonCt) }
+    assertEquals(RedeemResult.Pending(null, null, null), client(engine).redeemInvite("A", "t"))
+  }
+
+  @Test fun `redeemInvite 404 is Expired`() = runBlocking {
+    val engine = MockEngine { respond("", HttpStatusCode.NotFound) }
+    assertEquals(RedeemResult.Expired, client(engine).redeemInvite("A", "t"))
+  }
+
+  @Test fun `redeemInvite 429 is Locked`() = runBlocking {
+    val engine = MockEngine { respond("", HttpStatusCode.TooManyRequests) }
+    assertEquals(RedeemResult.Locked, client(engine).redeemInvite("A", "t"))
+  }
+
+  @Test fun `redeemInvite 409 already-member vs removed`() = runBlocking {
+    val already = MockEngine { respond("""{"type":"already-member"}""", HttpStatusCode.Conflict, jsonCt) }
+    assertEquals(RedeemResult.AlreadyMember, client(already).redeemInvite("A", "t"))
+    val removed = MockEngine { respond("""{"type":"removed"}""", HttpStatusCode.Conflict, jsonCt) }
+    assertEquals(RedeemResult.Removed, client(removed).redeemInvite("A", "t"))
+  }
+
+  @Test fun `redeemInvite throws on 401 (transient → engine retries or joinerror)`() = runBlocking<Unit> {
+    val engine = MockEngine { respond("", HttpStatusCode.Unauthorized) }
+    val ex = assertFailsWith<AuthHttpException> { client(engine).redeemInvite("A", "t") }
+    assertEquals(401, ex.status)
+  }
 }

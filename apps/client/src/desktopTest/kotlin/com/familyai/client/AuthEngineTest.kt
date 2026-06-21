@@ -126,4 +126,28 @@ class AuthEngineTest {
     assertEquals(Session("fresh", "r2"), store.state.session)   // rotated into state
     assertEquals(Session("fresh", "r2"), ts.session)            // and persisted
   }
+
+  // ── invitee-join (slice-2 foundation) ──
+  private suspend fun redeemOutcome(status: HttpStatusCode, body: String): Pair<String?, String?> {
+    val store = createAppStore(AppState(session = Session("a", "r")), debug = false)
+    val client = AuthClient("https://api.test", HttpClient(MockEngine { req ->
+      if (req.url.encodedPath == "/invites:redeem") respond(body, status, jsonCt) else respond("", HttpStatusCode.NotFound)
+    }))
+    AuthEngine(store, client, MemTokenStore(Session("a", "r"))).redeemInvite("tok")
+    return store.state.joinOutcome to store.state.joinFamilyName
+  }
+
+  @Test fun `redeem invite success routes to waiting`() = runBlocking {
+    val (outcome, fam) = redeemOutcome(HttpStatusCode.OK, """{"family_id":"fam1","family_name":"The Jacksons","role":"adult","status":"pending"}""")
+    assertEquals("waiting", outcome)
+    assertEquals("The Jacksons", fam)
+  }
+
+  @Test fun `redeem invite maps each rejection`() = runBlocking {
+    assertEquals("expired", redeemOutcome(HttpStatusCode.NotFound, "").first)
+    assertEquals("locked", redeemOutcome(HttpStatusCode.TooManyRequests, "").first)
+    assertEquals("already", redeemOutcome(HttpStatusCode.Conflict, """{"type":"already-member"}""").first)
+    assertEquals("removed", redeemOutcome(HttpStatusCode.Conflict, """{"type":"removed"}""").first)
+    assertEquals("error", redeemOutcome(HttpStatusCode.InternalServerError, "").first)  // transient → join-retry
+  }
 }
