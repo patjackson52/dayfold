@@ -133,6 +133,134 @@ CL-9b time**, do not treat these as durable.
   map (none planned); even then, prefer MapLibre + self-host tiles over a
   proprietary SDK.
 
+## Q: Why not an interactive 3P map (Google/Mapbox SDK) for the strip — wouldn't it enable a fluid morph into detail + an interactive detail map?
+
+Investigated directly (operator question, 2026-06-21). Answer: **no — an
+interactive map *fights* the fluid transition; the morph is achieved better by
+a static image.** Three independent blockers, then it also loses on
+privacy/cost:
+
+1. **Interactive map cannot participate in the shared-element morph.** A native
+   map is a platform view punched into Compose via `AndroidView` (Android) /
+   `UIKitView` (iOS). Android's shared-elements docs name this a flat
+   limitation: *"No interoperability between Views and Compose is supported …
+   including any composable that wraps `AndroidView`."*
+   `[fact:developer.android.com/develop/ui/compose/animation/shared-elements]`
+   → snap/flicker/clip + GL-surface artifacts mid-transition. A plain `Image`
+   is a first-class `sharedElement()` citizen and morphs cleanly. **The
+   animation you want *requires* the static path.**
+2. **Maps-in-a-list is a Google-named anti-pattern.** Google's own fix is
+   **Lite Mode** = *"a bitmap image of a map … cannot zoom or pan,"* recommended
+   *"when you want a number of maps in a stream, or a map too small for
+   meaningful interaction."* `[fact:developers.google.com/maps/documentation/android-sdk/lite]`
+   N live GL map surfaces in a scrolling feed = memory/recompose blowup (hits
+   our perf review dimension).
+3. **No cross-platform live-map widget for us.** No unified interactive-map
+   composable spanning Android + iOS + **Wasm**. Best option (MapLibre Compose)
+   is Web ~20% complete, **Wasm unsupported** `[fact:github.com/maplibre/maplibre-compose]`
+   → our Web target would have no interactive map at all; even the "unified"
+   API resolves to per-platform native views.
+
+Cost, for completeness: Google **Dynamic Maps = $7/1k map loads** (10k free/mo)
+`[fact:woosmap.com pricing breakdown, checked 2026-06-21]`; a pan/zoom session
+is one load, but each card instance = one load → scales with feed size. Static
+is the cheaper SKU.
+
+**Where an interactive map *could* live (if ever):** a single **dedicated
+full-screen surface** (one instance, Android/iOS only), never the strip — and
+still behind the disclosure ADR below. For M0/M1 the **Navigate handoff to the
+OS maps app** already delivers full interactivity (pan/zoom/route) on the
+user's own map app + account, for free, with no key and no render-time leak.
+
+## Privacy — data-flow analysis (what is shared, with whom, alternatives)
+
+The operator asked to examine this precisely. The sensitive payload is the
+**authored place coordinate** (lat/lng of a venue/school/store) — this is
+*content* (ADR 0014 lets it reach our server, encrypted at rest, family-
+scoped). It is **not** the device's live position, which ADR 0014 keeps on the
+device forever. The privacy question for maps is: *does rendering a map cause
+that place coordinate (and surrounding metadata) to reach a **new** third
+party, and under whose identity?*
+
+### What is transmitted, to whom, and when — per option
+
+| Option | Place coord leaves to a 3rd party? | When / how often | Whose identity is attached | Other metadata sent |
+|---|---|---|---|---|
+| **A. Placeholder + Navigate** *(M0, current)* | **No** at render. On Navigate tap, only a **text place query** (e.g. "Riverside Park"), never lat/lng | only on explicit tap | the **user's own** maps app/account (Google/Apple Maps) — their existing relationship, not ours | whatever the user's maps app collects in its own session (out of our hands) |
+| **B-render. Static image fetched at render** *(NOT recommended)* | **Yes** | every card render, per device | the **family member's device** (their IP) + our app's embedded key | device IP, API key, User-Agent, timestamp, referer |
+| **B-author. Static image stamped at author time** *(CL-9b path)* | **Yes, once** | once, at author time, in the authoring loop | our **author/server** identity (server IP + author-side key) — **not** the family member's device | server IP, key, timestamp at author time only; render serves bytes from *our* server |
+| **C. Interactive SDK map** | **Yes, continuously** | every pan/zoom tile fetch, per device, per session | the **family member's device** (IP) + embedded key; if Google + signed-in, correlatable to their Google identity | viewport bbox stream, device IP, key, UA, session — continuous telemetry |
+
+**The exact data items a 3rd-party map provider receives** (for B/C — A sends
+none): (1) the **place coordinate** or a viewport derived from it; (2) the
+**requester's IP** — at *author* time that is our server's IP (B-author), at
+*render* time it is the family member's device IP (B-render/C), revealing their
+network/rough location; (3) the **API key** identifying our app/billing
+account; (4) **User-Agent / timestamp / referer**; and for **C**, a continuous
+**interaction stream** (every pan/zoom) that profiles the session.
+
+**Who the "who" is matters.** Candidate providers and their posture:
+- **Google** — also the family's **auth IdP** (Firebase Google sign-in, ADR
+  0023) and the likely Calendar/email source. The correlation risk has **two
+  strengths** (don't conflate): at **render / interactive (B-render/C)** with
+  the device signed in, the request carries the family member's IP and can be
+  tied to their **known Google identity** — the strong case. At **author time
+  (B-author)** it instead ties the place graph to **our** Google billing
+  account — weaker, but it still concentrates the family's data in the same
+  ad-tech vendor that is already their IdP/Calendar source, counter to "privacy
+  by architecture." **Avoid Google for maps either way.** Google also forbids
+  caching the static image (breaks author-time stamping). `[fact:cloud.google.com/maps-platform/terms]`
+- **OSM-based, non-ad-tech providers (Geoapify, MapTiler, Stadia Maps)** —
+  OpenStreetMap data; business model is **API fees, not ad profiling** (the
+  load-bearing point); caching-allowed; clearer retention terms. Jurisdictions
+  vary — Geoapify EU (Cyprus), MapTiler Switzerland, **Stadia Maps
+  US-headquartered** `[fact:provider company/imprint pages, checked 2026-06-21]`
+  — so "EU data residency" is **not** uniform; the privacy plus here is the
+  non-ad-tech model, not a blanket EU claim. **Preferred** over Google if a 3rd
+  party is used at all.
+
+### Alternatives — least to most provider exposure
+
+1. **Placeholder + Navigate handoff (A) — ZERO provider exposure from our app**
+   *(current M0)*. We send no coordinate, no key, no device IP. The user's
+   chosen maps app sees only a text query, only on tap, under the user's own
+   account. **This is the privacy-optimal real option** and already shipped.
+2. **Self-host tiles / render (Protomaps + MapLibre on *our* infra) — ZERO
+   third-party exposure even for a real map.** Render the static map image from
+   OSM data on our own servers; the coordinate never leaves our stack. Cost =
+   ops (run a renderer/tile store). The only way to get *real map imagery* with
+   no third party in the loop. Parked as M2+ (over-built for solo M0/M1).
+3. **Author-time static stamp via an OSM/non-ad provider (B-author, CL-9b).**
+   Provider sees the coordinate **once**, tied to **our author identity** (not
+   the family device), at author time; render serves bytes from our server (no
+   key on device, no render-time leak, no SSRF). Residual exposure = that one
+   author-time request sits in the provider's logs. Mitigations: pick a
+   non-ad-tech provider (Geoapify/MapTiler), **coarsen the coordinate** (snap to
+   a grid / show approximate area) so the logged point is fuzzed, and disclose.
+   **Caveat — coarsening fuzzes the *coordinate*, not the *place*:** if a place
+   label or address rides the request (a marker label) or sits on the card
+   itself ("Lincoln Elementary"), the venue is still identifiable regardless of
+   grid-snapping. Coarsening lowers point precision; it does not anonymize the
+   disclosure of *which place* — only authoring without a label would do that.
+4. **Render-time static (B-render) — avoid.** Adds the family device IP + a
+   client key to every render for no UX gain over B-author.
+5. **Interactive SDK (C) — worst.** Continuous per-device telemetry, key on
+   device, ad-tech correlation if Google. Rejected.
+
+**Defense-in-depth knobs for B-author (the only 3rd-party option we'd
+consider):** (a) coordinate coarsening before the stamp request; (b) non-ad
+provider; (c) author-side fetch only (device never calls a map host); (d)
+immutable stored image marked `"x-e2e":"ciphertext"` (ADR 0015); (e) honest
+privacy-chip copy — *not* "location never leaves" (false for a real map), but
+e.g. "map image generated when this card was created."
+
+**Bottom line on privacy:** today's placeholder + Navigate (A) leaks **nothing**
+to a map vendor and is also the better morph engine. Any real in-app map adds a
+third party; if that's ever wanted, **self-host (2)** removes the third party
+entirely, and **author-time stamp via a non-Google OSM provider with coordinate
+coarsening (3)** is the acceptable middle — both **ADR-gated**, never agent-
+decided.
+
 ## Self-host escape hatch (Protomaps / PMTiles) — parked, M2+
 
 The only path where the coordinate never leaves our infrastructure even at
