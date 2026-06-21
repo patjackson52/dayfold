@@ -25,8 +25,16 @@ class FeedScreenTest {
   }
 
   @Test
-  fun showsEmptyState() = runComposeUiTest {
+  fun showsFamilyNullStateWhenEmpty() = runComposeUiTest {
+    // S5: an empty family shows the onboarding null-state, not a bare message.
     setContent { MaterialTheme { FeedScreen(AppState()) } }
-    onNodeWithText("Nothing yet").assertIsDisplayed()
+    onNodeWithText("Your family space is ready").assertIsDisplayed()
+    onNodeWithText("Invite a member").assertIsDisplayed()
+  }
+
+  @Test
+  fun showsSyncingStatus() = runComposeUiTest {
+    setContent { MaterialTheme { FeedScreen(AppState(syncing = true)) } }
+    onNodeWithText("Syncing…").assertIsDisplayed()
   }
 }

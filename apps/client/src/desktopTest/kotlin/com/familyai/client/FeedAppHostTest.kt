@@ -22,7 +22,8 @@ class FeedAppHostTest {
   )
 
   private fun shot(name: String, block: (org.reduxkotlin.Store<AppState>) -> Unit) = runComposeUiTest {
-    val store = createAppStore(debug = false)
+    // route=Feed so FeedApp renders the CONTENT host (past the AUTH-S5 route gate).
+    val store = createAppStore(AppState(route = Route.Feed), debug = false)
     store.dispatch(CardsLoaded(listOf(typed())))
     block(store)
     setContent { FeedApp(store, onPlatformAction = {}) }

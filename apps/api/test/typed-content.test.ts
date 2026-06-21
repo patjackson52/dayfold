@@ -37,7 +37,7 @@ const typedCard = (type: string, over: any = {}) =>
 
 beforeAll(async () => {
   await q(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`);
-  for (const m of ["0001_m0_init.sql", "0005_typed_content.sql", "0006_related.sql"])
+  for (const m of ["0001_m0_init.sql", "0006_typed_content.sql", "0007_related.sql"])
     await q(readFileSync(resolve(here, "../migrations/" + m), "utf8"));
   await q(`INSERT INTO families(id,name) VALUES ('famA','A'),('famB','B')`);
   await q(`INSERT INTO credentials(id,kind,family_scope,scopes) VALUES ('hcred','cli','famA','{content:read,content:write}')`);

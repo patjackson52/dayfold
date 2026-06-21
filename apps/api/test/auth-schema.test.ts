@@ -9,8 +9,8 @@ const { pool, q } = await import("../src/db.ts");
 
 beforeAll(async () => {
   await q(`DROP SCHEMA public CASCADE; CREATE SCHEMA public;`);
-  await q(readFileSync(resolve(here, "../migrations/0001_m0_init.sql"), "utf8"));
-  await q(readFileSync(resolve(here, "../migrations/0002_auth.sql"), "utf8"));
+  for (const m of ["0001_m0_init.sql","0002_auth.sql","0003_device_grant.sql","0004_refresh_grace.sql","0005_invites.sql"])
+    await q(readFileSync(resolve(here, "../migrations/" + m), "utf8"));
 });
 afterAll(async () => { await pool.end(); });
 
@@ -58,5 +58,24 @@ describe("0002_auth schema", () => {
     await expect(
       q(`INSERT INTO refresh_tokens(token_hash,credential_id,expires_at) VALUES ('hash_abc','cred1', now() + interval '2 hours')`),
     ).rejects.toThrow();
+  });
+});
+
+describe("0005 invites schema", () => {
+  it("role allowlist rejects owner/teen; token_hash UNIQUE; max_uses 1-10; used_count<=max_uses", async () => {
+    await q(`INSERT INTO families(id,name) VALUES ('f5','F')`);
+    await q(`INSERT INTO users(id) VALUES ('u5')`);
+    await q(`INSERT INTO invites(id,family_id,token_hash,mode,created_by,expires_at) VALUES ('i1','f5','h1','qr','u5', now()+interval '1h')`);
+    await expect(q(`INSERT INTO invites(id,family_id,role,token_hash,mode,created_by,expires_at) VALUES ('i2','f5','owner','h2','qr','u5', now())`)).rejects.toThrow();
+    await expect(q(`INSERT INTO invites(id,family_id,role,token_hash,mode,created_by,expires_at) VALUES ('i6','f5','teen','h6','qr','u5', now())`)).rejects.toThrow(); // teen not allowed
+    await expect(q(`INSERT INTO invites(id,family_id,token_hash,mode,created_by,expires_at) VALUES ('i3','f5','h1','qr','u5', now())`)).rejects.toThrow(); // dup token_hash
+    await expect(q(`INSERT INTO invites(id,family_id,token_hash,mode,max_uses,created_by,expires_at) VALUES ('i4','f5','h4','link',11,'u5', now())`)).rejects.toThrow(); // >10
+    await expect(q(`INSERT INTO invites(id,family_id,token_hash,mode,max_uses,created_by,expires_at) VALUES ('i5','f5','h5','link',0,'u5', now())`)).rejects.toThrow(); // max_uses<1
+    await expect(q(`UPDATE invites SET used_count=2 WHERE id='i1'`)).rejects.toThrow(); // used_count>max_uses(1)
+  });
+  it("memberships.invite_id FK + created_at present", async () => {
+    await q(`INSERT INTO memberships(user_id,family_id,role,invite_id) VALUES ('u5','f5','adult','i1')`);
+    const r = await q(`SELECT invite_id, created_at FROM memberships WHERE user_id='u5' AND family_id='f5'`);
+    expect(r.rows[0].invite_id).toBe('i1'); expect(r.rows[0].created_at).toBeTruthy();
   });
 });

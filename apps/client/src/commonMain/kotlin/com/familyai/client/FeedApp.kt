@@ -33,43 +33,62 @@ internal fun routeCardAction(store: Store<AppState>, onPlatformAction: (CardActi
 // here; swap to per-field `fieldState`/narrower selectors to scope recomposition).
 // Every shell (desktop, Android, iOS) renders this one connected composable,
 // wrapped once in the Dayfold theme (ADR 0022 D5).
-@OptIn(ExperimentalSharedTransitionApi::class)
+//
+// AUTH-S5 route gate (auth) + CL content host (feed/detail) integrated: a pure
+// when(route) gate (no nav library, ADR 0013); the Feed route renders the
+// CL-6/7b content host (SharedTransitionLayout feed↔detail). Effect callbacks:
+// onSignIn / onCreateFamily drive the AuthEngine (T6); onPlatformAction performs
+// card OS-handoffs (CL-PLAT). All default to no-ops so screens stay snapshot-
+// testable in isolation.
 @Composable
-fun FeedApp(store: Store<AppState>, onPlatformAction: (CardAction) -> Unit = {}) {
+fun FeedApp(
+  store: Store<AppState>,
+  onPlatformAction: (CardAction) -> Unit = {},
+  onSignIn: (String) -> Unit = {},
+  onCreateFamily: (String) -> Unit = {},
+) {
   val state by store.selectorState { it }
   // One stable handler (remembered so feed/detail stay skippable): OpenDetail is
   // in-app nav → dispatched to the store; every other CardAction is an OS handoff
-  // → the shell's PlatformActions. NOTE: the whole-state `selectorState { it }`
-  // subscription is the pre-existing M0 pattern; scoping it (feedCards vs
-  // currentDetailCard) to shrink recomposition is a tracked perf follow.
+  // → the shell's PlatformActions.
   val handle = remember(store, onPlatformAction) {
     fun(action: CardAction) = routeCardAction(store, onPlatformAction, action)
   }
   DayfoldTheme {
-    // CL-7b container transform: SharedTransitionLayout shares the tapped card's
-    // bounds (key "card-$id") with the detail container → the card morphs into the
-    // detail (and back). AnimatedContent keyed on the open id (null = feed) drives
-    // the cross-fade; the shared element drives the bounds morph. Asymmetric
-    // timing: open slightly slower than back, per the design.
-    val detail = currentDetailCard(state)
-    SharedTransitionLayout {
-      AnimatedContent(
-        targetState = detail?.id,
-        transitionSpec = {
-          val opening = targetState != null
-          val dur = if (opening) 360 else 280
-          (fadeIn(tween(dur)) + slideInVertically(tween(dur)) { h -> h / 16 }) togetherWith fadeOut(tween(dur))
-        },
-        label = "feed-detail",
-      ) { id ->
-        CompositionLocalProvider(
-          LocalSharedTransitionScope provides this@SharedTransitionLayout,
-          LocalAnimatedVisibilityScope provides this@AnimatedContent,
-        ) {
-          val card = id?.let { cid -> state.cards.find { it.id == cid } }
-          if (card != null) DetailScreen(card, onBack = { store.dispatch(NavBack) }, onAction = handle)
-          else FeedScreen(state, onAction = handle)
-        }
+    when (state.route) {
+      Route.Loading -> SplashScreen()
+      Route.SignIn -> SignInScreen(busy = state.authBusy, error = state.authError, onProvider = onSignIn)
+      Route.CreateFamily -> CreateFamilyScreen(busy = state.authBusy, error = state.authError, onCreate = onCreateFamily)
+      Route.Feed -> ContentHost(store, state, handle)
+    }
+  }
+}
+
+// CL-7b container transform: SharedTransitionLayout shares the tapped card's
+// bounds (key "card-$id") with the detail container → the card morphs into the
+// detail (and back). AnimatedContent keyed on the open id (null = feed) drives the
+// cross-fade; the shared element drives the bounds morph. Asymmetric timing.
+@OptIn(ExperimentalSharedTransitionApi::class)
+@Composable
+private fun ContentHost(store: Store<AppState>, state: AppState, handle: (CardAction) -> Unit) {
+  val detail = currentDetailCard(state)
+  SharedTransitionLayout {
+    AnimatedContent(
+      targetState = detail?.id,
+      transitionSpec = {
+        val opening = targetState != null
+        val dur = if (opening) 360 else 280
+        (fadeIn(tween(dur)) + slideInVertically(tween(dur)) { h -> h / 16 }) togetherWith fadeOut(tween(dur))
+      },
+      label = "feed-detail",
+    ) { id ->
+      CompositionLocalProvider(
+        LocalSharedTransitionScope provides this@SharedTransitionLayout,
+        LocalAnimatedVisibilityScope provides this@AnimatedContent,
+      ) {
+        val card = id?.let { cid -> state.cards.find { it.id == cid } }
+        if (card != null) DetailScreen(card, onBack = { store.dispatch(NavBack) }, onAction = handle)
+        else FeedScreen(state, onAction = handle)
       }
     }
   }

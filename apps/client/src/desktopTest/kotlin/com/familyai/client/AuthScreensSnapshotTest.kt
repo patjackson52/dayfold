@@ -1,0 +1,37 @@
+package com.familyai.client
+
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.toAwtImage
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.runComposeUiTest
+import com.familyai.client.theme.DayfoldTheme
+import java.io.File
+import javax.imageio.ImageIO
+import kotlin.test.Test
+import kotlin.test.assertTrue
+
+// AUTH-S5 T5 — render each onboarding screen off-screen under DayfoldTheme and
+// write the PNG to build/snapshots/ so the screens can be eyeballed against the
+// Dayfold mockups (signin / createfamily / familynull) without a device.
+@OptIn(ExperimentalTestApi::class)
+class AuthScreensSnapshotTest {
+  private fun snap(name: String, dark: Boolean = false, content: @Composable () -> Unit) = runComposeUiTest {
+    setContent { DayfoldTheme(darkTheme = dark) { content() } }
+    val img = onRoot().captureToImage()
+    assertTrue(img.width > 0 && img.height > 0, "snapshot has no pixels")
+    val dir = File("build/snapshots").apply { mkdirs() }
+    ImageIO.write(img.toAwtImage(), "png", File(dir, "$name.png"))
+  }
+
+  @Test fun signIn() = snap("auth-signin") { SignInScreen() }
+  @Test fun signInDark() = snap("auth-signin-dark", dark = true) { SignInScreen() }
+  @Test fun signInBusy() = snap("auth-signin-busy") { SignInScreen(busy = true) }
+  @Test fun signInError() = snap("auth-signin-error") { SignInScreen(error = "Couldn't reach Dayfold. Try again.") }
+  @Test fun createFamily() = snap("auth-createfamily") { CreateFamilyScreen(initialName = "The Jacksons") }
+  @Test fun createFamilyDark() = snap("auth-createfamily-dark", dark = true) { CreateFamilyScreen(initialName = "The Jacksons") }
+  @Test fun familyNull() = snap("auth-familynull") { FamilyNullState() }
+  @Test fun familyNullDark() = snap("auth-familynull-dark", dark = true) { FamilyNullState() }
+  @Test fun splash() = snap("auth-splash") { SplashScreen() }
+}

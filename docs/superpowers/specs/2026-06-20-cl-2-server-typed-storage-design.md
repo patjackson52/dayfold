@@ -15,7 +15,7 @@ proves it vs live PG.
 
 ## Scope (what changes)
 
-1. **Migration `0005_typed_content.sql`** — extend `briefing_cards` in place
+1. **Migration `0006_typed_content.sql`** — extend `briefing_cards` in place
    (D2). Add nullable cols: `type text`, `payload jsonb`, `privacy jsonb`,
    `hub_ref text`. DB-level `CHECK` that `type` ∈ the 6 enum values (defense in
    depth — **`type` only**; the payload-key↔type tie is NOT a DB constraint, it

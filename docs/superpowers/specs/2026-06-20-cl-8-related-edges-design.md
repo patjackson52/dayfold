@@ -20,7 +20,7 @@ regenerated.
 
 ## Layers
 
-1. **Server** — migration `0006_related.sql`: `briefing_cards` gains `related
+1. **Server** — migration `0007_related.sql`: `briefing_cards` gains `related
    jsonb` + `related_kicker text` (nullable). `repo.upsertCard` carries them;
    `SELECT *` serves them on `/sync` (pg jsonb→object). Validation: the
    regenerated `BriefingCardSchema` already validates `related` (strict edge
@@ -51,7 +51,7 @@ regenerated.
 
 ## Files
 
-- `apps/api/migrations/0006_related.sql`; `apps/api/src/repo.ts`.
+- `apps/api/migrations/0007_related.sql`; `apps/api/src/repo.ts`.
 - `apps/client/.../Model.kt` (`RelatedRef` + Card fields); `.../db/Content.sq`;
   `.../ContentStore.kt`.
 - `apps/client/.../cards/DetailScreen.kt` (RELATED section).
