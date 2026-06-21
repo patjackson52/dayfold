@@ -37,10 +37,11 @@ fun main() = application {
     authEngine.restore()               // token store → whoami → route
     syncEngine.resume()                // immediate sync + 45s poll (idles until authed)
   }
-
+  val actions = remember { com.familyai.client.cards.PlatformActions() }
   Window(onCloseRequest = ::exitApplication, title = "Dayfold") {
     FeedApp(
       store,
+      onPlatformAction = actions::perform,
       onSignIn = { provider -> scope.launch { authEngine.signIn(provider); syncEngine.syncNow() } },
       onCreateFamily = { name -> scope.launch { authEngine.createFamily(name); syncEngine.syncNow() } },
     )

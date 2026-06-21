@@ -5,6 +5,7 @@ import { bodyLimit } from "hono/body-limit";
 import { q, pool } from "./db.ts";
 import { stripServerManaged, stampProvenance } from "./security.ts";
 import { BriefingCardSchema } from "./generated/content.ts";
+import { crossValidateCard } from "./content-validation.ts";
 import * as repo from "./repo.ts";
 // Auth imports are lazy (dynamic) so that api.test.ts (no AUTH_* env) can still
 // load app.ts without triggering the module-level env-guard throws in tokens.ts.
@@ -146,6 +147,9 @@ app.put("/families/:fid/cards/:id", async (c) => {
   body = stampProvenance(body, a.cred.id);           // un-forgeable provenance
   const parsed = BriefingCardSchema.safeParse({ ...body, id }); // path id wins
   if (!parsed.success) return c.json({ type: "validation", issues: parsed.error.issues }, 422);
+  // CL-2: type↔payload cross-check (zod validates the two independently).
+  const cross = crossValidateCard(parsed.data as any);
+  if (cross.length) return c.json({ type: "validation", issues: cross }, 422);
   return c.json(await repo.upsertCard(fid, id, parsed.data), 200);
 });
 

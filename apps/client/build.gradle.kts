@@ -45,6 +45,9 @@ kotlin {
         implementation(compose.foundation)
         implementation(compose.material3)
         implementation(compose.ui)
+        // CL-7: BackHandler / PredictiveBackHandler (separate artifact, not pulled
+        // by compose.ui transitively) — enables hardware/gesture back → NavBack.
+        implementation("org.jetbrains.compose.ui:ui-backhandler:1.9.3")
       }
     }
     val androidMain by getting {

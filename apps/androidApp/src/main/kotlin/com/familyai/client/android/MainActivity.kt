@@ -29,6 +29,14 @@ class MainActivity : ComponentActivity() {
     super.onCreate(savedInstanceState)
     val store = createAppStore()
     val cs = ContentStore(DriverFactory(applicationContext).createDriver())
+    // Debug-only: seed the DB with sample cards so the content UI (cards/detail/
+    // transition) is exercisable on-device without a live API. Sync only adds/
+    // tombstones, never wipes these. NOTE (post AUTH-S5): the route gate hides the
+    // feed until Route.Feed (signed-in + active family) — sign in via the dev path
+    // to reach the seeded feed.
+    if (BuildConfig.DEBUG && BuildConfig.FAMILY_ID.isEmpty()) {
+      cs.applyDelta(com.familyai.client.SampleData.cards, emptyList(), null, "2026-06-20T10:00:00Z")
+    }
     val tokenStore = AndroidTokenStore(applicationContext)
     val authEngine = AuthEngine(
       store, AuthClient(BuildConfig.FAMILYAI_API), tokenStore,
@@ -52,10 +60,12 @@ class MainActivity : ComponentActivity() {
         try { awaitCancellation() } finally { syncEngine.pause() }
       }
     }
+    val actions = com.familyai.client.cards.PlatformActions(applicationContext)
     setContent {
       ReduxDevToolsHost(InAppConfig(triggers = setOf(DevToolsTrigger.BUBBLE))) {
         FeedApp(
           store,
+          onPlatformAction = actions::perform,
           onSignIn = { provider -> lifecycleScope.launch { authEngine.signIn(provider); syncEngine.syncNow() } },
           onCreateFamily = { name -> lifecycleScope.launch { authEngine.createFamily(name); syncEngine.syncNow() } },
         )

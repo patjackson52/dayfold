@@ -21,6 +21,7 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
       SyncClient("", familyId = { store.state.activeFamilyId }, token = { store.state.session?.access }),
     )
   }
+  val actions = remember { com.familyai.client.cards.PlatformActions() }
   val scope = rememberCoroutineScope()
   LaunchedEffect(Unit) {
     syncEngine.start()
@@ -29,6 +30,7 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
   }
   FeedApp(
     store,
+    onPlatformAction = actions::perform,
     onSignIn = { provider -> scope.launch { authEngine.signIn(provider); syncEngine.syncNow() } },
     onCreateFamily = { name -> scope.launch { authEngine.createFamily(name); syncEngine.syncNow() } },
   )

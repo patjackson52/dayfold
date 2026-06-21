@@ -36,17 +36,187 @@ blocked** behind a queued Claude-Design expanded-detail pass.
   **static** payload typing (`z.infer`=`any`) → a codegen pass to emit
   `z.discriminatedUnion`; (c) pre-existing `$ref`→`z.any` for id/version/provenance
   (separate codegen issue, not CL-1).
-- **TASK-CL-2** — Server: typed storage + nested validation + keyset sync.
-- **TASK-CL-3** — CLI + Claude-skill typed authoring (the content-API wedge).
-- **TASK-CL-4** — Client data: typed model + SQLDelight + store.
-- **TASK-CL-5** — Client UI: 6 typed Now cards (light+dark, inline actions).
-- **TASK-CL-6** — Client UI: DetailScreen (per-type hero + provenance/privacy).
-- **TASK-CL-7** — Fold gesture: container transform (SharedTransitionLayout;
-  predictive-back needs Compose-MP ≥1.10 — sub-task/risk).
-- **TASK-CL-8** — Related-edges (cross-links / attachment↔email).
+- **TASK-CL-2** — Server: typed storage + nested validation + keyset sync. ✅
+  **DONE** (branch `cl-2-server-typed-storage` off `cl-next`) 2026-06-20.
+  Migration `0005_typed_content.sql` extends `briefing_cards` IN PLACE (D2):
+  nullable `type`/`payload`(jsonb)/`privacy`(jsonb)/`hub_ref` + a `type`-enum
+  CHECK. `repo.upsertCard` carries all 4 (wire `hubRef`→`hub_ref`); `SELECT *`
+  serves them on GET/`/sync` (pg auto-parses jsonb→object). New
+  `content-validation.ts :: crossValidateCard` resolves the **CL-1 follow (a)**:
+  zod validates `type`+`payload` *independently*, so the key↔type tie is
+  enforced ONLY here — typed-iff-payload + payload-key === `type`, legacy
+  kind-only cards still valid; mismatch/orphan → 422. Keyset/tombstone/cursor
+  invariants untouched (no index/trigger change). New `typed-content.test.ts` (7
+  tests: 6-type round-trip incl. sync, mismatch 422, orphan 422, back-compat,
+  tombstone, tenancy-404, cursor-stability); 0005 added to api/auth-e2e/
+  device-approve harnesses. **Full api suite 80 pass / 1 pre-existing skip
+  (14 files); codegen idempotent; `deploy-m0.md` migration step updated to apply
+  all `000*.sql`.** Twice-reviewed (pre-impl adversarial spec review caught the
+  auth-e2e/device-approve harness breakage; final whole-branch review = SHIP).
+  Spec: `docs/superpowers/specs/2026-06-20-cl-2-server-typed-storage-design.md`.
+  **CL-1 follows still open:** (b) static payload typing (`z.infer`=`any`) →
+  codegen `z.discriminatedUnion`; (c) `$ref`→`z.any` for id/version/provenance.
+  **Integrated into `cl-next`** (ff-merge `8f11301`, local; not pushed). **NEXT =
+  CL-4** (client data: typed model + SQLDelight + store).
+- **TASK-CL-3** — CLI typed authoring (content-API wedge). ✅ **DONE**
+  (branch `cl-3-cli-typed-authoring` → integrated into `cl-next`) 2026-06-20.
+  **Operator-authorized** (was INB-18-deferred). CLI now consumes the generated
+  `com.familyai.schema.*` types (srcDir `kotlin-gen` — one source of truth).
+  `familyai push <id> <file> --type <t>` runs **local structural validation**
+  (`validateCard`: strict decode + type↔payload-key cross-check + `--type` assert)
+  and fails fast with field errors before the server; `familyai template <type>`
+  emits a valid starter (6 templates in `src/main/resources/templates/`).
+  Authoring doc `apps/cli/templates/README.md` (incl. Guardrail-3 own-mail
+  constraint + geo `on_device` privacy honesty). **Validator is STRUCTURAL only**
+  — the server (CL-2) stays the authority for `url()`/ISO-datetime/length/int
+  rules; two codegen asymmetries (`kind`/`provenance.at` required locally)
+  documented. **CLI test green** (ValidateTest 8/0, CredentialsTest 2/0; build +
+  `template` smoke verified). Reviewed (final: doc-honesty fix on the
+  "mirrors server" claim → softened). Spec:
+  `docs/superpowers/specs/2026-06-20-cl-3-cli-typed-authoring-design.md`.
+  **Follow:** the deeper-validation (codegen-emitted refinements) + a Claude skill
+  wrapper are later; M0 authoring works now.
+- **TASK-CL-4** — Client data: typed model + SQLDelight + store. ✅ **DONE**
+  (branch `cl-4-client-typed-data` → integrated into `cl-next`) 2026-06-20.
+  `Card` gains `type`/`payload`/`privacy`/`hubRef`; new wrapper `Payload` + 6
+  variant data classes (mirrors generated `BriefingCardPayload` — externally-
+  tagged `{"file":{…}}`, not a sealed interface: matches wire + codegen +
+  simpler). `Content.sq` `card` table + `upsertCard` + `activeCards` carry
+  `type`/`payload`(JSON TEXT)/`privacy`(JSON TEXT)/`hub_ref`. `ContentStore`
+  encodes on write, **guarded per-field decode at the DB→store projection**
+  (off the recomposition path; corrupt JSON → null, card still renders). Wire
+  `@SerialName("hub_ref")` (server `/sync` returns DB-shaped snake rows).
+  ADR 0020 preserved (no new network/store path; cold-start instant). **36
+  desktop tests green** (ContentStoreTest 8: 6-variant round-trip, kind-only
+  back-compat, corrupt-payload guard, wire-decode); **Android + iOS-sim
+  compile**. Twice-reviewed (pre-impl adversarial: caught the activeCards-SELECT
+  omission + decode-once overclaim, fixed; final whole-branch: SHIP). Spec:
+  `docs/superpowers/specs/2026-06-20-cl-4-client-typed-data-design.md`.
+  **Follows (out of scope, filed):** (i) wire-to-`kotlin-gen` — note the
+  server/codegen drift: server emits `hub_ref` but generated `BriefingCard.hubRef`
+  has no `@SerialName`, so the deferred codegen-typing follow must align it; (ii)
+  M0 cache has **no SQLDelight migration** → clear-app-data on schema change
+  (post-M0). **NEXT = CL-5** (6 typed Now cards, light+dark) — gated on CL-0
+  theme (done) + this.
+- **TASK-CL-5** — Client UI: 6 typed Now cards. ✅ **DONE** (branch
+  `cl-5-typed-now-cards` → integrated into `cl-next`) 2026-06-20. `cards/`
+  package: `CardAction` (closed union, **no backend-mutating variant** — read-only
+  ADR 0020), pure `TypedCardLogic` (accent/kicker/body/primary-action
+  derivations, unit-tested), `TypedCards` (6 composables + shared chrome +
+  `TypedCardItem` dispatcher). `FeedScreen` dispatches `type!=null`→typed else
+  legacy `CardItem`; unknown type → safe generic. Visuals run off MaterialTheme
+  **roles** (light+dark correct); invite = coral `primaryContainer` + **solid**
+  accent + **display-only** Yes/No RSVP; contact = avatar + inline Call/Text +
+  Details primary; geo = stylized map strip (no SDK/key/leak). a11y: 48dp
+  targets, decorative tiles `clearAndSetSemantics`, RSVP `contentDescription`.
+  **46 desktop tests green** (TypedCardLogic 5, snapshots 8 incl. 6-type
+  light+dark + 3 RSVP states — PNGs visually verified); **Android + iOS-sim
+  compile**. Twice-reviewed (pre-impl: dropped write-affordances/unknown-type
+  crash risk/a11y; final: caught invite tile-vanish → solid-accent fix). Spec:
+  `docs/superpowers/specs/2026-06-20-cl-5-typed-now-cards-design.md`.
+  **Cut to follows (M0):** per-card loading-skeleton / urgent / dismissed-on-
+  answer states; Material-Symbols glyphs (CL-0b); date-relative kickers.
+  **NEXT = CL-6** (DetailScreen + redux nav). **CL-6 prerequisite:** the
+  `expect/actual PlatformActions` effect layer (perform `CardAction`) — wire
+  `onAction` (currently no-op) through middleware (ADR 0013 Rule E) in each shell.
+- **TASK-CL-6** — Client UI: DetailScreen + redux nav. ✅ **DONE** (branch
+  `cl-6-detail-screen` → integrated into `cl-next`) 2026-06-20. **Nav as app
+  state** (ADR 0013): `AppState.detailStack: List<String>` + `NavToDetail`(push,
+  dedup-top)/`NavBack`(pop); `CardsLoaded` prunes synced-away ids; selector
+  `currentDetailCard` (null→feed). `FeedApp` host: one **remembered** handler
+  routes `OpenDetail`→`dispatch(NavToDetail)`, all other `CardAction`s→shell
+  `PlatformActions`; renders DetailScreen when a card is open else FeedScreen.
+  **DetailScreen**: colored hero header (back/share, solid accent tile+kicker,
+  title) + per-type hero media + safe **actions row** (no Add-to-Hub/Save/RSVP-
+  write — read-only ADR 0020) + **DETAILS** meta list + provenance/**honest
+  privacy** chips. Pure `detailMeta`/`detailActions` (unit-tested). Reuses CL-5
+  chrome (promoted `private`→`internal`). **69 desktop tests green** (Reducer 8
+  nav, DetailMeta 4, snapshots 16 incl. 6 detail types light+dark — invite+contact
+  PNGs visually verified); **Android + iOS-sim compile**. Twice-reviewed (pre-impl:
+  remembered handler + stack-prune + process-death/geo-honesty wording; final:
+  hardware-back + InfoPanel divergence). Spec:
+  `docs/superpowers/specs/2026-06-20-cl-6-detail-screen-design.md`.
+  **M0 cuts → CL-7/follows:** hardware/gesture back→NavBack (no plain BackHandler
+  at compose-MP 1.9.3 → folds into CL-7's PredictiveBackHandler; **interim: Android
+  hardware-back exits the app from detail**); distinct per-type hero media (M0 =
+  generic InfoPanel + geo MapStrip; avatar/date-block/OG/page-preview = fidelity
+  follow); `selectorState` recomposition scoping (perf follow). **NEXT = CL-7**
+  (fold gesture / container transform + wires hardware-back).
+- **TASK-CL-7** — Fold gesture (M0 = **base transition**, per INB-18). ✅ **DONE**
+  (branch `cl-7-base-transition` → integrated into `cl-next`) 2026-06-20. **Spike
+  (recorded):** at Compose-MP **1.9.3** `SharedTransitionLayout` is in the
+  *animation* module and `BackHandler`/`PredictiveBackHandler` are in the separate
+  **`org.jetbrains.compose.ui:ui-backhandler`** artifact (not pulled by
+  `compose.ui` — that's why CL-6's BackHandler didn't resolve). **No ≥1.10 upgrade
+  needed** (the old risk note is wrong). Shipped: added `ui-backhandler` dep;
+  **hardware/gesture back → `NavBack`** in DetailScreen (`BackHandler`, fixes the
+  CL-6 app-exit-from-detail wart); **base feed↔detail transition** via
+  `AnimatedContent` (asymmetric fade+slide, open 320ms / back 240ms). Extracted
+  testable `routeCardAction` (OpenDetail→store nav vs everything→PlatformActions).
+  **72 desktop tests green** (FeedAppHost 3: host renders feed/detail + the
+  route-split branch); **Android + iOS-sim compile**. Reviewed (spike + final =
+  SHIP). Spec: `docs/superpowers/specs/2026-06-20-cl-7-base-transition-design.md`.
+  **→ CL-7b v1 ✅ DONE** (folded into branch `cl-7b-container-transform` →
+  integrated into `cl-next`) 2026-06-20. **SharedTransitionLayout container
+  transform**: feed card ↔ detail share bounds keyed `card-$id`
+  (`cards/SharedScopes.kt` CompositionLocals + `@Composable Modifier.
+  cardSharedBounds`, no-op when scopes absent → snapshots unaffected); `FeedApp`
+  host wraps the `AnimatedContent` swap in `SharedTransitionLayout`; the morph
+  source = `BaseCard` ElevatedCard, target = `DetailScreen` root. Plus a
+  **debug card-seed** (`SampleData` + `MainActivity` gated `BuildConfig.DEBUG &&
+  FAMILY_ID empty`) so the on-device UI is exercisable without an API. **Verified:
+  compiles 3 targets; 76 desktop tests (FeedAppHostTest renders FeedApp WITH
+  SharedTransitionLayout in feed+detail, no crash); base feed→detail→back +
+  hardware-back + seeded feed + RELATED nav all verified LIVE on the emulator.**
+  Reviewed = SHIP. **CL-7b-remaining (spec-sanctioned, on-device iteration):**
+  corner-morph 26→0 + scrim 0→0.18 + content-fade-after-grow tuning;
+  **predictive-back scrub** (PredictiveBackHandler); live mid-transition frame
+  capture (shared emulators were occupied by another agent's app this session).
+  type==null legacy cards fall back to plain crossfade (no morph). Spec:
+  `docs/superpowers/specs/2026-06-20-cl-7-base-transition-design.md`.
+- **TASK-CL-8** — Related-edges (cross-links / attachment↔email). ✅ **DONE**
+  (branch `cl-8-related-edges` → integrated into `cl-next`) 2026-06-20. Schema:
+  `BriefingCard` gains `relatedKicker` + `related[]` edges
+  `{relation, targetId, targetType, title?, sub?}` (denormalized title/sub →
+  renders without resolving; codegen regen TS+Kotlin). **Server:** migration
+  `0006_related.sql` (`related` jsonb + `related_kicker`) + `repo.upsertCard`;
+  `/sync` serves them; regenerated `BriefingCardSchema` strict-rejects bad edges
+  (422). **Client:** `Card.related: List<RelatedRef>?` (+ `@SerialName
+  ("related_kicker")`); `Content.sq` cols + `upsertCard`/`activeCards`;
+  `ContentStore` guarded encode/decode (corrupt → null, card still renders).
+  **UI:** `DetailScreen` RELATED section (header + rows + chevron, 56dp + a11y
+  labels) → `OpenDetail(targetId)` → host `NavToDetail` (detail→detail chaining;
+  **dangling targetId not in cache = no-op**, not a feed dump). **Tenancy:** edges
+  ride `authorizeTenant`; targetId resolved client-side vs OWN cache only (no
+  server resolution → no cross-tenant leak). **76 client tests + 82 api
+  (1-skip)**; detail-related snapshot visually verified; Android + iOS-sim
+  compile. Twice-reviewed (pre-impl caught the `@SerialName`/strict-enum/sq-edit/
+  tenancy-test items; final = SHIP + the dangling-ref no-op fix). Spec:
+  `docs/superpowers/specs/2026-06-20-cl-8-related-edges-design.md`. **Follow
+  (minor):** unbounded A→B→A stack chaining (acceptable M0); resolving live
+  title/sub vs denormalized.
 - **TASK-CL-9** — Map-render strategy spike (ADR 0014 privacy posture).
 - **TASK-CL-10** — Adaptive two-pane detail — **BLOCKED** on a Claude-Design
   expanded-detail pass (design gap; phone-only designed).
+
+- **TASK-CL-PLAT** — Platform action effect layer (CL-6 prerequisite, epic
+  "Platform shims"). ✅ **DONE** (branch `cl-platform-actions` → integrated into
+  `cl-next`) 2026-06-20. `expect class PlatformActions { perform(CardAction) }`
+  (mirrors the `DriverFactory` Context-ctor precedent) + 3 actuals (android
+  `ACTION_VIEW`/clipboard/`ACTION_SEND`; desktop `Desktop.browse`/AWT clipboard;
+  iOS `openURL`/`UIPasteboard`). Pure **`cardActionUri`** vets at one seam —
+  **shared allowlist with `CardRender.ALLOWED_SCHEMES`** (now `internal`, **`sms`
+  added**, https-only); mailto **address-only** (rejects params/CRLF/multi-
+  recipient/`%`); phone allowlist `+`+digits (drops DTMF/USSD); geo `%`-encoded
+  UTF-8 place query (ADR 0014 — never live coords). `OpenDetail` = no-op here
+  (in-app nav → CL-6). All 3 shells construct + pass `onAction = pa::perform`;
+  `FeedApp` gained the param. Read-only (ADR 0020) — every effect is an OS
+  handoff. **54 desktop tests green** (PlatformActions 8: scheme/mailto/phone/geo
+  vetting + desktop smoke); **androidApp + iOS-sim compile**. Twice-reviewed
+  (pre-impl caught 4 vetting holes — all fixed; final = SHIP). Spec:
+  `docs/superpowers/specs/2026-06-20-cl-platform-actions-design.md`. **Now CL-5's
+  Open/Call/Text/Navigate/Reply perform real handoffs on device.** **NEXT = CL-6**
+  (DetailScreen + redux nav — route `OpenDetail` through the nav layer).
 
 ## AUTH (ADR 0021 — S1→S3→S2→S4→S5/S6)
 

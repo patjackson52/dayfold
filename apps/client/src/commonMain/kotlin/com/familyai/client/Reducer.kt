@@ -28,7 +28,17 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
   is SyncStarted -> state.copy(syncing = true, error = null)
   is SyncSucceeded -> state.copy(syncing = false, error = null)
   is SyncFailed -> state.copy(syncing = false, error = action.message)
-  is CardsLoaded -> state.copy(cards = action.cards)   // DB is truth → full replace
+  is CardsLoaded ->                                    // DB is truth → full replace;
+    state.copy(                                         // prune nav stack of synced-away ids
+      cards = action.cards,
+      detailStack = state.detailStack.filter { id -> action.cards.any { it.id == id } },
+    )
+  is NavToDetail ->                                     // push, dedup re-tap of top;
+    // only navigate to a card we actually have — a dangling related-edge targetId
+    // (target not in the family cache) is a no-op, not a jarring dump to the feed.
+    if (state.detailStack.lastOrNull() == action.cardId || state.cards.none { it.id == action.cardId }) state
+    else state.copy(detailStack = state.detailStack + action.cardId)
+  is NavBack -> state.copy(detailStack = state.detailStack.dropLast(1))
 
   // ── auth / session (S5) ──
   is AuthRestoring -> state.copy(route = Route.Loading)
