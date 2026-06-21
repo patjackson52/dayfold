@@ -12,8 +12,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class SyncClientTest {
-  private fun client(engine: MockEngine) =
-    SyncClient("https://api.test", "fam1", "sec", HttpClient(engine))
+  private fun client(engine: MockEngine, fam: String? = "fam1", tok: String? = "sec") =
+    SyncClient("https://api.test", { fam }, { tok }, HttpClient(engine))
 
   @Test fun `fetchPage parses the envelope and forwards since + auth`() = runBlocking {
     var seenSince: String? = "UNSET"; var seenAuth: String? = null
@@ -36,5 +36,13 @@ class SyncClientTest {
   @Test fun `fetchPage throws on non-200`() = runBlocking<Unit> {
     val engine = MockEngine { respond("nope", HttpStatusCode.InternalServerError) }
     assertFailsWith<Exception> { client(engine).fetchPage(null) }
+  }
+
+  @Test fun `fetchPage stays idle (empty page, no request) before sign-in`() = runBlocking {
+    var hit = false
+    val engine = MockEngine { hit = true; respond("", HttpStatusCode.OK) }
+    val resp = client(engine, fam = null, tok = null).fetchPage(null)
+    assertEquals(0, resp.changes.cards.size)
+    assertEquals(false, hit)   // no network call when unauthenticated
   }
 }

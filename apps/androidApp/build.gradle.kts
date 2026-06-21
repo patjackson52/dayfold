@@ -22,6 +22,8 @@ android {
     buildConfigField("String", "FAMILYAI_API", "\"${System.getenv("FAMILYAI_API") ?: "http://10.0.2.2:8799"}\"")
     buildConfigField("String", "FAMILY_ID", "\"${System.getenv("FAMILY_ID") ?: ""}\"")
     buildConfigField("String", "HOUSEHOLD_SECRET", "\"${System.getenv("HOUSEHOLD_SECRET") ?: ""}\"")
+    // S5 dev sign-in (local only; the server hard-refuses dev-token in prod/preview).
+    buildConfigField("String", "DEV_AUTH_SECRET", "\"${System.getenv("DEV_AUTH_SECRET") ?: ""}\"")
   }
 
   buildFeatures { compose = true; buildConfig = true }
