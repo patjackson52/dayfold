@@ -27,8 +27,14 @@ import androidx.compose.ui.unit.dp
 fun FeedScreen(state: AppState) {
   Scaffold(topBar = { TopAppBar(title = { Text("Today") }) }) { pad ->
     if (state.cards.isEmpty()) {
+      // S5: an empty family shows the family-null onboarding (invite/connect),
+      // not a bare "nothing yet". Sync/error keep their terse status.
       Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
-        Text(if (state.syncing) "Syncing…" else state.error ?: "Nothing yet")
+        when {
+          state.syncing -> Text("Syncing…")
+          state.error != null -> Text(state.error)
+          else -> FamilyNullState()
+        }
       }
     } else {
       LazyColumn(
