@@ -1,0 +1,94 @@
+package com.familyai.client
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+// AUTH-S5 T1 — the route gate is pure. These pin every transition the AuthEngine
+// drives, with no I/O.
+class AuthReducerTest {
+  private val sess = Session(access = "a", refresh = "r", userId = "u1")
+  private val active = FamilyMembership("fam1", "The Jacksons", role = "owner", status = "active")
+  private val pending = FamilyMembership("fam2", "Riveras", role = "adult", status = "pending")
+
+  @Test fun `routeFor — no session is SignIn`() {
+    assertEquals(Route.SignIn, routeFor(null, listOf(active)))
+  }
+
+  @Test fun `routeFor — session with an active membership is Feed`() {
+    assertEquals(Route.Feed, routeFor(sess, listOf(active)))
+  }
+
+  @Test fun `routeFor — session with only pending or none is CreateFamily`() {
+    assertEquals(Route.CreateFamily, routeFor(sess, emptyList()))
+    assertEquals(Route.CreateFamily, routeFor(sess, listOf(pending)))
+  }
+
+  @Test fun `cold-start restore with no session lands on SignIn`() {
+    val s = rootReducer(rootReducer(AppState(), AuthRestoring), SessionRestored(null))
+    assertEquals(Route.SignIn, s.route)
+    assertNull(s.session)
+  }
+
+  @Test fun `restoring a saved session waits in Loading until whoami`() {
+    val s = rootReducer(AppState(), SessionRestored(sess))
+    assertEquals(Route.Loading, s.route)
+    assertEquals(sess, s.session)
+  }
+
+  @Test fun `sign-in busy then success then memberships routes to Feed`() {
+    var s = rootReducer(AppState(route = Route.SignIn), SignInRequested("google"))
+    assertTrue(s.authBusy); assertNull(s.authError)
+    s = rootReducer(s, SignInSucceeded(sess))
+    assertFalse(s.authBusy); assertEquals(Route.Loading, s.route); assertEquals(sess, s.session)
+    s = rootReducer(s, MembershipsLoaded(listOf(active)))
+    assertEquals(Route.Feed, s.route)
+    assertEquals("fam1", s.activeFamilyId)
+  }
+
+  @Test fun `sign-in with no families routes to CreateFamily`() {
+    var s = rootReducer(AppState(), SignInSucceeded(sess))
+    s = rootReducer(s, MembershipsLoaded(emptyList()))
+    assertEquals(Route.CreateFamily, s.route)
+    assertNull(s.activeFamilyId)
+  }
+
+  @Test fun `sign-in failure surfaces the error and clears busy`() {
+    var s = rootReducer(AppState(route = Route.SignIn), SignInRequested("apple"))
+    s = rootReducer(s, SignInFailed("network down"))
+    assertFalse(s.authBusy); assertEquals("network down", s.authError)
+    assertEquals(Route.SignIn, s.route)   // failure keeps you on SignIn, doesn't navigate
+  }
+
+  @Test fun `create-family success becomes the active owner family and routes to Feed`() {
+    var s = rootReducer(AppState(session = sess, route = Route.CreateFamily), CreateFamilyRequested("The Jacksons"))
+    assertTrue(s.authBusy)
+    s = rootReducer(s, FamilyCreated("fam1", "The Jacksons"))
+    assertFalse(s.authBusy)
+    assertEquals(Route.Feed, s.route)
+    assertEquals("fam1", s.activeFamilyId)
+    val m = s.families.single()
+    assertEquals("owner", m.role); assertEquals("active", m.status); assertEquals("fam1", m.familyId)
+  }
+
+  @Test fun `create-family failure keeps you on CreateFamily with an error`() {
+    var s = rootReducer(AppState(session = sess, route = Route.CreateFamily), CreateFamilyRequested("X"))
+    s = rootReducer(s, AuthOpFailed("name taken"))
+    assertFalse(s.authBusy); assertEquals("name taken", s.authError); assertEquals(Route.CreateFamily, s.route)
+  }
+
+  @Test fun `sign-out clears session and feed back to SignIn`() {
+    val signedIn = AppState(
+      cards = listOf(Card("c", title = "T")), session = sess,
+      families = listOf(active), activeFamilyId = "fam1", route = Route.Feed,
+    )
+    val s = rootReducer(signedIn, SignedOut)
+    assertEquals(Route.SignIn, s.route)
+    assertNull(s.session)
+    assertTrue(s.families.isEmpty())
+    assertTrue(s.cards.isEmpty())
+    assertNull(s.activeFamilyId)
+  }
+}

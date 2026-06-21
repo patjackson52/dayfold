@@ -81,10 +81,24 @@ API tests / 0 skips. Legacy household token still works.
   Index footer "(no auth)" fixed. Verified outside the dc runtime (extension was
   offline): tag-balance, 36 render-combos through `renderVals()`, all 32 `c.*`
   tokens defined w/ light/dark parity, all frame views ∈ enum. **GATE: operator
-  opens the dc files + signs off → unblocks S5/S6.**
-- **NEXT after sign-off: AUTH-S5/S6** (client identity/onboarding + member/device
-  UI — now design-unblocked) **or AUTH-S2** (Firebase identity — still needs the
-  operator's Firebase vendor/cost go-ahead + the recovery-floor counsel gate).
+  opens the dc files + signs off → unblocks S5/S6.** A8b merged to `main`
+  2026-06-20 (PR #5, `f399583`); operator merged = sign-off.
+- **S2 vendor/cost gate CLEARED — ADR 0023 (operator-directed 2026-06-20):**
+  Firebase **Google + Apple only, Phone-OTP deferred** → no Blaze, no SMS spend
+  ceiling, no SMS-fraud/SIM-swap surface; ADR 0011 architecture intact. S2 is now
+  buildable (recovery-floor counsel gate smaller without phone). **S5/S6 sign-in
+  renders Google + Apple only** — the phone button + OTP/OTP-error screens stay
+  designed-not-built (A8b mockups unchanged).
+- **AUTH-S5 (client identity + onboarding UI) — 🔨 IN PLANNING 2026-06-20**
+  (operator chose "build Firebase-stubbed" via dev-token). Scope split locked:
+  **S5 = authenticated session + onboarding gate** (sign-in [Google/Apple,
+  dev-token stub] → create-family → route-gate to feed); invitee-join flow
+  (invited/waiting/invite-error/already-member) + the provider-link-conflict =
+  **S5 slice 2**; member/device/account management = **S6**. Spec/plan in
+  `docs/superpowers/{specs,plans}/2026-06-20-auth-s5*`. **Client today is
+  single-screen, no nav, no session** (baked `HOUSEHOLD_SECRET`) — S5 introduces
+  the first nav + session/token layer (`AuthClient` dev-token path, expect/actual
+  token store, route-gated `FeedApp`).
 
 **AUTH-S3 (CLI device grant, RFC 8628) — ✅ DONE + MERGED** to `main` 2026-06-19
 (PR #2, all CI green). `/device/{authorize,token}` + `/families/:fid/device/{approve,deny}`
