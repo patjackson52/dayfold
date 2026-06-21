@@ -125,8 +125,26 @@ blocked** behind a queued Claude-Design expanded-detail pass.
   generic InfoPanel + geo MapStrip; avatar/date-block/OG/page-preview = fidelity
   follow); `selectorState` recomposition scoping (perf follow). **NEXT = CL-7**
   (fold gesture / container transform + wires hardware-back).
-- **TASK-CL-7** — Fold gesture: container transform (SharedTransitionLayout;
-  predictive-back needs Compose-MP ≥1.10 — sub-task/risk).
+- **TASK-CL-7** — Fold gesture (M0 = **base transition**, per INB-18). ✅ **DONE**
+  (branch `cl-7-base-transition` → integrated into `cl-next`) 2026-06-20. **Spike
+  (recorded):** at Compose-MP **1.9.3** `SharedTransitionLayout` is in the
+  *animation* module and `BackHandler`/`PredictiveBackHandler` are in the separate
+  **`org.jetbrains.compose.ui:ui-backhandler`** artifact (not pulled by
+  `compose.ui` — that's why CL-6's BackHandler didn't resolve). **No ≥1.10 upgrade
+  needed** (the old risk note is wrong). Shipped: added `ui-backhandler` dep;
+  **hardware/gesture back → `NavBack`** in DetailScreen (`BackHandler`, fixes the
+  CL-6 app-exit-from-detail wart); **base feed↔detail transition** via
+  `AnimatedContent` (asymmetric fade+slide, open 320ms / back 240ms). Extracted
+  testable `routeCardAction` (OpenDetail→store nav vs everything→PlatformActions).
+  **72 desktop tests green** (FeedAppHost 3: host renders feed/detail + the
+  route-split branch); **Android + iOS-sim compile**. Reviewed (spike + final =
+  SHIP). Spec: `docs/superpowers/specs/2026-06-20-cl-7-base-transition-design.md`.
+  **→ CL-7b (polish follow, unblocked):** the full **SharedTransitionLayout
+  container transform** (shared `card-$id` bounds card→full, corner morph 26→0,
+  content-fade-after-grow, scrim) + **predictive-back scrub** — deferred because
+  shared-element animation correctness needs on-device iteration (can't verify
+  headlessly). Also: animation smoothness of the base transition = on-device
+  manual check.
 - **TASK-CL-8** — Related-edges (cross-links / attachment↔email).
 - **TASK-CL-9** — Map-render strategy spike (ADR 0014 privacy posture).
 - **TASK-CL-10** — Adaptive two-pane detail — **BLOCKED** on a Claude-Design

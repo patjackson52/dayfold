@@ -26,6 +26,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.ExperimentalComposeUiApi
 import com.familyai.client.Card
 
 // CL-6 — full-screen per-type detail (mockup designs/content/Detail-Phone.dc.html).
@@ -34,12 +35,13 @@ import com.familyai.client.Card
 // vetted CardAction seam (CL-PLAT). RELATED rows = CL-8; the container-transform =
 // CL-7 (M0 is a plain feed↔detail swap). Reuses the CL-5 chrome (internal).
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DetailScreen(card: Card, onBack: () -> Unit, onAction: (CardAction) -> Unit) {
-  // M0: back is the on-screen "← Back" only. HARDWARE/gesture back (Android) +
-  // interactive-pop (iOS) → NavBack is deferred to CL-7, which wires
-  // PredictiveBackHandler (present at Compose-MP 1.9.3; the `ui` module has no
-  // plain BackHandler composable at this version). Tracked as a CL-7 prerequisite.
+  // CL-7: hardware/gesture back (Android) + interactive-pop (iOS) → NavBack, so
+  // back returns to the feed instead of exiting. Predictive-back SCRUB animation
+  // is the CL-7b polish follow; this plain handler is the base.
+  androidx.compose.ui.backhandler.BackHandler(enabled = true) { onBack() }
   val accent = accentFor(card.type)
   val (heroBg, heroFg) = accentColors(accent, solid = false) // container + onContainer (AA)
   Column(Modifier.fillMaxSize()) {
