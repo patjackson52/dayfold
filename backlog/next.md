@@ -81,10 +81,34 @@ API tests / 0 skips. Legacy household token still works.
   Index footer "(no auth)" fixed. Verified outside the dc runtime (extension was
   offline): tag-balance, 36 render-combos through `renderVals()`, all 32 `c.*`
   tokens defined w/ light/dark parity, all frame views ∈ enum. **GATE: operator
-  opens the dc files + signs off → unblocks S5/S6.**
-- **NEXT after sign-off: AUTH-S5/S6** (client identity/onboarding + member/device
-  UI — now design-unblocked) **or AUTH-S2** (Firebase identity — still needs the
-  operator's Firebase vendor/cost go-ahead + the recovery-floor counsel gate).
+  opens the dc files + signs off → unblocks S5/S6.** A8b merged to `main`
+  2026-06-20 (PR #5, `f399583`); operator merged = sign-off.
+- **S2 vendor/cost gate CLEARED — ADR 0023 (operator-directed 2026-06-20):**
+  Firebase **Google + Apple only, Phone-OTP deferred** → no Blaze, no SMS spend
+  ceiling, no SMS-fraud/SIM-swap surface; ADR 0011 architecture intact. S2 is now
+  buildable (recovery-floor counsel gate smaller without phone). **S5/S6 sign-in
+  renders Google + Apple only** — the phone button + OTP/OTP-error screens stay
+  designed-not-built (A8b mockups unchanged).
+- **AUTH-S5 slice-1 (authenticated session + onboarding gate) — ✅ DONE 2026-06-20
+  (branch `auth-s5`, PR pending).** Firebase-stubbed via dev-token (operator-chosen).
+  Introduced the app's **first navigation** (pure `when(route)` gate, ADR 0013) +
+  the **session/token layer**. T1 route gate · T2 `AuthClient` (ktor) · T3
+  `TokenStore` (desktop 0600 / Android prefs / iOS NSUserDefaults) · T4 `AuthEngine`
+  (mutex orchestrator + 401 refresh-and-retry) · T5 Dayfold screens (sign-in
+  Google/Apple, create-family, family-null) + 9 snapshots vs mockups · T6 wired
+  all 3 shells + `SyncClient`→token/family providers. **Verified:** 74 desktopTest
+  green, android compiles, iOS framework links, **LIVE ROUND-TRIP PASS**
+  (`apps/api/scripts/s5-roundtrip.mjs`: dev-token→whoami→create-family→push→sync).
+  No `HOUSEHOLD_SECRET` on the JWT path. Spec/plan in `docs/superpowers/{specs,
+  plans}/2026-06-20-auth-s5*`.
+  - **S5 slice-1 follows (non-blocking):** (1) `SyncEngine` 401→`AuthEngine.refresh`
+    hook (mid-session access-expiry mid-poll; restore already refreshes); (2) secure
+    token stores (EncryptedSharedPreferences / Keychain); (3) immediate post-create
+    sync polish; (4) a Feed sign-out affordance.
+  - **NEXT: AUTH-S5 slice-2** (invitee-join: invited/waiting/invite-error/
+    already-member + provider-link-conflict) · **S6** (invite gen, authorize-device,
+    members+approvals, devices, account) · **S2** (real Firebase Google/Apple behind
+    the same buttons — gate cleared by ADR 0023).
 
 **AUTH-S3 (CLI device grant, RFC 8628) — ✅ DONE + MERGED** to `main` 2026-06-19
 (PR #2, all CI green). `/device/{authorize,token}` + `/families/:fid/device/{approve,deny}`

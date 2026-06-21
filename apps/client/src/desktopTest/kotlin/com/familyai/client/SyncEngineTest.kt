@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
 class SyncEngineTest {
   private fun freshStore() = ContentStore.create(JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY))
   private fun syncClient(engine: MockEngine) =
-    SyncClient("https://api.test", "fam1", "sec", HttpClient(engine))
+    SyncClient("https://api.test", { "fam1" }, { "sec" }, HttpClient(engine))
   private fun engine(cs: ContentStore, sc: SyncClient) =
     SyncEngine(createAppStore(debug = false), cs, sc, nowProvider = { "2026-06-18T10:00:00Z" })
 

@@ -8,13 +8,58 @@ import org.reduxkotlin.devtools.DevToolsConfig
 import org.reduxkotlin.devtools.devTools
 import org.reduxkotlin.threadsafe.createThreadSafeStore
 
+// The route gate (pure): derived from (session, families). Family-null is a Feed
+// substate, not a route. No session → SignIn; session + an active membership →
+// Feed; session but only pending/none → CreateFamily (slice-1: the only way in is
+// to create a family; invitee-join is slice 2).
+fun routeFor(session: Session?, families: List<FamilyMembership>): Route = when {
+  session == null -> Route.SignIn
+  families.any { it.status == "active" } -> Route.Feed
+  else -> Route.CreateFamily
+}
+
+fun activeFamilyIdFor(families: List<FamilyMembership>): String? =
+  families.firstOrNull { it.status == "active" }?.familyId
+
 // Hand-written root reducer (locked decision: no combineReducers). Card data
 // arrives only via CardsLoaded (DB→store bridge); sync actions carry status only.
+// Auth actions (S5) recompute route/activeFamilyId from (session, families).
 fun rootReducer(state: AppState, action: Any): AppState = when (action) {
   is SyncStarted -> state.copy(syncing = true, error = null)
   is SyncSucceeded -> state.copy(syncing = false, error = null)
   is SyncFailed -> state.copy(syncing = false, error = action.message)
   is CardsLoaded -> state.copy(cards = action.cards)   // DB is truth → full replace
+
+  // ── auth / session (S5) ──
+  is AuthRestoring -> state.copy(route = Route.Loading)
+  is SessionRestored -> state.copy(
+    session = action.session,
+    route = if (action.session == null) Route.SignIn else Route.Loading, // whoami next
+  )
+  is SignInRequested -> state.copy(authBusy = true, authError = null)
+  is SignInSucceeded -> state.copy(
+    session = action.session, authBusy = false, authError = null,
+    route = Route.Loading,                              // await MembershipsLoaded
+  )
+  is SignInFailed -> state.copy(authBusy = false, authError = action.message)
+  is SessionRotated -> state.copy(session = action.session)   // refresh-and-retry; route unchanged
+  is MembershipsLoaded -> state.copy(
+    families = action.families,
+    activeFamilyId = activeFamilyIdFor(action.families),
+    route = routeFor(state.session, action.families),
+  )
+  is CreateFamilyRequested -> state.copy(authBusy = true, authError = null)
+  is FamilyCreated -> {
+    val fams = state.families + FamilyMembership(action.familyId, action.name, role = "owner", status = "active")
+    state.copy(
+      families = fams, activeFamilyId = action.familyId, authBusy = false, authError = null,
+      route = routeFor(state.session, fams),
+    )
+  }
+  is AuthOpFailed -> state.copy(authBusy = false, authError = action.message)
+  is SignedOut -> AppState(route = Route.SignIn)        // clear session + feed
+  // SignOutRequested is an effect trigger (AuthEngine); no state change until SignedOut.
+
   else -> state
 }
 
