@@ -160,6 +160,22 @@ app.get("/families/:fid/cards", async (c) => {
   return c.json(await repo.listCards(fid));
 });
 
+// Active member roster (member-gated — every member can see who's in the family).
+// Pending members live in GET /invites (owner-gated approval queue), not here.
+app.get("/families/:fid/members", async (c) => {
+  const fid = c.req.param("fid");
+  const a = await authorizeTenant(c, fid);
+  if ("status" in a) return c.body(null, a.status);
+  const rows = await q(
+    `SELECT m.user_id AS uid, u.display_name, m.role, m.status, m.joined_at
+       FROM memberships m JOIN users u ON u.id = m.user_id
+      WHERE m.family_id = $1 AND m.status = 'active'
+      ORDER BY (m.role = 'owner') DESC, m.joined_at`,
+    [fid],
+  );
+  return c.json({ members: rows.rows });
+});
+
 app.delete("/families/:fid/cards/:id", async (c) => {
   const fid = c.req.param("fid"), id = c.req.param("id");
   const a = await authorizeTenant(c, fid);
