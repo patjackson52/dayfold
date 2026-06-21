@@ -91,11 +91,13 @@ class AuthClientTest {
 
   @Test fun `devToken throws on a rejected dev secret`() = runBlocking<Unit> {
     val engine = MockEngine { respond("forbidden", HttpStatusCode.Forbidden) }
-    assertFailsWith<IllegalArgumentException> { client(engine).devToken("dev", "alice", "WRONG") }
+    val ex = assertFailsWith<AuthHttpException> { client(engine).devToken("dev", "alice", "WRONG") }
+    assertEquals(403, ex.status)
   }
 
   @Test fun `createFamily throws on a 4xx`() = runBlocking<Unit> {
     val engine = MockEngine { respond("bad", HttpStatusCode.BadRequest) }
-    assertFailsWith<IllegalArgumentException> { client(engine).createFamily("ACCESS", "") }
+    val ex = assertFailsWith<AuthHttpException> { client(engine).createFamily("ACCESS", "") }
+    assertEquals(400, ex.status)
   }
 }

@@ -21,6 +21,11 @@ import kotlinx.serialization.json.Json
 // (POST /auth/dev-token, local/test only — the server hard-refuses it in
 // prod/preview, ADR 0021 §4). S2 swaps that one call for a Firebase ID-token
 // verify behind the same Google/Apple buttons; the rest is unchanged.
+// Non-2xx from an auth endpoint. `status` lets the engine branch — notably
+// 401 → refresh-and-retry (the access token is short-lived, 5m).
+class AuthHttpException(val status: Int, val endpoint: String) :
+  Exception("$endpoint HTTP $status")
+
 class AuthClient(
   private val api: String,
   private val http: HttpClient = HttpClient(),
@@ -39,7 +44,7 @@ class AuthClient(
       contentType(ContentType.Application.Json)
       setBody(json.encodeToString(DevTokenReq.serializer(), DevTokenReq(provider, providerUid)))
     }
-    require(resp.status.value == 200) { "dev-token HTTP ${resp.status.value}" }
+    if (resp.status.value != 200) throw AuthHttpException(resp.status.value, "dev-token")
     val t = json.decodeFromString(TokenResp.serializer(), resp.bodyAsText())
     return Session(access = t.access, refresh = t.refresh)
   }
@@ -47,7 +52,7 @@ class AuthClient(
   /** GET /auth/whoami (Bearer access) → the caller's memberships. */
   suspend fun whoami(access: String): WhoamiResponse {
     val resp = http.get("$api/auth/whoami") { header("authorization", "Bearer $access") }
-    require(resp.status.value == 200) { "whoami HTTP ${resp.status.value}" }
+    if (resp.status.value != 200) throw AuthHttpException(resp.status.value, "whoami")
     return json.decodeFromString(WhoamiResponse.serializer(), resp.bodyAsText())
   }
 
@@ -58,7 +63,7 @@ class AuthClient(
       contentType(ContentType.Application.Json)
       setBody(json.encodeToString(CreateFamilyReq.serializer(), CreateFamilyReq(name)))
     }
-    require(resp.status.value in 200..201) { "create-family HTTP ${resp.status.value}" }
+    if (resp.status.value !in 200..201) throw AuthHttpException(resp.status.value, "create-family")
     return json.decodeFromString(CreateFamilyResp.serializer(), resp.bodyAsText()).familyId
   }
 
@@ -68,7 +73,7 @@ class AuthClient(
       contentType(ContentType.Application.Json)
       setBody(json.encodeToString(RefreshReq.serializer(), RefreshReq(refreshToken)))
     }
-    require(resp.status.value == 200) { "refresh HTTP ${resp.status.value}" }
+    if (resp.status.value != 200) throw AuthHttpException(resp.status.value, "refresh")
     val t = json.decodeFromString(TokenResp.serializer(), resp.bodyAsText())
     return Session(access = t.access, refresh = t.refresh)
   }
@@ -76,7 +81,7 @@ class AuthClient(
   /** POST /auth/signout (Bearer access) — revokes the credential + all its refresh tokens. */
   suspend fun signout(access: String) {
     val resp = http.post("$api/auth/signout") { header("authorization", "Bearer $access") }
-    require(resp.status.value in 200..204) { "signout HTTP ${resp.status.value}" }
+    if (resp.status.value !in 200..204) throw AuthHttpException(resp.status.value, "signout")
   }
 }
 

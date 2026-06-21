@@ -94,6 +94,7 @@ data class SessionRestored(val session: Session?) : Action // null → SignIn; n
 data class SignInRequested(val provider: String) : Action  // "google" | "apple" (dev build → dev-token)
 data class SignInSucceeded(val session: Session) : Action  // → Loading until MembershipsLoaded
 data class SignInFailed(val message: String) : Action
+data class SessionRotated(val session: Session) : Action    // refresh swapped the tokens; no nav change
 data class MembershipsLoaded(val families: List<FamilyMembership>) : Action // → Feed | CreateFamily
 data class CreateFamilyRequested(val name: String) : Action
 data class FamilyCreated(val familyId: String, val name: String) : Action   // → Feed (owner, active)

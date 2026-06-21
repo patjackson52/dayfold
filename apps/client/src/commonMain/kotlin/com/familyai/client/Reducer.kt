@@ -42,6 +42,7 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
     route = Route.Loading,                              // await MembershipsLoaded
   )
   is SignInFailed -> state.copy(authBusy = false, authError = action.message)
+  is SessionRotated -> state.copy(session = action.session)   // refresh-and-retry; route unchanged
   is MembershipsLoaded -> state.copy(
     families = action.families,
     activeFamilyId = activeFamilyIdFor(action.families),
