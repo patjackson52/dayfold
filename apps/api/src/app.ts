@@ -116,6 +116,26 @@ app.get("/auth/whoami", async (c) => {
   return c.json({ family_id, families: r.rows });
 });
 
+// Data export (guardrail #4 — honor data-export on request). The caller's own
+// data only; NO secrets (refresh hashes, token hashes) ever leave. Read-only.
+app.get("/auth/me/export", async (c) => {
+  const t = bearer(c); if (!t) return c.body(null, 401);
+  let sub: string, cid: string;
+  try { const { verifyAccess } = await import("./auth/tokens.ts"); ({ sub, cid } = await verifyAccess(t)); }
+  catch { return c.body(null, 401); }
+  const cred = await q(`SELECT 1 FROM credentials WHERE id=$1 AND revoked_at IS NULL`, [cid]);
+  if (!cred || cred.rowCount === 0) return c.body(null, 401);
+  const user = (await q(`SELECT id, display_name, created_at FROM users WHERE id=$1 AND deleted_at IS NULL`, [sub])).rows[0];
+  if (!user) return c.body(null, 401);
+  const identities = (await q(`SELECT provider, email_verified, created_at FROM user_identities WHERE user_id=$1 ORDER BY created_at`, [sub])).rows;
+  const memberships = (await q(
+    `SELECT m.family_id, f.name AS family_name, m.role, m.status, m.joined_at
+       FROM memberships m JOIN families f ON f.id=m.family_id WHERE m.user_id=$1 ORDER BY m.created_at`, [sub])).rows;
+  const credentials = (await q(
+    `SELECT kind, scopes, label, last_used_at, created_at FROM credentials WHERE user_id=$1 AND revoked_at IS NULL ORDER BY created_at`, [sub])).rows;
+  return c.json({ exported_at: new Date().toISOString(), user, identities, memberships, credentials });
+});
+
 app.post("/families", async (c) => {
   const t = bearer(c); if (!t) return c.body(null, 401);
   let sub: string;
