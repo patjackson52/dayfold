@@ -200,6 +200,36 @@ app.delete("/auth/me/credentials/:id", async (c) => {
   return c.body(null, 204);
 });
 
+// Soft-delete the caller's account (operator-chosen: soft). Guarded by the
+// ADR-0011 last-owner invariant: a SOLE active owner of a family that still has
+// OTHER active members must transfer ownership first (→ 409 transfer-required;
+// promote a member via /members/:uid:promote). Otherwise: mark users.deleted_at,
+// drop the user's memberships to 'removed', and revoke ALL their credentials
+// (every session/CLI dies on its next request via the not-revoked gate). A purge
+// job hard-deletes later. Apple revokeToken folds in at S2 (Apple not built yet).
+app.delete("/auth/me", async (c) => {
+  const t = bearer(c); if (!t) return c.body(null, 401);
+  let sub: string, cid: string;
+  try { const { verifyAccess } = await import("./auth/tokens.ts"); ({ sub, cid } = await verifyAccess(t)); }
+  catch { return c.body(null, 401); }
+  const self = await q(`SELECT 1 FROM credentials WHERE id=$1 AND revoked_at IS NULL`, [cid]);
+  if (!self || self.rowCount === 0) return c.body(null, 401);
+  // families where the caller is the SOLE active owner AND others still belong
+  const blocked = await q(
+    `SELECT m.family_id, f.name FROM memberships m JOIN families f ON f.id=m.family_id
+      WHERE m.user_id=$1 AND m.role='owner' AND m.status='active'
+        AND (SELECT count(*) FROM memberships o WHERE o.family_id=m.family_id AND o.role='owner' AND o.status='active' AND o.user_id<>$1)=0
+        AND (SELECT count(*) FROM memberships x WHERE x.family_id=m.family_id AND x.status='active' AND x.user_id<>$1)>0`,
+    [sub]);
+  if (blocked.rowCount && blocked.rowCount > 0)
+    return c.json({ type: "transfer-required", families: blocked.rows }, 409);
+  await q(`UPDATE users SET deleted_at=now() WHERE id=$1 AND deleted_at IS NULL`, [sub]);
+  await q(`UPDATE memberships SET status='removed', updated_at=now() WHERE user_id=$1 AND status<>'removed'`, [sub]);
+  await q(`UPDATE credentials SET revoked_at=now() WHERE user_id=$1 AND revoked_at IS NULL`, [sub]);
+  (await import("./auth/audit.ts")).audit("account.soft_delete", { actorUserId: sub });
+  return c.body(null, 204);
+});
+
 app.post("/families", async (c) => {
   const t = bearer(c); if (!t) return c.body(null, 401);
   let sub: string;
@@ -408,9 +438,17 @@ app.post("/families/:fid/members/*", async (c) => {
   if (colonIdx === -1) return c.body(null, 404);
   const uid = seg.slice(0, colonIdx);
   const action = seg.slice(colonIdx + 1);
-  if (action !== "approve" && action !== "decline") return c.body(null, 404);
+  if (action !== "approve" && action !== "decline" && action !== "promote") return c.body(null, 404);
   const g = await ownerGate(c, fid); if ("status" in g) return c.body(null, g.status);
-  if (action === "approve") {
+  if (action === "promote") {
+    // Transfer/share ownership: promote an active member to owner so a sole owner
+    // can delete/leave (ADR 0011 last-owner invariant). Idempotent.
+    const r = await q(`UPDATE memberships SET role='owner', updated_at=now() WHERE user_id=$1 AND family_id=$2 AND status='active' AND role<>'owner' RETURNING 1`, [uid, fid]);
+    if (r.rowCount === 1) { (await import("./auth/audit.ts")).audit("member.promote", { actorUserId: g.sub, familyId: fid, detail:{ uid } }); return c.body(null, 204); }
+    const cur = await q(`SELECT role, status FROM memberships WHERE user_id=$1 AND family_id=$2`, [uid, fid]);
+    if (cur.rowCount === 0 || cur.rows[0].status !== "active") return c.body(null, 404);
+    return c.body(null, 200);   // already an owner
+  } else if (action === "approve") {
     const r = await q(`UPDATE memberships SET status='active', joined_at=now() WHERE user_id=$1 AND family_id=$2 AND status='pending' RETURNING role`, [uid, fid]);
     if (r.rowCount === 1) { (await import("./auth/audit.ts")).audit("invite.approve", { actorUserId: g.sub, familyId: fid, detail:{ uid } }); return c.body(null, 204); }
     const cur = await q(`SELECT status FROM memberships WHERE user_id=$1 AND family_id=$2`, [uid, fid]);
