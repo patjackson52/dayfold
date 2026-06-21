@@ -73,10 +73,14 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
   // SignOutRequested is an effect trigger (AuthEngine); no state change until SignedOut.
 
   // ── invitee-join (S5 slice-2) ──
+  is OpenJoinInvite -> state.copy(route = Route.JoinInvite, joinBusy = false, joinOutcome = null, joinFamilyName = null)
   is RedeemRequested -> state.copy(joinBusy = true, joinOutcome = null)
   is InviteRedeemed -> state.copy(joinBusy = false, joinOutcome = "waiting", joinFamilyName = action.familyName)
   is InviteRejected -> state.copy(joinBusy = false, joinOutcome = action.reason)
-  is JoinDismissed -> state.copy(joinBusy = false, joinOutcome = null, joinFamilyName = null)
+  is JoinDismissed -> state.copy(
+    joinBusy = false, joinOutcome = null, joinFamilyName = null,
+    route = routeFor(state.session, state.families),    // exit the join flow → gate (CreateFamily/Feed)
+  )
 
   else -> state
 }

@@ -42,4 +42,16 @@ class AuthScreensSnapshotTest {
   )
   @Test fun account() = snap("auth-account") { AccountScreen(acctState) }
   @Test fun accountDark() = snap("auth-account-dark", dark = true) { AccountScreen(acctState) }
+
+  // invitee-join (slice-2b)
+  @Test fun joinEntry() = snap("auth-join-entry") { JoinInviteScreen(AppState(route = Route.JoinInvite)) }
+  @Test fun joinWaiting() = snap("auth-join-waiting") {
+    JoinInviteScreen(AppState(route = Route.JoinInvite, joinOutcome = "waiting", joinFamilyName = "The Riveras"))
+  }
+  @Test fun joinLocked() = snap("auth-join-locked") {
+    JoinInviteScreen(AppState(route = Route.JoinInvite, joinOutcome = "locked"))
+  }
+  @Test fun joinError() = snap("auth-join-error", dark = true) {
+    JoinInviteScreen(AppState(route = Route.JoinInvite, joinOutcome = "error"))
+  }
 }

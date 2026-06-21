@@ -150,7 +150,7 @@ data class FamilyMembership(
 // The app's first navigation surface (ADR 0013: f(state)→UI, no nav library).
 // Family-null is a Feed SUBSTATE (the active family has no members yet), not a
 // route — keeps the gate minimal.
-enum class Route { Loading, SignIn, CreateFamily, Feed, Account }
+enum class Route { Loading, SignIn, CreateFamily, Feed, Account, JoinInvite }
 
 // Redux state (client state tree). The feed cursor lives in the DB (sync_meta),
 // not here — the store is a projection of the DB. The auth fields below are the
@@ -210,7 +210,8 @@ data object SignOutRequested : Action
 data object SignedOut : Action                             // clears session + feed → SignIn
 // invitee-join (S5 slice-2). RedeemRequested is an effect trigger (AuthEngine);
 // InviteRedeemed/Rejected carry the outcome the join screen renders.
+data object OpenJoinInvite : Action                           // CreateFamily → the paste-invite screen
 data class RedeemRequested(val token: String) : Action
 data class InviteRedeemed(val familyName: String?) : Action   // success → pending, waiting for approval
 data class InviteRejected(val reason: String) : Action        // expired | locked | already | removed | error
-data object JoinDismissed : Action                            // leave a join result
+data object JoinDismissed : Action                            // leave the join flow → back to the gate

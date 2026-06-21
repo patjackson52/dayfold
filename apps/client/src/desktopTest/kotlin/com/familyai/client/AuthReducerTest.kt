@@ -89,6 +89,17 @@ class AuthReducerTest {
     assertEquals("fam1", closed.activeFamilyId)
   }
 
+  @Test fun `open join-invite routes there and dismiss returns to the gate`() {
+    val opened = rootReducer(AppState(session = sess, route = Route.CreateFamily), OpenJoinInvite)
+    assertEquals(Route.JoinInvite, opened.route)
+    assertNull(opened.joinOutcome)
+    val waiting = rootReducer(opened, InviteRedeemed("Riveras"))
+    assertEquals("waiting", waiting.joinOutcome)
+    val dismissed = rootReducer(waiting, JoinDismissed)
+    assertEquals(Route.CreateFamily, dismissed.route)   // no active family → back to CreateFamily
+    assertNull(dismissed.joinOutcome)
+  }
+
   @Test fun `invitee-join outcomes (waiting then dismiss, and a rejection)`() {
     var s = rootReducer(AppState(session = sess), RedeemRequested("tok"))
     assertTrue(s.joinBusy); assertNull(s.joinOutcome)

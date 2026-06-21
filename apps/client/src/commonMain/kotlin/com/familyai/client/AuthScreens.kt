@@ -210,6 +210,7 @@ fun CreateFamilyScreen(
   error: String? = null,
   initialName: String = "",
   onCreate: (String) -> Unit = {},
+  onJoinInvite: () -> Unit = {},
 ) {
   val cs = MaterialTheme.colorScheme
   var name by remember { mutableStateOf(initialName) }
@@ -246,6 +247,17 @@ fun CreateFamilyScreen(
       container = cs.primary, content = cs.onPrimary,
       enabled = !busy && name.isNotBlank(), onClick = { onCreate(name.trim()) },
     )
+    Spacer(Modifier.height(14.dp))
+    // invitee path — someone shared an invite with you
+    Box(
+      Modifier.fillMaxWidth().clickable(onClick = onJoinInvite),
+      contentAlignment = Alignment.Center,
+    ) {
+      Text(
+        "Have an invite? Join a family",
+        style = MaterialTheme.typography.labelLarge, color = cs.primary,
+      )
+    }
   }
 }
 
