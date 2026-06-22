@@ -115,10 +115,30 @@ proof). Responses: `200 {access, refresh}` · `400 missing-id-token` ·
 
 ## 9. Status checklist
 
+**Firebase project provisioned 2026-06-22 — real project id `dayfold-app`** (the
+CI emulator keeps the arbitrary `dayfold-test`). Google enabled (support email
+set, public-facing name "Dayfold"); Android app `com.sloopworks.dayfold`
+registered with the debug SHA-1; `google-services.json` in `apps/androidApp/`.
+
 - [x] ADR 0027 (verify mechanism + test topology + target)
 - [x] Backend `FirebaseVerifier` (JWKS + emulator mode + prod gate) + `/auth/firebase`
 - [x] Backend tests (12 hermetic) + CI emulator integration job (3 gated)
 - [x] Client `firebaseToken` + `FirebaseSignIn` seam + `AuthEngine` wiring + 4 tests
-- [ ] Android Credential Manager `FirebaseSignIn` impl + `MainActivity` wiring *(blocked: §6)*
-- [ ] Operator console steps (§6)
-- [ ] On-device + preview manual QA
+- [x] Android Credential Manager `FirebaseSignIn` impl + `MainActivity` wiring
+      (`:androidApp:assembleDebug` green; emulator fires Credential Manager + GMS)
+- [x] Firebase console steps (Google provider, Android app, debug SHA-1, config file)
+- [x] Vercel `FIREBASE_PROJECT_ID=dayfold-app` — **Production** set (Preview pending)
+- [ ] **Release** SHA-1 (Play App Signing) added to Firebase — for release builds
+- [ ] Full on-device Google login (needs a Google account on the device/emulator)
+- [ ] Defense-in-depth: restrict the Android API key (package+SHA-1) + enable App Check
+
+### `google-services.json` handling (public repo)
+
+Gitignored (`apps/androidApp/google-services.json`), **not committed** — the repo
+is public and the file carries the project's API key + OAuth client ids. Builds get
+it per-env:
+- **Local/dogfood:** download once from the console → `apps/androidApp/`.
+- **CI (when an Android build job is added):** decode a base64 GitHub Actions
+  secret (`GOOGLE_SERVICES_JSON`) into `apps/androidApp/google-services.json`
+  before the build. The current CI Android jobs don't build `:androidApp`, so no
+  job breaks today; add the inject step when one does.
