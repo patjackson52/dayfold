@@ -4,15 +4,24 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.reduxkotlin.Store
 
+/**
+ * Platform seam for obtaining a Firebase ID token for [provider] ("google" /
+ * "apple") — S2 (ADR 0023/0027). Android wires Credential Manager + Google;
+ * desktop/iOS return null until their native flows land. Returns null when the
+ * platform can't produce a token (no Firebase config yet, or the user cancelled)
+ * → AuthEngine falls back to the dev-token path.
+ */
+fun interface FirebaseSignIn { suspend fun idToken(provider: String): String? }
+
 // AUTH-S5 T4 — orchestrates the session lifecycle (mirrors SyncEngine): sequences
 // AuthClient I/O + TokenStore persistence and dispatches the auth actions. Pure
 // state transitions live in the reducer (T1); all effects live here.
 //
-// Firebase-stubbed at S5: sign-in mints a session through the gated dev-token
-// endpoint using a single configured dev identity (the operator's dogfood
-// account) — the Google/Apple button the user taps is cosmetic until S2 wires
-// real providers behind it. `devSecret == null` ⇒ no dev path (a shipped build
-// without Firebase yet) → sign-in fails closed with a clear message.
+// Sign-in (S2, ADR 0023/0027): if a [firebaseSignIn] seam yields a Firebase ID
+// token for the tapped provider, POST /auth/firebase mints a real session. Else
+// it falls back to the gated dev-token path (local/test; the operator's dogfood
+// identity). `firebaseSignIn == null && devSecret == null` ⇒ no path → sign-in
+// fails closed with a clear message (a shipped build without Firebase config).
 class AuthEngine(
   private val store: Store<AppState>,
   private val authClient: AuthClient,
@@ -20,6 +29,7 @@ class AuthEngine(
   private val devSecret: String? = null,
   private val devProvider: String = "dev",
   private val devProviderUid: String = "dev-user",
+  private val firebaseSignIn: FirebaseSignIn? = null,
 ) {
   private val mutex = Mutex()
 
@@ -35,13 +45,16 @@ class AuthEngine(
     loadMemberships(saved)                      // 401 → refresh-and-retry
   }
 
-  /** Sign in (S5 stub): dev-token → persist → resolve memberships. */
+  /** Sign in: real Firebase ID token if the platform yields one, else dev-token. */
   suspend fun signIn(provider: String) = mutex.withLock {
     store.dispatch(SignInRequested(provider))
     try {
-      val secret = devSecret
-        ?: throw IllegalStateException("Sign-in needs a provider. Google/Apple arrive at S2.")
-      val session = authClient.devToken(devProvider, devProviderUid, secret)
+      val idToken = firebaseSignIn?.idToken(provider)
+      val session = when {
+        idToken != null -> authClient.firebaseToken(idToken)
+        devSecret != null -> authClient.devToken(devProvider, devProviderUid, devSecret)
+        else -> throw IllegalStateException("Sign-in needs a provider. Google/Apple arrive at S2.")
+      }
       tokenStore.save(session)
       store.dispatch(SignInSucceeded(session))
       loadMemberships(session)

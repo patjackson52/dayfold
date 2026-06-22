@@ -35,6 +35,7 @@ class AuthClient(
   @Serializable private data class DevTokenReq(val provider: String, @SerialName("provider_uid") val providerUid: String)
   @Serializable private data class CreateFamilyReq(val name: String)
   @Serializable private data class RefreshReq(val refresh: String)
+  @Serializable private data class FirebaseTokenReq(val idToken: String)
   @Serializable private data class TokenResp(val access: String, val refresh: String)
   @Serializable private data class CreateFamilyResp(val familyId: String)
   @Serializable private data class RedeemReq(val token: String)
@@ -56,6 +57,21 @@ class AuthClient(
       setBody(json.encodeToString(DevTokenReq.serializer(), DevTokenReq(provider, providerUid)))
     }
     if (resp.status.value != 200) throw AuthHttpException(resp.status.value, "dev-token")
+    val t = json.decodeFromString(TokenResp.serializer(), resp.bodyAsText())
+    return Session(access = t.access, refresh = t.refresh)
+  }
+
+  /**
+   * POST /auth/firebase {idToken} → a real backend session (S2, ADR 0023/0027).
+   * The server verifies the Firebase ID token (Google/Apple) and mints OUR tokens;
+   * no bearer — the ID token in the body is the proof. 401 = bad/forged token.
+   */
+  suspend fun firebaseToken(idToken: String): Session {
+    val resp = http.post("$api/auth/firebase") {
+      contentType(ContentType.Application.Json)
+      setBody(json.encodeToString(FirebaseTokenReq.serializer(), FirebaseTokenReq(idToken)))
+    }
+    if (resp.status.value != 200) throw AuthHttpException(resp.status.value, "firebase")
     val t = json.decodeFromString(TokenResp.serializer(), resp.bodyAsText())
     return Session(access = t.access, refresh = t.refresh)
   }

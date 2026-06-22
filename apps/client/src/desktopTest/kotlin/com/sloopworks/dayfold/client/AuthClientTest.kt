@@ -11,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 // AUTH-S5 T2 — AuthClient request shapes + response parsing, against a fake
@@ -33,6 +34,25 @@ class AuthClientTest {
     assertTrue(sent.contains("\"provider\":\"dev\""), "body was: $sent")
     assertTrue(sent.contains("\"provider_uid\":\"alice\""), "body was: $sent")
     assertEquals(Session("ax", "rx"), s)
+  }
+
+  @Test fun `firebaseToken posts the idToken with no bearer and parses tokens`() = runBlocking {
+    var path = ""; var auth: String? = null; var sent = ""
+    val engine = MockEngine { req ->
+      path = req.url.encodedPath; auth = req.headers[HttpHeaders.Authorization]; sent = body(req)
+      respond("""{"access":"fa","refresh":"fr"}""", HttpStatusCode.OK, jsonCt)
+    }
+    val s = client(engine).firebaseToken("ID_TOKEN_XYZ")
+    assertEquals("/auth/firebase", path)
+    assertNull(auth)                                    // proof is the ID token in the body, not a bearer
+    assertTrue(sent.contains("\"idToken\":\"ID_TOKEN_XYZ\""), "body was: $sent")
+    assertEquals(Session("fa", "fr"), s)
+  }
+
+  @Test fun `firebaseToken throws on a rejected (401) token`() = runBlocking {
+    val engine = MockEngine { respond("""{"type":"bad-identity"}""", HttpStatusCode.Unauthorized, jsonCt) }
+    val ex = assertFailsWith<AuthHttpException> { client(engine).firebaseToken("bad") }
+    assertEquals(401, ex.status)
   }
 
   @Test fun `whoami parses family_id + memberships`() = runBlocking {

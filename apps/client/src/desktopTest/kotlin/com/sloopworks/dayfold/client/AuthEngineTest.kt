@@ -78,6 +78,45 @@ class AuthEngineTest {
     assertNull(store.state.session)
   }
 
+  @Test fun `sign-in uses the firebase id token when the platform yields one`() = runBlocking {
+    val ts = MemTokenStore(null)
+    var firebaseHit = false; var devHit = false
+    val store = createAppStore(debug = false)
+    val client = AuthClient("https://api.test", HttpClient(MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/auth/firebase" -> { firebaseHit = true; respond("""{"access":"fa","refresh":"fr"}""", HttpStatusCode.OK, jsonCt) }
+        "/auth/dev-token" -> { devHit = true; respond("""{"access":"d","refresh":"d"}""", HttpStatusCode.OK, jsonCt) }
+        "/auth/whoami" -> respond(whoami(activeOwner), HttpStatusCode.OK, jsonCt)
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    }))
+    val eng = AuthEngine(store, client, ts, devSecret = "DEVSECRET", firebaseSignIn = { _ -> "GOOGLE_ID_TOKEN" })
+    eng.signIn("google")
+    assertTrue(firebaseHit, "should call /auth/firebase")
+    assertTrue(!devHit, "should NOT fall back to dev-token when a firebase token is present")
+    assertEquals(Route.Feed, store.state.route)
+    assertEquals(Session("fa", "fr"), store.state.session)
+    assertEquals(Session("fa", "fr"), ts.session)                // persisted
+  }
+
+  @Test fun `sign-in falls back to dev-token when the platform yields no token`() = runBlocking {
+    val ts = MemTokenStore(null)
+    var devHit = false
+    val store = createAppStore(debug = false)
+    val client = AuthClient("https://api.test", HttpClient(MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/auth/dev-token" -> { devHit = true; respond("""{"access":"d1","refresh":"r1"}""", HttpStatusCode.OK, jsonCt) }
+        "/auth/whoami" -> respond(whoami(""), HttpStatusCode.OK, jsonCt)
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    }))
+    // firebaseSignIn present but returns null (no Firebase config yet / user cancelled) → dev fallback
+    val eng = AuthEngine(store, client, ts, devSecret = "DEVSECRET", firebaseSignIn = { _ -> null })
+    eng.signIn("google")
+    assertTrue(devHit, "should fall back to dev-token")
+    assertEquals(Session("d1", "r1"), store.state.session)
+  }
+
   @Test fun `create-family routes into the new owner family`() = runBlocking {
     val ts = MemTokenStore(Session("a1", "r1"))
     val store = createAppStore(AppState(session = Session("a1", "r1"), route = Route.CreateFamily), debug = false)
