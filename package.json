@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0-M0",
   "description": "dayfold monorepo (Dayfold / Sloopworks) (M0). specs/ = source of truth; code under packages/ + apps/.",
+  "repository": { "type": "git", "url": "git+https://github.com/SloopWorks/dayfold.git" },
+  "homepage": "https://github.com/SloopWorks/dayfold#readme",
+  "bugs": { "url": "https://github.com/SloopWorks/dayfold/issues" },
   "workspaces": [
     "packages/*",
     "apps/api"
