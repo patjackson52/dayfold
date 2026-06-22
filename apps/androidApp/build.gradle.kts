@@ -39,6 +39,26 @@ android {
 // keep the documented APK name stable across the KMP restructure
 base.archivesName.set("dayfold-android")
 
+// Pin the Compose-Multiplatform runtime to the build matrix (1.9.3, ADR 0013) —
+// :client compiles against it. The in-app redux devtools (alpha01, debug-only)
+// transitively request Compose-MP 1.11.1; Gradle's "highest wins" would drag the
+// runtime to 1.11.1 while the app was compiled at 1.9.3, whose `sharedBounds`
+// signature differs → NoSuchMethodError in the feed (ADR 0022 shared transition).
+configurations.all {
+  resolutionStrategy.eachDependency {
+    if (requested.group in setOf(
+        "org.jetbrains.compose.foundation",
+        "org.jetbrains.compose.animation",
+        "org.jetbrains.compose.ui",
+        "org.jetbrains.compose.runtime",
+      )
+    ) {
+      useVersion("1.9.3")
+      because("match :client's compiled Compose-MP 1.9.3 (ADR 0013); devtools pull 1.11.1")
+    }
+  }
+}
+
 dependencies {
   implementation(project(":client"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
@@ -54,6 +74,11 @@ dependencies {
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
   // In-app redux devtools (debug build = real drawer; release = no-op facade).
+  // NOTE: the drawer is TEMPORARILY bypassed in MainActivity (not invoked) — the
+  // alpha01 inapp host is built against Compose-MP 1.11.1 and calls a 1.11-only
+  // ComposeUiNode API that crashes against the pinned 1.9.3 matrix (ADR 0013).
+  // The enhancer still records; only the on-screen drawer is off. Restore once
+  // reduxkotlin is rebuilt @1.9.3 or the matrix moves to 1.11.1.
   debugImplementation("org.reduxkotlin:redux-kotlin-devtools-inapp:1.0.0-alpha01")
   releaseImplementation("org.reduxkotlin:redux-kotlin-devtools-inapp-noop:1.0.0-alpha01")
 

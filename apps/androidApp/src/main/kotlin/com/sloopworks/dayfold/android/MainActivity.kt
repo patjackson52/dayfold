@@ -67,8 +67,10 @@ class MainActivity : ComponentActivity() {
     }
     val actions = com.sloopworks.dayfold.client.cards.PlatformActions(applicationContext)
     setContent {
-      ReduxDevToolsHost(InAppConfig(triggers = setOf(DevToolsTrigger.BUBBLE))) {
-        FeedApp(
+      // Devtools drawer temporarily bypassed: the alpha01 inapp host needs
+      // Compose-MP 1.11, but the app is pinned to 1.9.3 (ADR 0013; see build.gradle).
+      // The enhancer still records the loop; only the on-screen drawer is off.
+      FeedApp(
           store,
           onPlatformAction = actions::perform,
           onSignIn = { provider -> lifecycleScope.launch { authEngine.signIn(provider); syncEngine.syncNow() } },
@@ -83,7 +85,6 @@ class MainActivity : ComponentActivity() {
           onLoadDevices = { lifecycleScope.launch { authEngine.loadDevices() } },
           onRevokeDevice = { id -> lifecycleScope.launch { authEngine.revokeDevice(id) } },
         )
-      }
     }
   }
 }
