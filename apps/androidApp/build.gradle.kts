@@ -11,12 +11,12 @@ plugins {
 
 android {
   namespace = "com.sloopworks.dayfold.android"
-  compileSdk = 35
+  compileSdk = 37  // Compose-MP 1.11.1 requires compiling against API 37+
 
   defaultConfig {
     applicationId = "com.sloopworks.dayfold"
     minSdk = 34 // matches :client
-    targetSdk = 35
+    targetSdk = 37
     versionCode = 1
     versionName = "0.0.0-M0"
     // dev config baked at build time (emulator → host = 10.0.2.2)
@@ -38,26 +38,6 @@ android {
 
 // keep the documented APK name stable across the KMP restructure
 base.archivesName.set("dayfold-android")
-
-// Pin the Compose-Multiplatform runtime to the build matrix (1.9.3, ADR 0013) —
-// :client compiles against it. The in-app redux devtools (alpha01, debug-only)
-// transitively request Compose-MP 1.11.1; Gradle's "highest wins" would drag the
-// runtime to 1.11.1 while the app was compiled at 1.9.3, whose `sharedBounds`
-// signature differs → NoSuchMethodError in the feed (ADR 0022 shared transition).
-configurations.all {
-  resolutionStrategy.eachDependency {
-    if (requested.group in setOf(
-        "org.jetbrains.compose.foundation",
-        "org.jetbrains.compose.animation",
-        "org.jetbrains.compose.ui",
-        "org.jetbrains.compose.runtime",
-      )
-    ) {
-      useVersion("1.9.3")
-      because("match :client's compiled Compose-MP 1.9.3 (ADR 0013); devtools pull 1.11.1")
-    }
-  }
-}
 
 dependencies {
   implementation(project(":client"))
