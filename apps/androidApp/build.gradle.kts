@@ -6,6 +6,7 @@ plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
   id("org.jetbrains.kotlin.plugin.compose")
+  id("com.google.gms.google-services")   // S2: reads google-services.json → Firebase config
 }
 
 android {
@@ -41,6 +42,16 @@ base.archivesName.set("dayfold-android")
 dependencies {
   implementation(project(":client"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+
+  // S2 (ADR 0023/0027): real Google sign-in. Credential Manager yields a Google
+  // ID token; Firebase Auth exchanges it for a Firebase ID token, which our
+  // backend /auth/firebase verifies. `.await()` needs coroutines-play-services.
+  implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+  implementation("com.google.firebase:firebase-auth")
+  implementation("androidx.credentials:credentials:1.3.0")
+  implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+  implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
 
   // In-app redux devtools (debug build = real drawer; release = no-op facade).
   debugImplementation("org.reduxkotlin:redux-kotlin-devtools-inapp:1.0.0-alpha01")

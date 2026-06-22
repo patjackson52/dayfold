@@ -41,6 +41,11 @@ class MainActivity : ComponentActivity() {
     val authEngine = AuthEngine(
       store, AuthClient(BuildConfig.DAYFOLD_API), tokenStore,
       devSecret = BuildConfig.DEV_AUTH_SECRET.ifEmpty { null },
+      // S2 (ADR 0023/0027): real Google sign-in via Credential Manager + Firebase.
+      // Activity context (this) is required for the account-picker UI. webClientId
+      // comes from google-services.json (default_web_client_id). When the seam
+      // yields a token, AuthEngine uses /auth/firebase; else it falls back to dev-token.
+      firebaseSignIn = AndroidFirebaseSignIn(this, getString(R.string.default_web_client_id)),
     )
     val legacyFam = BuildConfig.FAMILY_ID; val legacySecret = BuildConfig.HOUSEHOLD_SECRET
     val syncEngine = SyncEngine(
