@@ -2,12 +2,12 @@
 
 ## Status
 
-**Proposed** 2026-06-23 (operator-directed in the S6-D auth review; operator chose
-per-hub/resource scoping over a read/write-only toggle). Operator-gated — this is a
-customer-data-handling + authz-boundary decision (CLAUDE.md guardrail #3/#4 class).
-Extends — does not supersede — **ADR 0011** (Auth & Family-Tenancy, Hardened) and
-**ADR 0021** (S1–S6 decomposition). Composes with **ADR 0022** (typed content /
-hubs) and **ADR 0025** (abuse-control). Review source:
+**Accepted** 2026-06-23 (operator-directed in the S6-D auth review; operator chose
+per-hub/resource scoping over a read/write-only toggle, and accepted this ADR in the
+same review). Immutable — supersede, do not edit. Extends — does not supersede —
+**ADR 0011** (Auth & Family-Tenancy, Hardened) and **ADR 0021** (S1–S6
+decomposition). Composes with **ADR 0022** (typed content / hubs) and **ADR 0025**
+(abuse-control). Review source:
 `docs/superpowers/specs/2026-06-23-auth-s6d-device-approval-design.md`.
 
 ## Context
