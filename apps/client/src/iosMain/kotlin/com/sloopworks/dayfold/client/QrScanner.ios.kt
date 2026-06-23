@@ -16,3 +16,10 @@ actual val qrScanSupported: Boolean = false
 actual fun QrScanner(onCode: (String) -> Unit, onCancel: () -> Unit, modifier: Modifier) {
   Box(modifier.fillMaxSize().background(Color(0xFF171210)))   // placeholder; replaced by AVFoundation in Tier 2
 }
+
+// iOS camera actual (AVCaptureSession + AVCaptureMetadataOutput via UIKitView) is
+// the remaining Tier-2 piece — it needs the runnable Xcode host + NSCameraUsage-
+// Description in Info.plist, which don't exist yet (operator-gated). Until then iOS
+// degrades to enter-code (qrScanSupported == false), like desktop.
+@Composable
+actual fun rememberCameraPermissionRequester(onResult: (Boolean) -> Unit): () -> Unit = { onResult(false) }

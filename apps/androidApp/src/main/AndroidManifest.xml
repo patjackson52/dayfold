@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- S6-D Tier 2: in-app QR scanner (requested at runtime; camera is optional so
+         the app still installs on camera-less devices → enter-code fallback). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 
     <application
         android:label="Dayfold"
