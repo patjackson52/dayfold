@@ -79,3 +79,38 @@ jobs:
             echo "::error::legacy com.familyai / FAMILYAI_API found — package is com.sloopworks.dayfold per ADR 0026"
             exit 1
           fi
+
+  firebase-emulator:
+    name: API — real Firebase Auth Emulator (S2, ADR 0027)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fad_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/fad_test
+      FIREBASE_PROJECT_ID: dayfold-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "24" }
+      - uses: actions/setup-java@v4   # the Auth emulator runs on the JVM
+        with: { distribution: temurin, java-version: "17" }
+      - run: npm ci
+      - name: codegen (generated types the API imports)
+        run: npm run codegen
+      - name: auth emulator + real-path integration test
+        working-directory: apps/api
+        # emulators:exec starts the Auth emulator, exports FIREBASE_AUTH_EMULATOR_HOST,
+        # runs the command, then tears it down. The integration test is skipIf-gated on
+        # that env var, so it only executes inside this wrapper.
+        run: >-
+          npx --yes firebase-tools emulators:exec --only auth --project dayfold-test
+          "npx vitest run test/auth-firebase-emulator.test.ts"

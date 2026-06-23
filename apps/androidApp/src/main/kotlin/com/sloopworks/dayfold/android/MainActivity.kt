@@ -41,6 +41,11 @@ class MainActivity : ComponentActivity() {
     val authEngine = AuthEngine(
       store, AuthClient(BuildConfig.DAYFOLD_API), tokenStore,
       devSecret = BuildConfig.DEV_AUTH_SECRET.ifEmpty { null },
+      // S2 (ADR 0023/0027): real Google sign-in via Credential Manager + Firebase.
+      // Activity context (this) is required for the account-picker UI. webClientId
+      // comes from google-services.json (default_web_client_id). When the seam
+      // yields a token, AuthEngine uses /auth/firebase; else it falls back to dev-token.
+      firebaseSignIn = AndroidFirebaseSignIn(this, getString(R.string.default_web_client_id)),
     )
     val legacyFam = BuildConfig.FAMILY_ID; val legacySecret = BuildConfig.HOUSEHOLD_SECRET
     val syncEngine = SyncEngine(
@@ -62,6 +67,8 @@ class MainActivity : ComponentActivity() {
     }
     val actions = com.sloopworks.dayfold.client.cards.PlatformActions(applicationContext)
     setContent {
+      // Debug in-app redux devtools drawer (restored: the matrix is now Compose-MP
+      // 1.11.1, which the alpha01 host requires — the earlier 1.9.3 skew is gone).
       ReduxDevToolsHost(InAppConfig(triggers = setOf(DevToolsTrigger.BUBBLE))) {
         FeedApp(
           store,
@@ -69,6 +76,7 @@ class MainActivity : ComponentActivity() {
           onSignIn = { provider -> lifecycleScope.launch { authEngine.signIn(provider); syncEngine.syncNow() } },
           onCreateFamily = { name -> lifecycleScope.launch { authEngine.createFamily(name); syncEngine.syncNow() } },
           onSignOut = { lifecycleScope.launch { authEngine.signOut() } },
+          onRetry = { lifecycleScope.launch { authEngine.restore() } },
           onRedeemInvite = { token -> lifecycleScope.launch { authEngine.redeemInvite(token) } },
           onLoadApprovals = { lifecycleScope.launch { store.state.activeFamilyId?.let { authEngine.loadApprovals(it) } } },
           onApproveMember = { uid -> lifecycleScope.launch { store.state.activeFamilyId?.let { authEngine.approveMember(it, uid) } } },

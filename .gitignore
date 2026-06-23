@@ -20,3 +20,7 @@ local.properties
 *.log
 .idea/
 
+
+# Firebase client config — injected per-env, not committed (public repo). See specs/auth-s2-google-signin-design.md
+apps/androidApp/google-services.json
+**/GoogleService-Info.plist

@@ -1,4 +1,4 @@
-# family-ai-dashboard
+# Dayfold
 
 A calm, AI-powered household dashboard. One account per family, members log
 in (adults at MVP). It reads the family's existing signals — calendar,

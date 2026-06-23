@@ -54,6 +54,36 @@ class AuthEngineTest {
     assertEquals("ax", store.state.session?.access)
   }
 
+  @Test fun `restore with a dead session (401 + refresh fails) clears tokens and routes to SignIn`() = runBlocking {
+    val ts = MemTokenStore(Session("ax", "rx"))
+    val (eng, store) = engine(ts, handler = MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/auth/whoami" -> respond("", HttpStatusCode.Unauthorized)        // access expired
+        "/auth/refresh" -> respond("", HttpStatusCode.Unauthorized)       // …and refresh can't recover → dead
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    })
+    eng.restore()
+    assertEquals(Route.SignIn, store.state.route)                         // never wedges on Loading
+    assertNull(store.state.session)
+    assertNull(ts.session)                                                // dead token cleared
+    assertTrue(store.state.authError?.contains("expired") == true, "was: ${store.state.authError}")
+  }
+
+  @Test fun `restore with a transient failure routes to AuthError and keeps the session`() = runBlocking {
+    val ts = MemTokenStore(Session("ax", "rx"))
+    val (eng, store) = engine(ts, handler = MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/auth/whoami" -> respond("", HttpStatusCode.InternalServerError) // reachable but erroring → retryable
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    })
+    eng.restore()
+    assertEquals(Route.AuthError, store.state.route)                      // not Loading, not SignIn
+    assertEquals(Session("ax", "rx"), store.state.session)               // session kept for Retry
+    assertEquals(Session("ax", "rx"), ts.session)                        // not cleared
+  }
+
   @Test fun `sign-in success persists the session and routes by memberships`() = runBlocking {
     val ts = MemTokenStore(null)
     val (eng, store) = engine(ts, handler = MockEngine { req ->
@@ -76,6 +106,45 @@ class AuthEngineTest {
     assertEquals(Route.SignIn, store.state.route)                 // failure stays put, no nav
     assertTrue(store.state.authError?.contains("S2") == true, "was: ${store.state.authError}")
     assertNull(store.state.session)
+  }
+
+  @Test fun `sign-in uses the firebase id token when the platform yields one`() = runBlocking {
+    val ts = MemTokenStore(null)
+    var firebaseHit = false; var devHit = false
+    val store = createAppStore(debug = false)
+    val client = AuthClient("https://api.test", HttpClient(MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/auth/firebase" -> { firebaseHit = true; respond("""{"access":"fa","refresh":"fr"}""", HttpStatusCode.OK, jsonCt) }
+        "/auth/dev-token" -> { devHit = true; respond("""{"access":"d","refresh":"d"}""", HttpStatusCode.OK, jsonCt) }
+        "/auth/whoami" -> respond(whoami(activeOwner), HttpStatusCode.OK, jsonCt)
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    }))
+    val eng = AuthEngine(store, client, ts, devSecret = "DEVSECRET", firebaseSignIn = { _ -> "GOOGLE_ID_TOKEN" })
+    eng.signIn("google")
+    assertTrue(firebaseHit, "should call /auth/firebase")
+    assertTrue(!devHit, "should NOT fall back to dev-token when a firebase token is present")
+    assertEquals(Route.Feed, store.state.route)
+    assertEquals(Session("fa", "fr"), store.state.session)
+    assertEquals(Session("fa", "fr"), ts.session)                // persisted
+  }
+
+  @Test fun `sign-in falls back to dev-token when the platform yields no token`() = runBlocking {
+    val ts = MemTokenStore(null)
+    var devHit = false
+    val store = createAppStore(debug = false)
+    val client = AuthClient("https://api.test", HttpClient(MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/auth/dev-token" -> { devHit = true; respond("""{"access":"d1","refresh":"r1"}""", HttpStatusCode.OK, jsonCt) }
+        "/auth/whoami" -> respond(whoami(""), HttpStatusCode.OK, jsonCt)
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    }))
+    // firebaseSignIn present but returns null (no Firebase config yet / user cancelled) → dev fallback
+    val eng = AuthEngine(store, client, ts, devSecret = "DEVSECRET", firebaseSignIn = { _ -> null })
+    eng.signIn("google")
+    assertTrue(devHit, "should fall back to dev-token")
+    assertEquals(Session("d1", "r1"), store.state.session)
   }
 
   @Test fun `create-family routes into the new owner family`() = runBlocking {

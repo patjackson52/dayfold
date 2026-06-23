@@ -6,16 +6,17 @@ plugins {
   id("com.android.application")
   id("org.jetbrains.kotlin.android")
   id("org.jetbrains.kotlin.plugin.compose")
+  id("com.google.gms.google-services")   // S2: reads google-services.json → Firebase config
 }
 
 android {
   namespace = "com.sloopworks.dayfold.android"
-  compileSdk = 35
+  compileSdk = 37  // Compose-MP 1.11.1 requires compiling against API 37+
 
   defaultConfig {
     applicationId = "com.sloopworks.dayfold"
     minSdk = 34 // matches :client
-    targetSdk = 35
+    targetSdk = 37
     versionCode = 1
     versionName = "0.0.0-M0"
     // dev config baked at build time (emulator → host = 10.0.2.2)
@@ -38,11 +39,33 @@ android {
 // keep the documented APK name stable across the KMP restructure
 base.archivesName.set("dayfold-android")
 
+// Release-only: the no-op devtools facade (inapp-noop) is a fat aar that bundles
+// the org.reduxkotlin.devtools.* classes, which :client also exports via
+// api(redux-kotlin-devtools-core) → duplicate-class clash in the release variant.
+// Drop the standalone core in release; the noop's bundled copies satisfy it.
+// Debug uses the real inapp host (core as a normal transitive) and is unaffected.
+configurations.configureEach {
+  if (name == "releaseRuntimeClasspath") {
+    exclude(group = "org.reduxkotlin", module = "redux-kotlin-devtools-core")
+  }
+}
+
 dependencies {
   implementation(project(":client"))
   implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
+  // S2 (ADR 0023/0027): real Google sign-in. Credential Manager yields a Google
+  // ID token; Firebase Auth exchanges it for a Firebase ID token, which our
+  // backend /auth/firebase verifies. `.await()` needs coroutines-play-services.
+  implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+  implementation("com.google.firebase:firebase-auth")
+  implementation("androidx.credentials:credentials:1.3.0")
+  implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+  implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+  implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
+
   // In-app redux devtools (debug build = real drawer; release = no-op facade).
+  // Real drawer needs Compose-MP 1.11.1, which the matrix now provides.
   debugImplementation("org.reduxkotlin:redux-kotlin-devtools-inapp:1.0.0-alpha01")
   releaseImplementation("org.reduxkotlin:redux-kotlin-devtools-inapp-noop:1.0.0-alpha01")
 
