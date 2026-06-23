@@ -31,14 +31,33 @@ terminal QR and land directly on the approve screen.
   (`assetlinks.json`) + Universal Links (AASA) for `/device?user_code=` → opens
   the app → `AuthorizeDevice` (or sign-in-then-resume).
 - CLI: render a QR of `verification_uri_complete` beside the text `user_code`.
+- **Datacenter-origin anti-phishing (no-vendor heuristic)** — `GET /device/pending`
+  classifies `origin_ip` as `datacenter | residential | unknown` from a **bundled
+  cloud/datacenter CIDR list** (no geoip vendor, no recurring cost), and the
+  `AuthorizeDevice` screen warns on a datacenter origin ("this request comes from a
+  datacenter — only approve if you started it"). Satisfies the intent of ADR 0011 §7
+  without the deferred precise geo/ASN. *(Operator decision 2026-06-23.)*
+- **CLI refresh-token in the OS keychain** — the long-lived (45-day) refresh token
+  moves into the OS credential store; the access token + non-secret config may stay
+  in `~/.config/dayfold/` (`0600`). Closes the plaintext-long-lived-secret gap
+  (07-cli DX: "secrets in the OS keychain, never the config file").
+- **Central scope gate (`requireScope`)** — read routes enforce `content:read`
+  (today only writes are gated); every content route declares its required scope.
+  Lands the enforcement half of ADR 0029; the per-hub grant *selection* rides with
+  the content slice (below).
 
 **Out of scope (deferred, with reason):**
-- **geo/ASN origin enrichment + datacenter-origin warning** (in the mockup) —
-  needs a geoip vendor + recurring cost → **operator-gated**, slice 2. This slice
-  shows origin as **raw IP + client label** only.
+- **Per-hub / resource scope SELECTION at approval** (ADR 0029, operator-chosen) —
+  depends on the hub/content resource model, which lands in the **next content-API +
+  CLI-verbs slice**; S6-D ships the **interim single global `content:read+write`
+  grant** (today's behavior) with the scope row shown honestly as informational.
+- **Precise geo/ASN enrichment** (vendor-backed city/ASN, block-list) — the
+  no-vendor datacenter heuristic above covers the ADR 0011 §7 intent; precise
+  enrichment stays operator-gated (cost) for a later slice.
 - **E2E X25519 keypair + wrapped-FCK** (07-cli §M1, ADR 0015/0017) — separate M1
   epic; only the `"v":1` / additive-key hooks already exist.
-- OS-keychain hardening of the CLI creds file (still `0600`; later).
+- **CLI content read/write (hubs + pull/status/diff)** — separate content-API +
+  CLI-verbs slice (planned next); S6-D closes the *login loop*, not content I/O.
 
 ## Decisions (incl. review findings, folded)
 
@@ -80,10 +99,13 @@ found/expired → **uniform 404** (`{type:"not-found"}`). On hit, audit
 `device.lookup` and return:
 ```json
 { "user_code": "WDJF-7K2P", "client": "dayfold-cli",
-  "origin_ip": "…", "origin_ua": "…",
+  "origin_ip": "…", "origin_ua": "…", "origin_kind": "datacenter",
   "created_at": "…", "expires_at": "…" }
 ```
-No `device_code`, no `user_id`, no credential. (geo/ASN fields added in slice 2.)
+No `device_code`, no `user_id`, no credential. **`origin_kind`** ∈
+`datacenter | residential | unknown` is computed from a **bundled cloud/datacenter
+CIDR list** (no geoip vendor) — drives the anti-phishing warning per ADR 0011 §7.
+(Precise geo/ASN fields stay deferred to a vendor-backed slice.)
 
 **Approve/deny** unchanged: `POST /families/:fid/device/{approve,deny}` with
 `{user_code}`, owner+`kind='app'`, family from PATH (anti-IDOR). The app sends the
@@ -107,7 +129,7 @@ selected `fid`.
 suspend fun devicePending(access: String, userCode: String): PendingDevice  // GET /device/pending; 404 → DeviceLookupNotFound
 suspend fun deviceApprove(access: String, fid: String, userCode: String)     // POST …/device/approve; 404 → expired
 suspend fun deviceDeny(access: String, fid: String, userCode: String)        // POST …/device/deny
-@Serializable data class PendingDevice(val user_code, val client?, val origin_ip?, val origin_ua?, val created_at?, val expires_at?)
+@Serializable data class PendingDevice(val user_code, val client?, val origin_ip?, val origin_ua?, val origin_kind?, val created_at?, val expires_at?)
 ```
 
 **AuthEngine** (`mutex` + `callWithRefresh`, mirrors `loadDevices`/`approveMember`):
@@ -115,10 +137,11 @@ suspend fun deviceDeny(access: String, fid: String, userCode: String)        // 
 
 **Screens** (`DeviceApprovalScreens.kt`, pure composables, snapshot-tested vs the
 mockup PNGs, light+dark): `EnterCodeScreen` (8-cell entry + scan affordance on
-camera platforms), `AuthorizeDeviceScreen` (code-confirm, scope row, owner-family
-selector/static row, Deny/Approve, "only approve if you started this"),
-`DeviceDeniedScreen`, `DeviceExpiredScreen`. Entry CTAs from `FamilyNullState`
-("Connect a device or CLI") and `DevicesScreen`.
+camera platforms), `AuthorizeDeviceScreen` (code-confirm, **`origin_kind`
+datacenter warning banner**, scope row — informational interim per ADR 0029,
+owner-family selector/static row, Deny/Approve, "only approve if you started
+this"), `DeviceDeniedScreen`, `DeviceExpiredScreen`. Entry CTAs from
+`FamilyNullState` ("Connect a device or CLI") and `DevicesScreen`.
 
 **QR scanner** (`expect`):
 ```kotlin
