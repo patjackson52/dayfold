@@ -30,6 +30,7 @@ import com.sloopworks.debugdrawer.host.PanelNavState
 import com.sloopworks.debugdrawer.host.drawerWidthFor
 import com.sloopworks.debugdrawer.internal.DebugScopeImpl
 import com.sloopworks.debugdrawer.internal.PluginRegistry
+import com.sloopworks.debugdrawer.internal.builtinPlugins
 import com.sloopworks.debugdrawer.log.LogBuffer
 import com.sloopworks.debugdrawer.theme.DebugSkins
 import com.sloopworks.debugdrawer.theme.DrawerColorScheme
@@ -56,7 +57,7 @@ fun DebugDrawerHost(content: @Composable () -> Unit) {
     DrawerColorScheme.SYSTEM -> systemDark
   }
   val colors = remember(config.theme, dark) { DebugSkins.colors(config.theme, dark) }
-  val registry = remember(config) { PluginRegistry(config.plugins) }
+  val registry = remember(config) { PluginRegistry(builtinPlugins(config) + config.plugins) }
   val logs = remember { LogBuffer() }
   val nav = remember { PanelNavState() }
   var open by remember { mutableStateOf(false) }
