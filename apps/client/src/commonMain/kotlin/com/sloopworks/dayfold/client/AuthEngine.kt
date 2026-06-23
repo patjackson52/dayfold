@@ -167,6 +167,54 @@ class AuthEngine(
     }
   }
 
+  // ── CLI/device approval (S6-D) ──
+
+  /** Look up a pending device grant by user_code (session-auth) → AuthorizeDevice. */
+  suspend fun lookupDevice(code: String) = mutex.withLock {
+    val session = store.state.session ?: return@withLock
+    store.dispatch(DeviceLookupRequested)
+    try {
+      when (val r = callWithRefresh(session) { authClient.devicePending(it.access, code) }) {
+        is DeviceLookupResult.Found -> store.dispatch(DevicePendingLoaded(r.device))
+        DeviceLookupResult.NotFound -> store.dispatch(DeviceLookupNotFound)
+        DeviceLookupResult.Locked -> store.dispatch(DeviceLookupFailed("Too many tries — wait about 15 minutes."))
+      }
+    } catch (e: Exception) {
+      store.dispatch(DeviceLookupFailed("Couldn't check that code. Try again."))
+    }
+  }
+
+  /** Owner approves the pending device against [fid] → DeviceApproved / expired / failed. */
+  suspend fun approveDevice(fid: String, code: String) = mutex.withLock {
+    val session = store.state.session ?: return@withLock
+    store.dispatch(ApproveDeviceRequested)
+    try {
+      when (callWithRefresh(session) { authClient.deviceApprove(it.access, fid, code) }) {
+        DeviceActionResult.Ok -> store.dispatch(DeviceApproved)
+        DeviceActionResult.Expired -> store.dispatch(DeviceApproveExpired)
+        DeviceActionResult.Locked -> store.dispatch(DeviceOpFailed("Too many tries — wait about 15 minutes."))
+        DeviceActionResult.Forbidden -> store.dispatch(DeviceOpFailed("You're not an owner of that family."))
+      }
+    } catch (e: Exception) {
+      store.dispatch(DeviceOpFailed("Couldn't approve. Try again."))
+    }
+  }
+
+  /** Owner denies the pending device → DeviceDenied (Ok or already-gone) / failed. */
+  suspend fun denyDevice(fid: String, code: String) = mutex.withLock {
+    val session = store.state.session ?: return@withLock
+    store.dispatch(DenyDeviceRequested)
+    try {
+      when (callWithRefresh(session) { authClient.deviceDeny(it.access, fid, code) }) {
+        DeviceActionResult.Ok, DeviceActionResult.Expired -> store.dispatch(DeviceDenied)  // gone == denied
+        DeviceActionResult.Locked -> store.dispatch(DeviceOpFailed("Too many tries — wait about 15 minutes."))
+        DeviceActionResult.Forbidden -> store.dispatch(DeviceOpFailed("You're not an owner of that family."))
+      }
+    } catch (e: Exception) {
+      store.dispatch(DeviceOpFailed("Couldn't deny. Try again."))
+    }
+  }
+
   /** Current access token (for the SyncClient token provider, wired at T6). */
   fun accessToken(): String? = store.state.session?.access
 
