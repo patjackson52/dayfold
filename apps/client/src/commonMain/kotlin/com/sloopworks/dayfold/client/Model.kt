@@ -207,6 +207,10 @@ data class AppState(
   val deviceBusy: Boolean = false,
   val deviceError: String? = null,
   val deviceOutcome: String? = null,
+  // Deep-link (Phase 2): a user_code captured from an App/Universal Link before
+  // the owner was signed in. Stashed here, then consumed + looked up once sign-in
+  // resolves memberships (cold-install resume). Null = nothing pending.
+  val pendingDeviceLink: String? = null,
 )
 
 // Actions. Card data reaches the store ONLY via CardsLoaded (the DB→store bridge);
@@ -275,3 +279,7 @@ data object DeviceDenied : Action                             // 204 (or gone) �
 data object DeviceApproveExpired : Action                     // approve 404 race → outcome "expired"
 data class DeviceOpFailed(val message: String) : Action       // approve/deny transient/403/429 → inline error
 data object CloseDeviceFlow : Action                          // exit → routeFor(session, families)
+// Deep-link (Phase 2): stash a user_code from a link tapped before sign-in;
+// consume it once memberships resolve (engine then looks it up → AuthorizeDevice).
+data class DeviceLinkStashed(val code: String) : Action
+data object DeviceLinkConsumed : Action

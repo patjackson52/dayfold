@@ -125,6 +125,8 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
     route = routeFor(state.session, state.families),
     pendingDevice = null, deviceBusy = false, deviceError = null, deviceOutcome = null,
   )
+  is DeviceLinkStashed -> state.copy(pendingDeviceLink = action.code)   // await sign-in
+  is DeviceLinkConsumed -> state.copy(pendingDeviceLink = null)         // engine looks it up
 
   else -> state
 }

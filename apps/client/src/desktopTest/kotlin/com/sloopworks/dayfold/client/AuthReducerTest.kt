@@ -209,6 +209,17 @@ class AuthReducerTest {
     assertNull(s.pendingDevice); assertNull(s.deviceOutcome); assertNull(s.deviceError); assertFalse(s.deviceBusy)
   }
 
+  @Test fun `deep-link code stashes then is consumed, and sign-out clears it`() {
+    var s = rootReducer(AppState(route = Route.SignIn), DeviceLinkStashed("WDJF-7K2P"))
+    assertEquals("WDJF-7K2P", s.pendingDeviceLink)
+    assertEquals(Route.SignIn, s.route)                 // stashing does not navigate
+    s = rootReducer(s, DeviceLinkConsumed)
+    assertNull(s.pendingDeviceLink)
+    // a stash that survives to a signed-in session is wiped on sign-out (fresh state)
+    val signedOut = rootReducer(AppState(session = sess, pendingDeviceLink = "X"), SignedOut)
+    assertNull(signedOut.pendingDeviceLink)
+  }
+
   @Test fun `sign-out clears session and feed back to SignIn`() {
     val signedIn = AppState(
       cards = listOf(Card("c", title = "T")), session = sess,
