@@ -88,11 +88,11 @@ fun FeedApp(
       )
       Route.JoinInvite -> JoinInviteScreen(state, onJoin = onRedeemInvite, onDismiss = { store.dispatch(JoinDismissed) })
       Route.Feed -> ContentHost(
-        store, state, handle,
+        store, handle,
         onConnectDevice = { store.dispatch(OpenEnterCode) },
         onNavHubs = { store.dispatch(OpenHubs); onLoadHubs() },
       )
-      Route.Hubs -> HubsHost(store, state, onLoadHubs = onLoadHubs, onOpenHub = onOpenHub)
+      Route.Hubs -> HubsHost(store, onLoadHubs = onLoadHubs, onOpenHub = onOpenHub)
       Route.EnterCode -> EnterCodeScreen(
         state, onLookup = onLookupDevice, onBack = { store.dispatch(CloseDeviceFlow) },
         // Scan toggle only where a camera exists (qrScanSupported) — null hides it
@@ -144,14 +144,33 @@ fun FeedApp(
   }
 }
 
+// Narrow feed slice — only fields ContentHost and its children read. selectorState
+// skips recomposition of ContentHost when hub-only fields (hubs/currentHubId/…)
+// change. AppState is a data class so == is structural; this tuple changes only
+// when a card-poll or nav action fires.
+private data class FeedSlice(
+  val cards: List<Card>,
+  val detailStack: List<String>,
+  val syncing: Boolean,
+  val error: String?,
+  val activeFamilyId: String?,
+)
+
 // CL-7b container transform: SharedTransitionLayout shares the tapped card's
 // bounds (key "card-$id") with the detail container → the card morphs into the
 // detail (and back). AnimatedContent keyed on the open id (null = feed) drives the
 // cross-fade; the shared element drives the bounds morph. Asymmetric timing.
+// ContentHost reads only its narrow FeedSlice — a hub-poll re-emit (HubsLoaded)
+// does NOT change FeedSlice, so this composable's body is skipped by Compose.
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
-private fun ContentHost(store: Store<AppState>, state: AppState, handle: (CardAction) -> Unit, onConnectDevice: () -> Unit = {}, onNavHubs: () -> Unit = {}) {
-  val detail = currentDetailCard(state)
+private fun ContentHost(store: Store<AppState>, handle: (CardAction) -> Unit, onConnectDevice: () -> Unit = {}, onNavHubs: () -> Unit = {}) {
+  val slice by store.selectorState { FeedSlice(it.cards, it.detailStack, it.syncing, it.error, it.activeFamilyId) }
+  val feedState = store.state.copy(
+    cards = slice.cards, detailStack = slice.detailStack,
+    syncing = slice.syncing, error = slice.error, activeFamilyId = slice.activeFamilyId,
+  )
+  val detail = currentDetailCard(feedState)
   SharedTransitionLayout {
     AnimatedContent(
       targetState = detail?.id,
@@ -166,22 +185,39 @@ private fun ContentHost(store: Store<AppState>, state: AppState, handle: (CardAc
         LocalSharedTransitionScope provides this@SharedTransitionLayout,
         LocalAnimatedVisibilityScope provides this@AnimatedContent,
       ) {
-        val card = id?.let { cid -> state.cards.find { it.id == cid } }
+        val card = id?.let { cid -> slice.cards.find { it.id == cid } }
         if (card != null) DetailScreen(card, onBack = { store.dispatch(NavBack) }, onAction = handle)
-        else FeedScreen(state, onAction = handle, onOpenAccount = { store.dispatch(OpenAccount) }, onConnectDevice = onConnectDevice, onNavHubs = onNavHubs)
+        else FeedScreen(feedState, onAction = handle, onOpenAccount = { store.dispatch(OpenAccount) }, onConnectDevice = onConnectDevice, onNavHubs = onNavHubs)
       }
     }
   }
 }
 
+// Narrow hubs slice — only fields HubsHost and its children read. A card-poll
+// re-emit (CardsLoaded) does NOT change HubsSlice, so HubsHost's body is skipped.
+private data class HubsSlice(
+  val hubs: List<Hub>,
+  val hubsBusy: Boolean,
+  val hubError: String?,
+  val currentHubId: String?,
+  val currentHubTree: HubTree?,
+)
+
 // Hubs surface host (ADR 0006): list ↔ detail substate driven by currentHubId.
 // A LaunchedEffect fetches the list on entry; the bottom nav flips back to Feed.
+// HubsHost reads only its narrow HubsSlice — a card-poll re-emit (CardsLoaded)
+// does NOT change HubsSlice, so this composable's body is skipped by Compose.
 @Composable
-private fun HubsHost(store: Store<AppState>, state: AppState, onLoadHubs: () -> Unit, onOpenHub: (String) -> Unit) {
-  androidx.compose.runtime.LaunchedEffect(Unit) { if (state.hubs.isEmpty()) onLoadHubs() }
-  if (state.currentHubId != null) {
-    HubDetailScreen(state, onBack = { store.dispatch(CloseHub) }, onNow = { store.dispatch(OpenFeed) })
+private fun HubsHost(store: Store<AppState>, onLoadHubs: () -> Unit, onOpenHub: (String) -> Unit) {
+  val slice by store.selectorState { HubsSlice(it.hubs, it.hubsBusy, it.hubError, it.currentHubId, it.currentHubTree) }
+  val hubsState = store.state.copy(
+    hubs = slice.hubs, hubsBusy = slice.hubsBusy, hubError = slice.hubError,
+    currentHubId = slice.currentHubId, currentHubTree = slice.currentHubTree,
+  )
+  androidx.compose.runtime.LaunchedEffect(Unit) { if (slice.hubs.isEmpty()) onLoadHubs() }
+  if (slice.currentHubId != null) {
+    HubDetailScreen(hubsState, onBack = { store.dispatch(CloseHub) }, onNow = { store.dispatch(OpenFeed) })
   } else {
-    HubListScreen(state, onOpenHub = onOpenHub, onNow = { store.dispatch(OpenFeed) })
+    HubListScreen(hubsState, onOpenHub = onOpenHub, onNow = { store.dispatch(OpenFeed) })
   }
 }
