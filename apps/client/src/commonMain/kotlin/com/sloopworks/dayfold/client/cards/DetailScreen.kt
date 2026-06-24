@@ -57,8 +57,9 @@ fun DetailScreen(card: Card, onBack: () -> Unit, onAction: (CardAction) -> Unit)
     ) {
       item { HeroMedia(card, onAction) }
       item { ActionsRow(detailActions(card), onAction) }
-      card.hubRef?.takeIf { it.isNotBlank() }?.let { hub ->
-        item { HubLink(onOpen = { onAction(CardAction.OpenHub(hub)) }) }   // cross-surface deep-link
+      (card.targetHubId ?: card.hubRef)?.takeIf { it.isNotBlank() }?.let { hub ->
+        // cross-surface deep-link; target_block_id (when set) highlights on arrival
+        item { HubLink(onOpen = { onAction(CardAction.OpenHub(hub, card.targetBlockId)) }) }
       }
       detailMeta(card).takeIf { it.isNotEmpty() }?.let { rows -> item { DetailsCard(rows) } }
       card.related?.takeIf { it.isNotEmpty() }?.let { rels ->

@@ -244,7 +244,7 @@ fun HubDetailScreen(
             )
           }
           val blocks = tree.blocks.filter { it.sectionId == section.id }.sortedBy { it.ord }
-          items(blocks, key = { "blk-${it.id}" }) { block -> HubBlockCard(block) }
+          items(blocks, key = { "blk-${it.id}" }) { block -> HubBlockCard(block, focused = block.id == state.hubFocusBlockId) }
         }
       }
     }
@@ -311,13 +311,21 @@ private fun AudienceRow(m: HubAudienceMember, isYou: Boolean) {
 }
 
 @Composable
-private fun HubBlockCard(block: HubBlock) {
+private fun HubBlockCard(block: HubBlock, focused: Boolean = false) {
   Card(
-    Modifier.fillMaxWidth(),
+    Modifier.fillMaxWidth()
+      .then(if (focused) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(22.dp)) else Modifier),
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     shape = RoundedCornerShape(22.dp),
   ) {
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      // deep-link arrival badge (the design's "FROM YOUR BRIEFING" pulse)
+      if (focused) {
+        Surface(color = MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(7.dp)) {
+          Text("↗ FROM YOUR BRIEFING", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+        }
+      }
       when (block.type) {
         "text", "markdown" -> Text(block.bodyMd ?: "", style = MaterialTheme.typography.bodyMedium)
         "checklist" -> block.payload?.items?.forEach { item -> ChecklistRow(item) }

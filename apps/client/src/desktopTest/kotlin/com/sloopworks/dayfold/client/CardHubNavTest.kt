@@ -5,12 +5,14 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class CardHubNavTest {
-  @Test fun `OpenHub routes to the Hubs surface + triggers the hub load`() {
+  @Test fun `OpenHub routes to the Hubs surface + triggers the hub load with the focus block`() {
     val store = createAppStore(AppState(route = Route.Feed), debug = false)
-    var loaded: String? = null
-    routeCardAction(store, onPlatformAction = {}, CardAction.OpenHub("h_party"), onOpenHub = { loaded = it })
+    var loadedHub: String? = null; var loadedFocus: String? = "UNSET"
+    routeCardAction(store, onPlatformAction = {}, CardAction.OpenHub("h_party", "blk_chk"),
+      onOpenHub = { id, focus -> loadedHub = id; loadedFocus = focus })
     assertEquals(Route.Hubs, store.state.route)   // cross-surface nav (OpenHubs dispatched)
-    assertEquals("h_party", loaded)               // engine load triggered with the hub id
+    assertEquals("h_party", loadedHub)            // engine load triggered with the hub id
+    assertEquals("blk_chk", loadedFocus)          // + the deep-link focus block (arrival highlight)
   }
 
   @Test fun `OpenDetail still routes to the card detail stack (unchanged)`() {

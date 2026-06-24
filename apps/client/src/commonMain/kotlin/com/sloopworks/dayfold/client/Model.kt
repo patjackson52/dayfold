@@ -298,6 +298,7 @@ data class AppState(
   val hubFilter: String = "all",                              // all | active | planning (list filter chips)
   val currentHubId: String? = null,
   val currentHubTree: HubTree? = null,
+  val hubFocusBlockId: String? = null,                        // deep-link arrival: the block to highlight
   // "Who can see this hub" sheet (ADR 0030). audienceSheetOpen drives the overlay;
   // currentHubAudience null while loading.
   val audienceSheetOpen: Boolean = false,
@@ -326,6 +327,7 @@ data class OpenHub(val hubId: String) : Action                // list → detail
 data class HubTreeLoaded(val tree: HubTree) : Action
 data object HubNotFound : Action                              // 404 (restricted/absent) — back to list with a note
 data object CloseHub : Action                                 // detail → list
+data class SetHubFocus(val blockId: String?) : Action         // deep-link arrival: highlight a block
 data class SetHubFilter(val filter: String) : Action          // list filter chips (all|active|planning)
 data object OpenAudienceSheet : Action                        // visibility chip tap → sheet (busy, loads)
 data class HubAudienceLoaded(val audience: HubAudience) : Action

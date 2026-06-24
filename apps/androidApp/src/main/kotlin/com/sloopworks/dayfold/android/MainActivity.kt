@@ -111,7 +111,7 @@ class MainActivity : ComponentActivity() {
           onApproveDevice = { fid -> lifecycleScope.launch { authEngine.approveDevice(fid, store.state.pendingDevice?.userCode ?: return@launch) } },
           onDenyDevice = { fid -> lifecycleScope.launch { authEngine.denyDevice(fid, store.state.pendingDevice?.userCode ?: return@launch) } },
           onLoadHubs = { lifecycleScope.launch { syncEngine.syncNow() } },  // PR1: hub list is DB-fed via the bridge
-          onOpenHub = { id -> lifecycleScope.launch { hubEngine.openHub(id) } },
+          onOpenHub = { id, block -> lifecycleScope.launch { hubEngine.openHub(id, block) } },
           onLoadAudience = { id -> lifecycleScope.launch { hubEngine.loadAudience(id) } },
         )
       }

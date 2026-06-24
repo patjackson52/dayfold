@@ -25,13 +25,18 @@ class HubEngine(
   // openHub (the detail tree path) remains network-fed (PR2 will also move it to the DB).
   suspend fun loadHubs() = Unit
 
-  suspend fun openHub(hubId: String) = mutex.withLock {
+  // focusBlockId (deep-link arrival): set AFTER the tree loads — OpenHub clears the
+  // focus first, so SetHubFocus must follow it.
+  suspend fun openHub(hubId: String, focusBlockId: String? = null) = mutex.withLock {
     val fid = fid(); val s = session()
-    store.dispatch(OpenHub(hubId))                                 // list → detail (busy)
+    store.dispatch(OpenHub(hubId))                                 // list → detail (busy); clears focus
     if (fid == null || s == null) return@withLock
     try {
       when (val res = callWithRefresh(s) { hubClient.hubTree(it.access, fid, hubId) }) {
-        is HubTreeResult.Loaded -> store.dispatch(HubTreeLoaded(res.tree))
+        is HubTreeResult.Loaded -> {
+          store.dispatch(HubTreeLoaded(res.tree))
+          if (focusBlockId != null) store.dispatch(SetHubFocus(focusBlockId))
+        }
         HubTreeResult.NotFound -> store.dispatch(HubNotFound)      // restricted/absent (omit-don't-403)
       }
     } catch (e: Exception) {
