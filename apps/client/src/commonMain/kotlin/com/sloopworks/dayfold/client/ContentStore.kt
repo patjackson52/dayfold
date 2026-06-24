@@ -39,6 +39,7 @@ class ContentStore(driver: SqlDriver) {
           c.payload?.let { json.encodeToString(Payload.serializer(), it) },
           c.privacy?.let { json.encodeToString(CardPrivacy.serializer(), it) },
           c.hubRef,
+          c.targetHubId, c.targetSectionId, c.targetBlockId,   // deep-link target (was dropped)
           c.related?.let { json.encodeToString(RELATED_SER, it) },
           c.relatedKicker,
           nowIso,
@@ -62,6 +63,7 @@ class ContentStore(driver: SqlDriver) {
     provenance = row.source?.let { Provenance(it) },
     notBefore = row.not_before, expiresAt = row.expires_at,
     type = row.type, hubRef = row.hub_ref,
+    targetHubId = row.target_hub_id, targetSectionId = row.target_section_id, targetBlockId = row.target_block_id,
     payload = decode(row.payload, Payload.serializer()),
     privacy = decode(row.privacy, CardPrivacy.serializer()),
     related = decode(row.related, RELATED_SER), relatedKicker = row.related_kicker,
