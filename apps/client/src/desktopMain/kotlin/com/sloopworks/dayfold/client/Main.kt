@@ -36,7 +36,7 @@ fun main() = application {
   LaunchedEffect(Unit) {
     syncEngine.start()                 // DB→store bridge (instant, offline)
     authEngine.restore()               // token store → whoami → route
-    syncEngine.resume()                // immediate sync + 45s poll (idles until authed)
+    syncEngine.resume()                // immediate sync + 45s poll (idles until authed) — always-on intentional: no true background on desktop
   }
   val actions = remember { com.sloopworks.dayfold.client.cards.PlatformActions() }
   Window(onCloseRequest = ::exitApplication, title = "Dayfold") {

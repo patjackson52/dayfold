@@ -1,10 +1,15 @@
 package com.sloopworks.dayfold.client
 
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.window.ComposeUIViewController
 import kotlinx.coroutines.launch
+import platform.Foundation.NSNotificationCenter
+import platform.Foundation.NSOperationQueue
+import platform.UIKit.UIApplicationDidBecomeActiveNotification
+import platform.UIKit.UIApplicationWillResignActiveNotification
 import platform.UIKit.UIViewController
 
 // iOS entry — the SHARED FeedApp with the AUTH-S5 route gate. Session persists via
@@ -28,6 +33,28 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
     syncEngine.start()
     authEngine.restore()
     syncEngine.resume()
+  }
+  // Pause the 45s poll when the app is backgrounded; resume when it returns to foreground.
+  // Mirrors Android's repeatOnLifecycle(STARTED) pattern — stops fetching restricted hub
+  // data while backgrounded. Uses NSNotificationCenter (no new deps; LifecycleOwner API
+  // requires lifecycle-runtime-compose in iosMain which is not yet wired).
+  DisposableEffect(syncEngine) {
+    val nc = NSNotificationCenter.defaultCenter
+    val mainQueue = NSOperationQueue.mainQueue
+    val resumeToken = nc.addObserverForName(
+      name = UIApplicationDidBecomeActiveNotification,
+      `object` = null,
+      queue = mainQueue,
+    ) { _ -> scope.launch { syncEngine.resume() } }
+    val pauseToken = nc.addObserverForName(
+      name = UIApplicationWillResignActiveNotification,
+      `object` = null,
+      queue = mainQueue,
+    ) { _ -> syncEngine.pause() }
+    onDispose {
+      nc.removeObserver(resumeToken)
+      nc.removeObserver(pauseToken)
+    }
   }
   FeedApp(
     store,
