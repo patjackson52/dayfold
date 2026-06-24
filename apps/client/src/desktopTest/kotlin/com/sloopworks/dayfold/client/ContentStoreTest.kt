@@ -59,6 +59,21 @@ class ContentStoreTest {
 
   // ── CL-4: typed payload sync→DB→store→projection ──────────────────────────
 
+  @Test fun `deep-link target (hub-section-block) survives applyDelta to activeCards`() {
+    val s = store()
+    s.applyDelta(
+      changedCards = listOf(Card(
+        id = "d", kind = "action", title = "Party shopping", provenance = Provenance("claude"),
+        targetHubId = "h_party", targetSectionId = "sec_shop", targetBlockId = "blk_chk",
+      )),
+      changedHubs = emptyList(), tombstones = emptyList(), nextCursor = "c1", nowIso = "2026-06-20T10:00:00Z",
+    )
+    val d = assertNotNull(s.activeCards().firstOrNull { it.id == "d" })
+    assertEquals("h_party", d.targetHubId)      // was dropped by the cache before this fix
+    assertEquals("sec_shop", d.targetSectionId)
+    assertEquals("blk_chk", d.targetBlockId)
+  }
+
   @Test fun `typed payload + type + privacy + hubRef survive applyDelta to activeCards`() {
     val s = store()
     s.applyDelta(
