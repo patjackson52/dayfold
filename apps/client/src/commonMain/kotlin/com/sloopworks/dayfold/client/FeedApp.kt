@@ -25,11 +25,11 @@ import org.reduxkotlin.compose.selectorState
 // split is unit-testable. Returns Unit (store.dispatch returns the action).
 internal fun routeCardAction(
   store: Store<AppState>, onPlatformAction: (CardAction) -> Unit, action: CardAction,
-  onOpenHub: (String) -> Unit = {},
+  onOpenHub: (String, String?) -> Unit = { _, _ -> },
 ) {
   when (action) {
     is CardAction.OpenDetail -> store.dispatch(NavToDetail(action.cardId))
-    is CardAction.OpenHub -> { store.dispatch(OpenHubs); onOpenHub(action.hubId) }  // cross-surface deep-link
+    is CardAction.OpenHub -> { store.dispatch(OpenHubs); onOpenHub(action.hubId, action.focusBlockId) }  // cross-surface deep-link arrival
     else -> onPlatformAction(action)
   }
 }
@@ -67,7 +67,7 @@ fun FeedApp(
   onDenyDevice: (String) -> Unit = {},
   onOpenAppSettings: () -> Unit = {},   // Tier 2: deep-link to the OS app-settings (camera permission)
   onLoadHubs: () -> Unit = {},          // Hubs (ADR 0006): list fetch (HubEngine.loadHubs)
-  onOpenHub: (String) -> Unit = {},     // tap a hub → load its tree (HubEngine.openHub)
+  onOpenHub: (String, String?) -> Unit = { _, _ -> },  // tap/deep-link a hub → load tree (+ focus block)
   onCloseHub: () -> Unit = {},          // detail → list: cancel the DB tree subscription (HubEngine.closeHub)
   onLoadAudience: (String) -> Unit = {},// "who can see" sheet → load the audience (HubEngine.loadAudience)
 ) {
@@ -185,7 +185,7 @@ private fun ContentHost(store: Store<AppState>, state: AppState, handle: (CardAc
 // Hubs surface host (ADR 0006): list ↔ detail substate driven by currentHubId.
 // A LaunchedEffect fetches the list on entry; the bottom nav flips back to Feed.
 @Composable
-private fun HubsHost(store: Store<AppState>, state: AppState, onLoadHubs: () -> Unit, onOpenHub: (String) -> Unit, onCloseHub: () -> Unit = {}, onLoadAudience: (String) -> Unit) {
+private fun HubsHost(store: Store<AppState>, state: AppState, onLoadHubs: () -> Unit, onOpenHub: (String, String?) -> Unit, onCloseHub: () -> Unit = {}, onLoadAudience: (String) -> Unit) {
   androidx.compose.runtime.LaunchedEffect(Unit) { if (state.hubs.isEmpty()) onLoadHubs() }
   androidx.compose.foundation.layout.Box {
     if (state.currentHubId != null) {
@@ -194,7 +194,7 @@ private fun HubsHost(store: Store<AppState>, state: AppState, onLoadHubs: () -> 
         onOpenAudience = { state.currentHubId?.let { store.dispatch(OpenAudienceSheet); onLoadAudience(it) } },
       )
     } else {
-      HubListScreen(state, onOpenHub = onOpenHub, onNow = { store.dispatch(OpenFeed) }, onFilter = { store.dispatch(SetHubFilter(it)) })
+      HubListScreen(state, onOpenHub = { onOpenHub(it, null) }, onNow = { store.dispatch(OpenFeed) }, onFilter = { store.dispatch(SetHubFilter(it)) })
     }
     if (state.audienceSheetOpen) WhoCanSeeSheet(state, onClose = { store.dispatch(CloseAudienceSheet) })  // overlay
   }

@@ -94,4 +94,20 @@ class HubScreenTest {
     setContent { MaterialTheme { HubDetailScreen(state) } }
     onNodeWithText("That hub is no longer available.").assertIsDisplayed()
   }
+
+  @Test fun deepLinkArrivalBadgesTheFocusedBlock() = runComposeUiTest {
+    val tree = HubTree(
+      hub = Hub(id = "h1", title = "Party", status = "active", visibility = "family"),
+      sections = listOf(HubSection(id = "s1", hubId = "h1", title = "Shopping", ord = 0)),
+      blocks = listOf(
+        HubBlock(id = "b1", sectionId = "s1", type = "text", bodyMd = "Buy cake", ord = 0),
+        HubBlock(id = "b2", sectionId = "s1", type = "text", bodyMd = "Order balloons", ord = 1),
+      ),
+    )
+    // arrived via a card deep-link focused on b2
+    val state = AppState(currentHubId = "h1", currentHubTree = tree, hubFocusBlockId = "b2")
+    setContent { MaterialTheme { HubDetailScreen(state) } }
+    onNodeWithText("Order balloons").assertIsDisplayed()
+    onNodeWithText("FROM YOUR BRIEFING", substring = true).assertIsDisplayed()  // arrival badge on the focused block
+  }
 }

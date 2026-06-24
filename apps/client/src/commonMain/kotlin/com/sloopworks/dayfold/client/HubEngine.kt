@@ -37,8 +37,11 @@ class HubEngine(
   // PR2: DB-fed openHub. Dispatches OpenHub immediately, triggers a sync in the background,
   // then subscribes to hubTreeFlow(hubId) — dispatching HubTreeLoaded whenever the DB emits
   // a non-null tree. Prior tree subscription is cancelled on each new openHub call.
-  suspend fun openHub(hubId: String) = mutex.withLock {
-    store.dispatch(OpenHub(hubId))              // list → detail (busy)
+  suspend fun openHub(hubId: String, focusBlockId: String? = null) = mutex.withLock {
+    store.dispatch(OpenHub(hubId))              // list → detail (busy); clears focus
+    // deep-link arrival: set the focus block now (OpenHub cleared it; HubTreeLoaded
+    // won't touch it) so the highlight is in place when the DB tree arrives.
+    if (focusBlockId != null) store.dispatch(SetHubFocus(focusBlockId))
     // Cancel any prior tree subscription
     treeJob?.cancel(); treeJob = null
     // Trigger a sync so tree rows arrive in the DB
