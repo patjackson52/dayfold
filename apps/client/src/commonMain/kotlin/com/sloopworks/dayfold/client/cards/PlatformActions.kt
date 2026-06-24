@@ -27,7 +27,7 @@ fun cardActionUri(action: CardAction): String? = when (action) {
   is CardAction.Message -> sanitizePhone(action.number)?.let { "sms:$it" } // no ?body — number only
   is CardAction.Email -> vetMailto(action.mailto)
   is CardAction.Navigate -> action.query.takeIf { it.isNotBlank() }?.let { "geo:0,0?q=${percentEncode(it)}" }
-  is CardAction.Copy, is CardAction.Share, is CardAction.OpenDetail -> null
+  is CardAction.Copy, is CardAction.Share, is CardAction.OpenDetail, is CardAction.OpenHub -> null  // in-app / handled elsewhere
 }
   // defense-in-depth: never hand back a non-allowlisted scheme.
   ?.takeIf { schemeOf(it) in ALLOWED_SCHEMES }
