@@ -703,6 +703,7 @@ async function redeem2(token, sub) {
       return { notfound: true };
     }
     const { id: invId, family_id, role } = inv.rows[0];
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [family_id]);
     const pend = await client.query(
       `SELECT count(*)::int n FROM memberships WHERE family_id=$1 AND status='pending'`,
       [family_id]
