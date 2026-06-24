@@ -101,6 +101,24 @@ describe("POST /invites:redeem", () => {
     expect(pend.rows[0].n).toBe(1);
   });
 
+  it("pending cap holds under concurrent redeems via DISTINCT invites (per-family advisory lock, S4 follow-3)", async () => {
+    const o = await ownerOf("cap-race-owner");
+    // pad to PENDING_CAP-1 (19) pending members so one more redeem fills the cap.
+    await q(`INSERT INTO users(id) SELECT 'capu_'||g FROM generate_series(1,19) g`);
+    await q(`INSERT INTO memberships(user_id,family_id,role,status) SELECT 'capu_'||g,$1,'adult','pending' FROM generate_series(1,19) g`, [o.familyId]);
+    // 5 DISTINCT invites + 5 DISTINCT users redeem concurrently (different invite
+    // rows → the invite FOR UPDATE doesn't serialize them; only the family lock does).
+    const invites = await Promise.all([1,2,3,4,5].map(() => mintInvite(o.token, o.familyId, 1)));
+    const tokens = await Promise.all([1,2,3,4,5].map((i) => devToken(`cap-race-${i}`)));
+    const results = await Promise.all(invites.map((inv, i) =>
+      app.request("/invites:redeem", { method: "POST", headers: { ...dev, authorization: `Bearer ${tokens[i]}` }, body: JSON.stringify({ token: inv.token }) })));
+    const statuses = results.map((r) => r.status).sort();
+    expect(statuses.filter((s) => s === 200).length).toBe(1);     // exactly one fits
+    expect(statuses.filter((s) => s === 429).length).toBe(4);     // the rest hit the cap
+    const pend = await q(`SELECT count(*)::int n FROM memberships WHERE family_id=$1 AND status='pending'`, [o.familyId]);
+    expect(pend.rows[0].n).toBe(20);                              // exactly the cap, never 21+
+  });
+
   it("same user re-redeem → 200 idempotent (no extra used_count increment)", async () => {
     const o = await ownerOf("redeem-owner-3");
     const inv = await mintInvite(o.token, o.familyId, 5);

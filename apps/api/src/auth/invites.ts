@@ -29,6 +29,11 @@ export async function redeem(token: string, sub: string) {
       [hashInvite(token)]);
     if (inv.rowCount !== 1) { await client.query("ROLLBACK"); return { notfound: true as const }; }
     const { id: invId, family_id, role } = inv.rows[0];
+    // Serialize redeems PER FAMILY so the pending-cap check+insert is atomic. The
+    // invite-row FOR UPDATE above only serializes redeems of the SAME invite — two
+    // redeems via DIFFERENT invites of one family would otherwise both read n<CAP
+    // (TOCTOU) and overshoot the cap. The advisory lock releases on commit/rollback.
+    await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [family_id]);
     const pend = await client.query(
       `SELECT count(*)::int n FROM memberships WHERE family_id=$1 AND status='pending'`,
       [family_id]);
