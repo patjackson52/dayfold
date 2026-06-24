@@ -793,26 +793,22 @@ app.get("/families/:fid/sync", async (c) => {
   const caller = { userId: a.userId, legacy: a.legacy };
   const raw = c.req.query("since") ?? "";
 
-  // [F4] cursor decode: 2-part = legacy cards-only, 3-part = merged.
-  // Malformed (not 2 or 3 parts, or bad timestamp) → 400 (not a silent full re-scan).
-  // 3-part with unknown type → full resync from -infinity (forward-compat for future types).
+  // [F4] cursor decode:
+  //   3-part base64(updated_at|type|id), type ∈ {card,hub}, valid ts → merged mode (resume)
+  //   2-part base64(updated_at|id), valid ts → full merged resync from -∞
+  //     (old clients sent cards-only 2-part cursors; promote to merged so they are never
+  //      pinned in cards-only mode — fixes sticky-cards-only bug in Hub-Sync PR1)
+  //   Genuinely malformed (wrong part count other than 2/3, unparseable/NaN timestamp,
+  //     unknown type in 3-part) → 400 (not a silent rescan).
   let su = "", st = "", si = "";
   if (raw) {
     const parts = Buffer.from(raw, "base64").toString().split("|");
     if (parts.length === 2) {
-      // Legacy 2-part cursor — route to the existing cards-only path.
+      // 2-part legacy cursor: validate timestamp, then fall through to merged mode from -∞.
       // Accept "-infinity" (Postgres timestamptz literal) as a valid start marker.
       const validTs = parts[0] === "-infinity" || !Number.isNaN(Date.parse(parts[0]));
       if (!validTs) return problem(c, 400, "bad-cursor");
-      const [lsu, lsi] = parts;
-      const rows = await repo.syncCards(fid, lsu, lsi);
-      const live = rows.filter((r: any) => !r.deleted_at && cardVisible(r, caller));
-      const tombstones = rows
-        .filter((r: any) => r.deleted_at || !cardVisible(r, caller))
-        .map((r: any) => ({ type: "card", id: r.id }));
-      const last = rows[rows.length - 1];
-      const next = last ? Buffer.from(`${last.updated_at}|${last.id}`).toString("base64") : raw;
-      return c.json({ changes: { cards: live }, tombstones, next_cursor: next, has_more: rows.length >= repo.SYNC_LIMIT });
+      // su/st/si stay "" → merged keyset scans from beginning, returns cards + hubs.
     } else if (parts.length === 3) {
       // 3-part merged cursor: validate ts + type. Unknown type → full resync (not an error).
       const validTs = !Number.isNaN(Date.parse(parts[0]));

@@ -299,7 +299,6 @@ data object NavBack : Action
 // list↔detail substate (currentHubId).
 data object OpenHubs : Action                                 // bottom nav → Hubs (list)
 data object OpenFeed : Action                                 // bottom nav → Feed
-data object HubsBusyStarted : Action
 data class HubsLoaded(val hubs: List<Hub>) : Action
 data class HubsFailed(val message: String) : Action
 data class OpenHub(val hubId: String) : Action                // list → detail (loads the tree)

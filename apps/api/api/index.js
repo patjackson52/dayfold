@@ -1029,14 +1029,6 @@ async function softDeleteCard(familyId, id3) {
   );
   return (r.rowCount ?? 0) > 0;
 }
-async function syncCards(familyId, su, si, limit = SYNC_LIMIT) {
-  const r = await q(
-    `SELECT * FROM briefing_cards WHERE family_id=$1 AND (updated_at, id) > ($2::timestamptz, $3)
-     ORDER BY updated_at, id LIMIT $4`,
-    [familyId, su ?? "-infinity", si ?? "", limit]
-  );
-  return r.rows;
-}
 async function syncContent(familyId, su, st, si, limit = SYNC_LIMIT) {
   const r = await q(
     `SELECT updated_at, type, id, family_id, deleted_at, payload FROM (
@@ -2032,13 +2024,6 @@ app.get("/families/:fid/sync", async (c) => {
     if (parts.length === 2) {
       const validTs = parts[0] === "-infinity" || !Number.isNaN(Date.parse(parts[0]));
       if (!validTs) return problem(c, 400, "bad-cursor");
-      const [lsu, lsi] = parts;
-      const rows2 = await syncCards(fid, lsu, lsi);
-      const live = rows2.filter((r) => !r.deleted_at && cardVisible(r, caller));
-      const tombstones2 = rows2.filter((r) => r.deleted_at || !cardVisible(r, caller)).map((r) => ({ type: "card", id: r.id }));
-      const last2 = rows2[rows2.length - 1];
-      const next = last2 ? Buffer.from(`${last2.updated_at}|${last2.id}`).toString("base64") : raw;
-      return c.json({ changes: { cards: live }, tombstones: tombstones2, next_cursor: next, has_more: rows2.length >= SYNC_LIMIT });
     } else if (parts.length === 3) {
       const validTs = !Number.isNaN(Date.parse(parts[0]));
       if (!validTs) return problem(c, 400, "bad-cursor");

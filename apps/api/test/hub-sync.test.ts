@@ -90,19 +90,26 @@ describe("hub-sync: merged keyset /sync (cards + hubs)", () => {
     expect(b2.tombstones).toContainEqual({ type: "hub", id: "hubShared" });
   });
 
-  it("a legacy 2-part card cursor still works (cards-only mode)", async () => {
+  it("a legacy 2-part cursor promotes to merged mode (returns cards + hubs, 3-part next_cursor)", async () => {
     const o = await ownerOf("hs-owner3");
     const fid = o.familyId;
     await putCard(fid, "legacyCard", o.token, baseCard({ title: "legacy" }));
+    await putHub(fid, "legacyHub", o.token, { type: "party-event", title: "legacy hub" });
 
-    // 2-part cursor = base64("-infinity|")
+    // 2-part cursor = base64("-infinity|") — old device sending a cards-only cursor
     const legacy = Buffer.from(`-infinity|`).toString("base64");
     const res = await app.request(`/families/${fid}/sync?since=${legacy}`, { headers: { authorization: `Bearer ${o.token}` } });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.changes.cards.length).toBeGreaterThan(0);
-    // legacy mode: hubs key should not be present (or may be empty array — both valid)
-    // The constraint is: no crash, cards come back, status 200.
+    // Must return BOTH cards AND hubs (merged mode, not stuck in cards-only)
+    expect(body.changes.cards.map((c: any) => c.id)).toContain("legacyCard");
+    expect(body.changes.hubs.map((h: any) => h.id)).toContain("legacyHub");
+    // next_cursor must be 3-part (merged) so future requests stay in merged mode
+    const parts = Buffer.from(body.next_cursor, "base64").toString().split("|");
+    expect(parts).toHaveLength(3);
+    expect(Date.parse(parts[0])).not.toBeNaN();
+    expect(parts[1]).toMatch(/^(card|hub)$/);
+    expect(parts[2]).toBeTruthy();
   });
 
   it("pages across card/hub type boundary at equal updated_at without skip/repeat", async () => {
