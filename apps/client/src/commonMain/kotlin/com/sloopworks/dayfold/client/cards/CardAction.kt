@@ -12,6 +12,8 @@ package com.sloopworks.dayfold.client.cards
 sealed interface CardAction {
   /** In-app: open this card's full detail (CL-6 builds the screen + nav). */
   data class OpenDetail(val cardId: String) : CardAction
+  /** In-app: cross-surface deep-link into the card's parent Hub (ADR 0006/0022). */
+  data class OpenHub(val hubId: String) : CardAction
   /** OS handoff: open an https URL (form, doc, link). */
   data class OpenUrl(val url: String) : CardAction
   /** OS handoff: dial a phone number (tel:). */

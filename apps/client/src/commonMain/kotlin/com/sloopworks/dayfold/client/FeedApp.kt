@@ -23,9 +23,15 @@ import org.reduxkotlin.compose.selectorState
 // Route a card's CardAction: OpenDetail = in-app nav → store; everything else =
 // an OS handoff → the shell's PlatformActions. Extracted (non-Composable) so the
 // split is unit-testable. Returns Unit (store.dispatch returns the action).
-internal fun routeCardAction(store: Store<AppState>, onPlatformAction: (CardAction) -> Unit, action: CardAction) {
-  if (action is CardAction.OpenDetail) store.dispatch(NavToDetail(action.cardId))
-  else onPlatformAction(action)
+internal fun routeCardAction(
+  store: Store<AppState>, onPlatformAction: (CardAction) -> Unit, action: CardAction,
+  onOpenHub: (String) -> Unit = {},
+) {
+  when (action) {
+    is CardAction.OpenDetail -> store.dispatch(NavToDetail(action.cardId))
+    is CardAction.OpenHub -> { store.dispatch(OpenHubs); onOpenHub(action.hubId) }  // cross-surface deep-link
+    else -> onPlatformAction(action)
+  }
 }
 
 // f(store.state) -> UI via redux-kotlin-compose `store.selectorState { }` — a
@@ -68,8 +74,8 @@ fun FeedApp(
   // One stable handler (remembered so feed/detail stay skippable): OpenDetail is
   // in-app nav → dispatched to the store; every other CardAction is an OS handoff
   // → the shell's PlatformActions.
-  val handle = remember(store, onPlatformAction) {
-    fun(action: CardAction) = routeCardAction(store, onPlatformAction, action)
+  val handle = remember(store, onPlatformAction, onOpenHub) {
+    fun(action: CardAction) = routeCardAction(store, onPlatformAction, action, onOpenHub)
   }
   DayfoldTheme {
     // Deep-link resume beat: after sign-in, MembershipsLoaded has already set the

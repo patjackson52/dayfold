@@ -15,7 +15,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -55,11 +57,33 @@ fun DetailScreen(card: Card, onBack: () -> Unit, onAction: (CardAction) -> Unit)
     ) {
       item { HeroMedia(card, onAction) }
       item { ActionsRow(detailActions(card), onAction) }
+      card.hubRef?.takeIf { it.isNotBlank() }?.let { hub ->
+        item { HubLink(onOpen = { onAction(CardAction.OpenHub(hub)) }) }   // cross-surface deep-link
+      }
       detailMeta(card).takeIf { it.isNotEmpty() }?.let { rows -> item { DetailsCard(rows) } }
       card.related?.takeIf { it.isNotEmpty() }?.let { rels ->
         item { RelatedSection(card.relatedKicker, rels, onAction) }
       }
       item { ProvenancePrivacy(card) }
+    }
+  }
+}
+
+// "PART OF THIS HUB" deep-link (ADR 0006/0022) — taps cross to the hub detail.
+@Composable
+private fun HubLink(onOpen: () -> Unit) {
+  Surface(
+    color = MaterialTheme.colorScheme.secondaryContainer,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+  ) {
+    Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+      Text("▦", modifier = Modifier.padding(end = 12.dp), color = MaterialTheme.colorScheme.onSecondaryContainer)
+      androidx.compose.foundation.layout.Column(Modifier.weight(1f)) {
+        Text("PART OF THIS HUB", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+        Text("Open the hub", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSecondaryContainer)
+      }
+      Text("→", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
     }
   }
 }
