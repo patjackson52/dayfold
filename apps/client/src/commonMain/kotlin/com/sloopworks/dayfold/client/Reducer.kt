@@ -58,10 +58,11 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
     currentHubTree = if (state.currentHubId != null && action.hubs.none { it.id == state.currentHubId }) null else state.currentHubTree,
   )
   is HubsFailed -> state.copy(hubsBusy = false, hubError = action.message)
-  is OpenHub -> state.copy(currentHubId = action.hubId, currentHubTree = null, hubsBusy = true, hubError = null)
+  is OpenHub -> state.copy(currentHubId = action.hubId, currentHubTree = null, hubsBusy = true, hubError = null, hubFocusBlockId = null)
   is HubTreeLoaded -> state.copy(hubsBusy = false, currentHubTree = action.tree, hubError = null)
   is HubNotFound -> state.copy(hubsBusy = false, currentHubId = null, currentHubTree = null, hubError = "That hub is no longer available.")
-  is CloseHub -> state.copy(currentHubId = null, currentHubTree = null)
+  is CloseHub -> state.copy(currentHubId = null, currentHubTree = null, hubFocusBlockId = null)
+  is SetHubFocus -> state.copy(hubFocusBlockId = action.blockId)
   is SetHubFilter -> state.copy(hubFilter = action.filter)
   is OpenAudienceSheet -> state.copy(audienceSheetOpen = true, currentHubAudience = null)
   is HubAudienceLoaded -> state.copy(currentHubAudience = action.audience)

@@ -77,7 +77,7 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
     onApproveDevice = { fid -> scope.launch { authEngine.approveDevice(fid, store.state.pendingDevice?.userCode ?: return@launch) } },
     onDenyDevice = { fid -> scope.launch { authEngine.denyDevice(fid, store.state.pendingDevice?.userCode ?: return@launch) } },
     onLoadHubs = { scope.launch { syncEngine.syncNow() } },  // PR1: hub list is DB-fed via the bridge
-    onOpenHub = { id -> scope.launch { hubEngine.openHub(id) } },
+    onOpenHub = { id, block -> scope.launch { hubEngine.openHub(id, block) } },
     onCloseHub = { scope.launch { hubEngine.closeHub() } },  // PR2: cancel tree subscription
     onLoadAudience = { id -> scope.launch { hubEngine.loadAudience(id) } },
   )
