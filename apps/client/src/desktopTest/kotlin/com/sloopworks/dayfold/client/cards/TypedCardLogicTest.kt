@@ -11,6 +11,7 @@ import com.sloopworks.dayfold.client.Payload
 import com.sloopworks.dayfold.client.Provenance
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 // Pure derivation logic (no Compose) — fast, golden-stable (no PNG diffing).
@@ -75,5 +76,18 @@ class TypedCardLogicTest {
     assertEquals("Authored prose", bodySummaryFor(card("file", Payload(file = FilePayload(filename = "a.pdf")), body = "Authored prose")))
     assertEquals("a.pdf · 2 pages", bodySummaryFor(card("file", Payload(file = FilePayload(filename = "a.pdf", pages = 2)))))
     assertTrue(bodySummaryFor(card("link", Payload(link = LinkPayload(domain = "x.org"))))!!.contains("x.org"))
+  }
+
+  @Test fun `body summary derives the subtitle for invite, contact, geo, email`() {
+    assertEquals("Maya · 8 guests", bodySummaryFor(card("invite", Payload(invite = InvitePayload(host = "Maya", guestCount = 8)))))
+    assertEquals("Acme · PM", bodySummaryFor(card("contact", Payload(contact = ContactPayload(company = "Acme", role = "PM")))))
+    assertEquals("5 Main St · 12 min away", bodySummaryFor(card("geo", Payload(geo = GeoPayload(address = "5 Main St", etaMin = 12)))))
+    assertEquals("school@x.edu · Picnic", bodySummaryFor(card("email", Payload(email = EmailPayload(from = "school@x.edu", subject = "Picnic")))))
+  }
+
+  @Test fun `body summary is null when there is no body_md and no derivable payload field`() {
+    assertNull(bodySummaryFor(card("contact", Payload(contact = ContactPayload()))))   // all fields null → no blank "·"
+    assertNull(bodySummaryFor(card("invite", Payload(invite = InvitePayload()))))
+    assertNull(bodySummaryFor(card("geo", Payload(geo = GeoPayload()))))
   }
 }
