@@ -88,6 +88,13 @@ private fun authedGet(
 internal fun cliVersion(): String =
   {}.javaClass.getResourceAsStream("/dayfold-version.txt")?.readBytes()?.decodeToString()?.trim() ?: "unknown"
 
+/** The `whoami` status line — pure, so it's testable. With neither a device login
+ *  nor a legacy token, print actionable guidance instead of blank `family= api=`. */
+internal fun whoamiStatus(signedInDevice: Boolean, hasToken: Boolean, family: String, api: String): String =
+  if (!signedInDevice && !hasToken)
+    "not signed in — run: dayfold login (or set DAYFOLD_API + FAMILY_ID + HOUSEHOLD_SECRET)"
+  else "family=$family api=$api (${if (signedInDevice) "device" else "legacy"})"
+
 fun main(args: Array<String>) {
   when (args.getOrNull(0)) {
     "--version", "-v", "version" -> println("dayfold ${cliVersion()}")
@@ -112,7 +119,7 @@ fun main(args: Array<String>) {
       val api = creds?.api ?: System.getenv("DAYFOLD_API") ?: ""
       val fam = creds?.familyId ?: System.getenv("FAMILY_ID") ?: ""
       val tok = creds?.accessToken ?: System.getenv("HOUSEHOLD_SECRET") ?: ""
-      println("family=$fam api=$api (${if (dev) "device" else "legacy"})")
+      println(whoamiStatus(dev, tok.isNotEmpty(), fam, api))
       // ADR 0029: show the credential's RESOLVED scope (server-side grant rows).
       if (api.isNotEmpty() && tok.isNotEmpty()) {
         val (code, body) = authedGet(store.takeIf { dev }, keychain, api, tok, creds, "/auth/whoami")
