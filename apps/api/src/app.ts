@@ -347,6 +347,7 @@ app.get("/device", (c) => {
 
 app.put("/families/:fid/cards/:id", async (c) => {
   const fid = c.req.param("fid"), id = c.req.param("id");
+  { const e = idError(id); if (e) return c.json(e, 422); }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   if (!(await requireScope(a.cred.id, "content", "write"))) return c.json({ type: "forbidden" }, 403);
@@ -410,7 +411,12 @@ app.delete("/families/:fid/cards/:id", async (c) => {
 // Hub ids are resource-scope keys; constrain the charset so a ':' can't ambiguate a
 // grant string (`hub:<id>:read`). Sections/blocks are reachable ONLY via the hub
 // tree (visibility-gated there), so they inherit the hub's visibility.
-const HUB_ID = /^[A-Za-z0-9_-]{1,128}$/;
+// Content resource ids become DB primary keys (path-supplied). Validate them
+// uniformly across cards/hubs/sections/blocks — the hub route already guarded
+// this; the others didn't. Returns a 422 body when malformed, else null.
+const RESOURCE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const idError = (id: string) =>
+  RESOURCE_ID.test(id) ? null : { type: "validation", issues: [{ path: ["id"], message: "id must match [A-Za-z0-9_-]{1,128}" }] };
 
 app.get("/families/:fid/hubs", async (c) => {
   const fid = c.req.param("fid");
@@ -466,7 +472,7 @@ app.get("/families/:fid/hubs/:id/audience", async (c) => {
 
 app.put("/families/:fid/hubs/:id", async (c) => {
   const fid = c.req.param("fid"), id = c.req.param("id");
-  if (!HUB_ID.test(id)) return c.json({ type: "validation", issues: [{ path: ["id"], message: "hub id must be [A-Za-z0-9_-]{1,128}" }] }, 422);
+  { const e = idError(id); if (e) return c.json(e, 422); }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   if (!(await requireScope(a.cred.id, `hub:${id}`, "write"))) return c.json({ type: "forbidden" }, 403);
@@ -514,6 +520,7 @@ app.delete("/families/:fid/hubs/:id", async (c) => {
 
 app.put("/families/:fid/sections/:id", async (c) => {
   const fid = c.req.param("fid"), id = c.req.param("id");
+  { const e = idError(id); if (e) return c.json(e, 422); }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   const raw = await c.req.json().catch(() => null);
@@ -530,6 +537,7 @@ app.put("/families/:fid/sections/:id", async (c) => {
 
 app.put("/families/:fid/blocks/:id", async (c) => {
   const fid = c.req.param("fid"), id = c.req.param("id");
+  { const e = idError(id); if (e) return c.json(e, 422); }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   const raw = await c.req.json().catch(() => null);
