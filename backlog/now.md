@@ -39,6 +39,15 @@ API enforcement is built (PRs #34/#35). Hub render is build-ready.
 
 ## Operator actions pending
 
+- [ ] **🔒 Apply migration `0011_hub_visibility_fanout.sql` to the Neon prod DB**
+  (migrations are applied manually — INB-12). PR #57 fixed an **ADR 0030 subtree-
+  revocation leak in code** (flipping a hub family→restricted with an empty
+  allow-list left its sections/blocks un-tombstoned on already-synced members'
+  devices), but **prod stays exposed until 0011 runs**. Idempotent (`CREATE OR
+  REPLACE` + `DROP TRIGGER IF EXISTS`) — safe to re-run. While there, verify the
+  prod schema is current through 0011 (0006–0010 already applied — hub features
+  are live). Agent could apply under ADR 0012 rails but it's prod DDL on
+  customer data → left operator-gated.
 - [ ] **INB-3** kill-checks (~2 hrs): Gemini Daily Brief + Maple+ hands-on;
   note the niche gap → feeds A1. *(Only matters if pursuing the business path.)*
 - [ ] **INB-13** hand the trigger-design v2 fix-list (`designs/DESIGN-BRIEF-
