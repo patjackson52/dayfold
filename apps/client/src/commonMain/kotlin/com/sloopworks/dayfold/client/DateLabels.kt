@@ -1,6 +1,14 @@
 package com.sloopworks.dayfold.client
 
 import kotlin.time.Instant
+import kotlinx.datetime.LocalDate
+
+// Friendly briefing date, e.g. "Thursday, June 25". Pure (takes a LocalDate) so the
+// composable injects today via the clock+timezone and tests pass a fixed date.
+fun formatDayLabel(date: LocalDate): String {
+  fun title(s: String) = s.lowercase().replaceFirstChar { it.uppercase() }
+  return "${title(date.dayOfWeek.name)}, ${title(date.month.name)} ${date.day}"
+}
 
 // Calm countdown labels for the Hubs surface (ADR 0006). The API serves DB-shaped
 // timestamptz strings ("2026-06-24 07:23:51.41-07"), not ISO — normalize, then

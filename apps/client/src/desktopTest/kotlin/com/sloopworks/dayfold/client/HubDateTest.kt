@@ -1,10 +1,17 @@
 package com.sloopworks.dayfold.client
 
+import kotlinx.datetime.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class HubDateTest {
+  @Test fun formatsAFriendlyBriefingDate() {
+    // 2026-01-01 is a Thursday (verified); checks DOW + month names, capitalization, day
+    assertEquals("Thursday, January 1", formatDayLabel(LocalDate(2026, 1, 1)))
+    assertEquals("Friday, December 25", formatDayLabel(LocalDate(2026, 12, 25)))
+  }
+
   // DB-shaped timestamptz → ISO the parser accepts
   @Test fun normalizesDbTimestamps() {
     assertEquals("2026-06-24T07:23:51.41-07:00", normalizeTs("2026-06-24 07:23:51.41-07"))
