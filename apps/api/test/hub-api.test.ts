@@ -133,6 +133,17 @@ describe("hub content API (ADR 0006/0029/0030)", () => {
     expect((await put(o.familyId, "hubs/" + encodeURIComponent("a:b"), o.token, { type: "move", title: "x" })).status).toBe(422);
   });
 
+  it("the same id charset is enforced on cards/sections/blocks, not just hubs", async () => {
+    const o = await ownerOf("hub-o6b");
+    const evil = encodeURIComponent("a:b");                       // ':' is outside [A-Za-z0-9_-]
+    expect((await put(o.familyId, "cards/" + evil, o.token, { kind: "info", title: "x", provenance: prov })).status).toBe(422);
+    expect((await put(o.familyId, "sections/" + evil, o.token, { hubId: "h1", title: "x" })).status).toBe(422);
+    expect((await put(o.familyId, "blocks/" + evil, o.token, { sectionId: "s1", type: "text", body_md: "x" })).status).toBe(422);
+    // a well-formed id on the same routes is accepted (guard rejects the charset, not the route)
+    expect((await put(o.familyId, "hubs/ok-1", o.token, { type: "move", title: "x" })).status).toBe(200);
+    expect((await put(o.familyId, "sections/ok-1", o.token, { hubId: "ok-1", title: "x" })).status).toBe(200);
+  });
+
   it("§6: only the author or an already-permitted member may rewrite a hub's visibility", async () => {
     const o = await ownerOf("s6-owner");
     const bob = await memberOf("s6-bob", o.familyId);
