@@ -153,4 +153,79 @@ class HubEngineTest {
     assertEquals(false, hit)
     assertTrue(store.state.hubs.isEmpty())
   }
+
+  // loadAudience: happy path — GET /audience → HubAudienceLoaded into currentHubAudience.
+  @Test fun `loadAudience dispatches HubAudienceLoaded on success`() = runBlocking<Unit> {
+    val store = readyStore()
+    var calls = 0
+    val e = engine(store, MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/families/fam1/hubs/h1/audience" -> {
+          calls++
+          respond(
+            """{"visibility":"restricted","members":[{"uid":"u1","display_name":"Alex","role":"adult","permitted":true}]}""",
+            HttpStatusCode.OK, jsonCt,
+          )
+        }
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    })
+    e.loadAudience("h1")
+    assertEquals(1, calls)
+    assertEquals("restricted", store.state.currentHubAudience?.visibility)
+    assertEquals(listOf("u1"), store.state.currentHubAudience?.members?.map { it.uid })
+    assertEquals(true, store.state.currentHubAudience?.members?.single()?.permitted)
+  }
+
+  // loadAudience mirrors AuthEngine's 401 refresh-and-retry: a 401 on the audience
+  // fetch rotates the token (persist + SessionRotated) and retries once transparently.
+  @Test fun `loadAudience 401 refreshes once and retries`() = runBlocking<Unit> {
+    val store = readyStore()                               // session = Session("ax","rx")
+    val ts = MemTokenStore(Session("ax", "rx"))
+    var calls = 0
+    val e = engine(store, MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/families/fam1/hubs/h1/audience" -> {
+          calls++
+          if (calls == 1) respond("expired", HttpStatusCode.Unauthorized)
+          else respond("""{"visibility":"family","members":[]}""", HttpStatusCode.OK, jsonCt)
+        }
+        "/auth/refresh" -> respond("""{"access":"fresh","refresh":"r2"}""", HttpStatusCode.OK, jsonCt)
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    }, ts = ts)
+    e.loadAudience("h1")
+    assertEquals(2, calls)                                 // retried after refresh
+    assertEquals(Session("fresh", "r2"), store.state.session)  // rotated into state
+    assertEquals(Session("fresh", "r2"), ts.session)       // and persisted
+    assertEquals("family", store.state.currentHubAudience?.visibility)
+  }
+
+  // A failed refresh after a 401 is non-fatal: loadAudience swallows it (the sheet
+  // shows a quiet empty/loading state) — no crash, no stale audience, no rotation.
+  @Test fun `loadAudience swallows a failed refresh (quiet, non-fatal)`() = runBlocking<Unit> {
+    val store = readyStore()
+    val ts = MemTokenStore(Session("ax", "rx"))
+    var calls = 0
+    val e = engine(store, MockEngine { req ->
+      when (req.url.encodedPath) {
+        "/families/fam1/hubs/h1/audience" -> { calls++; respond("expired", HttpStatusCode.Unauthorized) }
+        "/auth/refresh" -> respond("nope", HttpStatusCode.Unauthorized)   // refresh also fails
+        else -> respond("", HttpStatusCode.NotFound)
+      }
+    }, ts = ts)
+    e.loadAudience("h1")                                   // must not throw
+    assertEquals(1, calls)                                 // no successful retry
+    assertNull(store.state.currentHubAudience)             // nothing dispatched
+    assertEquals(Session("ax", "rx"), store.state.session) // no rotation on failed refresh
+  }
+
+  @Test fun `loadAudience with no session is a no-op`() = runBlocking<Unit> {
+    val store = createAppStore(debug = false)              // no session/family
+    var hit = false
+    val e = engine(store, MockEngine { hit = true; respond("", HttpStatusCode.NotFound) })
+    e.loadAudience("h1")
+    assertEquals(false, hit)                               // guarded before any network call
+    assertNull(store.state.currentHubAudience)
+  }
 }
