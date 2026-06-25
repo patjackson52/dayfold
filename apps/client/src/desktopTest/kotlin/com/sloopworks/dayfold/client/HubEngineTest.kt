@@ -130,6 +130,39 @@ class HubEngineTest {
     assertNull(store.state.currentHubTree)   // cancelled → no stray re-render
   }
 
+  // Navigating hub1 -> hub2 must cancel hub1's tree subscription (openHub line:
+  // `treeJob?.cancel()`), else a later DB write to hub1 would stray-dispatch
+  // HubTreeLoaded(hub1) over the hub2 detail the user is now viewing (+ leak a
+  // coroutine per navigation). closeHub's cancellation is tested; re-open is not.
+  @Test fun `opening a different hub cancels the prior hub's tree subscription`() = runBlocking {
+    val store = readyStore()
+    val cs = freshContentStore()
+    cs.applyDelta(
+      changedCards = emptyList(),
+      changedHubs = listOf(Hub("h1", title = "H1", visibility = "family"), Hub("h2", title = "H2", visibility = "family")),
+      changedSections = listOf(HubSection("s1", hubId = "h1", title = "X"), HubSection("s2", hubId = "h2", title = "Y")),
+      changedBlocks = listOf(HubBlock("b1", sectionId = "s1", type = "text", bodyMd = "h1v1"), HubBlock("b2", sectionId = "s2", type = "text", bodyMd = "h2v1")),
+      tombstones = emptyList(), nextCursor = "c1", nowIso = "2026-06-24T00:00:00Z",
+    )
+    val e = engine(store, MockEngine { respond("{}", HttpStatusCode.OK, jsonCt) }, contentStore = cs)
+    e.openHub("h1")
+    await(store) { it.currentHubTree?.hub?.title == "H1" }
+    e.openHub("h2")
+    await(store) { it.currentHubTree?.hub?.title == "H2" }
+    assertEquals("h2", store.state.currentHubId)
+
+    // a later write to h1 must NOT pull the detail back to h1 — its subscription
+    // was cancelled when we opened h2.
+    cs.applyDelta(
+      changedCards = emptyList(), changedHubs = listOf(Hub("h1", title = "H1", visibility = "family")),
+      changedSections = listOf(HubSection("s1", hubId = "h1", title = "X")),
+      changedBlocks = listOf(HubBlock("b1", sectionId = "s1", type = "text", bodyMd = "h1v2")),
+      tombstones = emptyList(), nextCursor = "c2", nowIso = "2026-06-24T00:01:00Z",
+    )
+    Thread.sleep(250)
+    assertEquals("H2", store.state.currentHubTree?.hub?.title)   // stays on h2; no stray h1 re-dispatch
+  }
+
   @Test fun `openHub with a focus block sets the deep-link arrival highlight`() = runBlocking {
     val store = readyStore()
     val cs = freshContentStore()
