@@ -28,6 +28,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import kotlinx.datetime.toLocalDateTime
 import com.sloopworks.dayfold.client.cards.CardAction
 import com.sloopworks.dayfold.client.cards.TypedCardItem
 
@@ -39,7 +40,15 @@ fun FeedScreen(state: AppState, onAction: (CardAction) -> Unit = {}, onOpenAccou
   Scaffold(
     topBar = {
     TopAppBar(
-      title = { Text("Today") },
+      title = {
+        val today = kotlin.time.Clock.System.now()
+          .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
+        Column {
+          Text("Today")
+          // calm orienting subtitle for the daily briefing
+          Text(formatDayLabel(today), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      },
       actions = {
         // account entry — monogram avatar → AccountScreen (sign-out lives there)
         Box(
