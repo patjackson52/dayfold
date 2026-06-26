@@ -366,6 +366,22 @@ private fun AudienceRow(m: HubAudienceMember, isYou: Boolean) {
   }
 }
 
+/** True when a payload-driven block has no usable typed payload but DOES carry
+ *  `body_md` — authors routinely put a contact/checklist/document's content in
+ *  markdown (no structured payload), so the renderer must show that markdown rather
+ *  than an empty typed layout (which rendered just "Contact"/"document"/blank). Pure. */
+internal fun blockFallsBackToBodyMd(block: HubBlock): Boolean =
+  !block.bodyMd.isNullOrBlank() && !hasTypedPayload(block)
+
+private fun hasTypedPayload(block: HubBlock): Boolean = when (block.type) {
+  "checklist" -> !block.payload?.items.isNullOrEmpty()
+  "link", "document" -> block.payload?.run { url != null || label != null || docRef != null } ?: false
+  "contact" -> block.payload?.run { name != null || phone != null || email != null || role != null } ?: false
+  "location" -> block.payload?.run { address != null || lat != null || label != null } ?: false
+  "budget" -> block.payload?.run { total != null || !items.isNullOrEmpty() } ?: false
+  else -> true   // text/markdown/milestone/unknown render body_md in their own branch
+}
+
 @Composable
 private fun HubBlockCard(block: HubBlock, focused: Boolean = false) {
   Card(
@@ -382,15 +398,19 @@ private fun HubBlockCard(block: HubBlock, focused: Boolean = false) {
             color = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
         }
       }
-      when (block.type) {
-        "text", "markdown" -> Text(block.bodyMd ?: "", style = MaterialTheme.typography.bodyMedium)
-        "checklist" -> block.payload?.items?.forEach { item -> ChecklistRow(item) }
-        "link", "document" -> LinkRow(block)
-        "contact" -> ContactRow(block.payload)
-        "location" -> LocationBlock(block.payload)
-        "milestone" -> MilestoneRow(block.payload, block.bodyMd)
-        "budget" -> BudgetBar(block.payload)
-        else -> Text(block.bodyMd ?: block.type, style = MaterialTheme.typography.bodyMedium)
+      when {
+        // typed block whose content is in body_md (no usable payload) → show the markdown
+        blockFallsBackToBodyMd(block) -> Text(block.bodyMd ?: "", style = MaterialTheme.typography.bodyMedium)
+        else -> when (block.type) {
+          "text", "markdown" -> Text(block.bodyMd ?: "", style = MaterialTheme.typography.bodyMedium)
+          "checklist" -> block.payload?.items?.forEach { item -> ChecklistRow(item) }
+          "link", "document" -> LinkRow(block)
+          "contact" -> ContactRow(block.payload)
+          "location" -> LocationBlock(block.payload)
+          "milestone" -> MilestoneRow(block.payload, block.bodyMd)
+          "budget" -> BudgetBar(block.payload)
+          else -> Text(block.bodyMd ?: block.type, style = MaterialTheme.typography.bodyMedium)
+        }
       }
       block.provenance?.source?.let { src -> ProvenanceChip(src) }
     }
