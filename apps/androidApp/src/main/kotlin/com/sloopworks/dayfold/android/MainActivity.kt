@@ -23,6 +23,7 @@ import com.sloopworks.debugdrawer.BuildInfo
 import com.sloopworks.debugdrawer.DebugDrawer
 import com.sloopworks.debugdrawer.DebugDrawerConfig
 import com.sloopworks.debugdrawer.DebugDrawerHost
+import com.sloopworks.debugdrawer.log.DebugLog
 import io.ktor.client.HttpClient
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
@@ -66,6 +67,10 @@ class MainActivity : ComponentActivity() {
       ),
       applicationContext,
     )
+    // Bridge the client's logs (redux action log + [sync] refresh path) into the
+    // drawer's Logs panel — DebugLog feeds the installed LogBuffer in debug, no-op
+    // in release. Without this the Logs panel is empty (nothing fed the buffer).
+    com.sloopworks.dayfold.client.ClientLog.sink = { tag, msg -> DebugLog.i(tag, msg) }
     // API base routes through the drawer's backend override (falls back to the
     // build-time DAYFOLD_API). Switching backend in the drawer applies on restart.
     val apiBase = DebugDrawer.backendUrl(BuildConfig.DAYFOLD_API)
