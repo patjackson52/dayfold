@@ -8,10 +8,14 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import com.sloopworks.dayfold.client.cards.CardAction
 import com.sloopworks.dayfold.client.cards.DetailScreen
 import com.sloopworks.dayfold.client.cards.LocalAnimatedVisibilityScope
@@ -83,8 +87,20 @@ fun FeedApp(
   DayfoldTheme {
     // Deep-link resume beat: after sign-in, MembershipsLoaded has already set the
     // gate route, so show "Finishing…" over it while the stashed code is looked up.
-    if (state.deviceResuming) { DeviceFinishingScreen(); return@DayfoldTheme }
+    if (state.deviceResuming) { SafeArea { DeviceFinishingScreen() }; return@DayfoldTheme }
+    // Feed/Hubs render their own Scaffold (TopAppBar + NavigationBar consume the
+    // system-bar insets) and intentionally bleed edge-to-edge → render them bare.
+    // Every other route is a plain, Scaffold-less screen, so wrap it once in SafeArea
+    // (safeDrawing = status/nav bars + display cutout + IME) instead of touching each.
     when (state.route) {
+      Route.Feed -> ContentHost(
+        store, state, handle,
+        onConnectDevice = { store.dispatch(OpenEnterCode) },
+        onNavHubs = { store.dispatch(OpenHubs); onLoadHubs() },
+        onRefresh = onRefresh,
+      )
+      Route.Hubs -> HubsHost(store, state, onLoadHubs = onLoadHubs, onOpenHub = onOpenHub, onCloseHub = onCloseHub, onLoadAudience = onLoadAudience)
+      else -> SafeArea { when (state.route) {
       Route.Loading -> SplashScreen()
       // A deep-link tapped before sign-in shows the branded resume screen instead
       // of the plain sign-in (same providers; resumes onto AuthorizeDevice after).
@@ -97,13 +113,9 @@ fun FeedApp(
         onCreate = onCreateFamily, onJoinInvite = { store.dispatch(OpenJoinInvite) },
       )
       Route.JoinInvite -> JoinInviteScreen(state, onJoin = onRedeemInvite, onDismiss = { store.dispatch(JoinDismissed) })
-      Route.Feed -> ContentHost(
-        store, state, handle,
-        onConnectDevice = { store.dispatch(OpenEnterCode) },
-        onNavHubs = { store.dispatch(OpenHubs); onLoadHubs() },
-        onRefresh = onRefresh,
-      )
-      Route.Hubs -> HubsHost(store, state, onLoadHubs = onLoadHubs, onOpenHub = onOpenHub, onCloseHub = onCloseHub, onLoadAudience = onLoadAudience)
+      // Feed/Hubs handled above (bare, edge-to-edge); listed here only to keep the
+      // inner `when` exhaustive over Route.
+      Route.Feed, Route.Hubs -> {}
       Route.EnterCode -> EnterCodeScreen(
         state, onLookup = onLookupDevice, onBack = { store.dispatch(CloseDeviceFlow) },
         // Scan toggle only where a camera exists (qrScanSupported) — null hides it
@@ -151,8 +163,19 @@ fun FeedApp(
         onLoad = onLoadApprovals, onLoadMembers = onLoadMembers, onRemoveMember = onRemoveMember,
         onBack = { store.dispatch(OpenAccount) },
       )
+      } }
     }
   }
+}
+
+// Insets the Scaffold-less routes into the safe area. safeDrawing is the union of
+// the status/navigation bars, the display cutout, and the IME — so one wrapper keeps
+// content off the system bars AND lifts text fields above the keyboard. Requires
+// edge-to-edge (Android: enableEdgeToEdge in MainActivity; iOS: ComposeUIViewController
+// reports the safe area) for the insets to be non-zero.
+@Composable
+private fun SafeArea(content: @Composable () -> Unit) {
+  Box(Modifier.fillMaxSize().safeDrawingPadding()) { content() }
 }
 
 // CL-7b container transform: SharedTransitionLayout shares the tapped card's
