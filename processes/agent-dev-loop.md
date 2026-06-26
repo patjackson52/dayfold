@@ -49,8 +49,21 @@ prod/preview): `ENABLE_DEV_AUTH=1 DEV_AUTH_SECRET=… node src/server.ts`, then
 Cloud/device (Pixel) hardcoding fully dies at **AUTH-S3** (CLI device grant).
 
 Cloud (live): `https://family-ai-dashboard.vercel.app`. Redeploy (operator-gated;
-set the `AUTH_*` env in Vercel first):
+the `AUTH_*` env must be set in Vercel — see below):
 `npm run build:fn && vercel deploy --prod --yes --scope patrick-jacksons-projects-c406a118`.
+
+**Prod config state (2026-06-26):** prod now has the full DB schema (all 11
+migrations) + `AUTH_SIGNING_KEY`/`AUTH_ISS`/`AUTH_AUD` + `FIREBASE_PROJECT_ID` set;
+real Google sign-in + foreground sync work on-device. This was NOT always true — prod
+ran only the legacy `HOUSEHOLD_SECRET` content path for a long time (the AUTH epic +
+fanout migrations and the token-signing env were never applied), which 500'd the first
+real sign-in (`firebase HTTP 500`) + device-login. **Before any redeploy or when
+diagnosing a prod auth 500, run the preflight** (it's why it exists):
+`DATABASE_URL=<prod> npm run preflight` (= `env:check` — required env incl. a valid
+`AUTH_SIGNING_KEY` JWK; then `db:check` — schema-drift vs `migrations/`). Note the
+prod Neon `DATABASE_URL` is a **Sensitive** Vercel var (unreadable via `env pull` /
+dashboard) — get the connection string from the Neon console. The durable fix for the
+manual-apply process is **ADR 0033** (tracked migration runner; Proposed).
 
 ## ⚠ Single Gradle build at `apps/` (TASK-KMP, 2026-06-19)
 `apps/client` is now a **true KMP module** (`commonMain` = all shared logic+UI+
