@@ -83,23 +83,25 @@ typed block with only `body_md` and no payload still renders its markdown, so
 prose-style authoring is fine. `text` / `markdown` blocks are always `body_md`.
 `ord` orders sections within a hub, and blocks within a section (ascending).
 
-> **Payload shape — use the render contract, not the generated schema.** The server
-> stores `payload` as JSON **verbatim**, so what renders is the client model. It
-> currently **diverges** from `content.schema.json` (see `OQ-block-payload-schema`),
-> so author with these field names (or just use `body_md`, which always renders):
+> **Payload shape — the schema is canonical** (ADR 0035). Author with the
+> `content.schema.json` field names below; both the CLI and server now validate that
+> a `payload`, when present, carries its type's core field, and the app renders it.
+> (Or just use `body_md`, which always renders.) The **bold** field is required.
 >
-> | block       | `payload` fields (client render contract)                          |
-> |-------------|--------------------------------------------------------------------|
-> | `checklist` | `items: [{ text, done, due?, assignee? }]`                          |
-> | `link`      | `url`, `label?`, `domain?`                                          |
-> | `document`  | `url?`, `label?`, `docRef?`                                         |
-> | `contact`   | `name?`, `role?`, `phone?`, `email?`                               |
-> | `location`  | `address?`, `lat?`, `lng?`                                          |
-> | `budget`    | `total?`, `spent?`, `items: [{ text, done }]`                       |
-> | `milestone` | (use `body_md`; `date?` optional)                                  |
+> | block       | `payload` fields (canonical = schema)                  | also accepted (client alias) |
+> |-------------|--------------------------------------------------------|------------------------------|
+> | `checklist` | **`items: [{ text, done?, due?, assignee? }]`**        | —                            |
+> | `link`      | **`url`**, `label?`, `source?`                          | `domain?`                    |
+> | `document`  | **`ref`** (url \| fileRef), `label?`, `kind?`           | `docRef?`                    |
+> | `contact`   | **`name`**, `role?`, `phone?`, `email?`                | —                            |
+> | `location`  | **`label`**, `address?`, `mapUrl?`                      | `lat?` / `lng?`              |
+> | `budget`    | **`items: [{ label, amount, paid? }]`**                | `total?` / `spent?`          |
+> | `milestone` | **`date`**, **`label`** (or just `body_md`)            | —                            |
 >
-> Do **not** use the schema's `ref` / `mapUrl` / `source` / item `amount`/`paid` —
-> the renderer doesn't read them yet. Reconciliation is tracked in the OQ.
+> During the M0→M1 transition the renderer/validators are **tolerant** of the client
+> aliases too (so existing render code keeps working); collapsing to one representation
+> is an M1 task — see `OQ-block-payload-schema`. New content should use the canonical
+> (schema) names.
 
 ### Markdown that renders in `body_md`
 
