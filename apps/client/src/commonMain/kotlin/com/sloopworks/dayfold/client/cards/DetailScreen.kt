@@ -6,10 +6,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Button
@@ -57,9 +62,12 @@ fun DetailScreen(card: Card, onBack: () -> Unit, onAction: (CardAction) -> Unit)
   val (heroBg, heroFg) = accentColors(accent, solid = false) // container + onContainer (AA)
   Column(Modifier.fillMaxSize().cardSharedBounds(card.id)) { // CL-7b: morph target
     HeroHeader(card, accent, heroBg, heroFg, onBack, onAction)
+    // Bottom inset (gesture pill / nav bar) added to the scroll padding so the last
+    // item clears the system bar; no Scaffold here, so the list owns its own inset.
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     LazyColumn(
       Modifier.fillMaxSize(),
-      contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+      contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + navBottom),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       item { HeroMedia(card, onAction) }
@@ -131,7 +139,11 @@ private fun HeroHeader(
   card: Card, accent: CardAccent, heroBg: androidx.compose.ui.graphics.Color,
   heroFg: androidx.compose.ui.graphics.Color, onBack: () -> Unit, onAction: (CardAction) -> Unit,
 ) {
-  Column(Modifier.fillMaxWidth().background(heroBg).padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 18.dp)) {
+  // Hero colour bleeds full-width *under* the status bar (edge-to-edge look); its
+  // content is inset below the bar via statusBarsPadding so Back/Share + title never
+  // sit under the clock. background → statusBarsPadding → padding order matters: the
+  // colour fills first, the inset shifts only the content.
+  Column(Modifier.fillMaxWidth().background(heroBg).statusBarsPadding().padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 18.dp)) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       TextButton(onClick = onBack, modifier = Modifier.semantics { contentDescription = "Back to feed" }) {
         Text("← Back", color = heroFg)

@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
@@ -50,6 +51,14 @@ class MainActivity : ComponentActivity() {
 
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    // Edge-to-edge: draw behind the (transparent) status + navigation bars and let
+    // Compose consume the insets. targetSdk 37 already enforces this on Android 15+;
+    // calling it explicitly also sets decorFitsSystemWindows=false (so WindowInsets
+    // report real values) and installs SystemBarStyle.auto → the bar icon contrast
+    // tracks light/dark (same isSystemInDarkTheme source DayfoldTheme keys off, so
+    // icons stay legible in both themes). Inset *padding* is applied in shared UI
+    // (FeedApp safe-area wrapper + DetailScreen hero), not here.
+    enableEdgeToEdge()
     // SloopWorks debug drawer (debug builds only; a no-op facade in release). Install
     // BEFORE any HTTP client is built so backendUrl() can reflect a chosen override.
     DebugDrawer.install(
