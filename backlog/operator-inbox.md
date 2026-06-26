@@ -9,6 +9,26 @@ Each item: question, context link, **proposed default**, urgency.
 
 ---
 
+- **INB-24 · 2026-06-26 · low · open — Monetization strategy review (B6/A5 input).**
+  Operator-requested review of monetization options →
+  `research/2026-06-26-monetization-strategy-review.md`. **Pricing & billing are
+  ADR-class / operator-gated (guardrail #2) — nothing applied.** Headline
+  recommendations: (1) subscription, not paid-up-front; (2) flat **per-family**
+  price (the tenant IS the family — ADR 0004/0011), **owner pays**, **not**
+  per-seat; (3) **server-side, tenant-keyed entitlement** decoupled from any one
+  store account (the one *now* architectural call — keeps every rail open and
+  spans Android/iOS/web members); (4) launch primary rail = **web/direct
+  (Stripe or merchant-of-record)** with store IAP as an optional convenience
+  rail — **yes, payment can be taken out of the store**, and for a
+  cross-platform family tenant it's the better fit (US store-fee landscape in
+  flux: Apple ~0% on external links *pending litigation*, Google ~10% service +
+  5% billing from 2026-06-30, Apple Small-Business IAP 15%); (5) **single paid
+  tier** at launch (no multi-tier — ops budget); defer a future "Plus".
+  **None of this blocks current build** — bites only at G-LAUNCH. **Proposed
+  default:** note the direction; formalize price + rail + tier at **B6** with an
+  ADR; treat the legal/3.1.3(b)/tax-MoR/entity items as operator-only. Urgency
+  low (pre-revenue by design).
+
 - **INB-23 · ANSWERED 2026-06-26 → ADR 0034 ACCEPTED.** Operator "inb 23 approved" →
   ADR 0034 flipped Proposed→Accepted; **G5 posture ratified** (all tracks→prod Vercel
   API, real sign-in AUTH-S3, never bake `HOUSEHOLD_SECRET`/`DEV_AUTH_SECRET`). The
