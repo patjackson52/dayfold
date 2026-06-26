@@ -118,16 +118,16 @@ class SyncEngine(
   private suspend fun refreshSession(): Boolean {
     val ac = authClient ?: return false
     val session = store.state.session ?: return false
-    println("[sync] 401 — refreshing access token")
+    ClientLog.log("sync", "401 — refreshing access token")
     val rotated = try {
       ac.refresh(session.refresh)
     } catch (e: Exception) {
-      println("[sync] token refresh failed: ${e.message ?: "error"}")
+      ClientLog.log("sync", "token refresh failed: ${e.message ?: "error"}")
       return false
     }
     tokenStore?.save(rotated)
     store.dispatch(SessionRotated(rotated))
-    println("[sync] token refreshed — retrying sync")
+    ClientLog.log("sync", "token refreshed — retrying sync")
     return true
   }
 
@@ -139,7 +139,7 @@ class SyncEngine(
       contentStore.wipe()
       store.dispatch(SignedOut)
     } else {
-      println("[sync] failed: HTTP ${e.status}")
+      ClientLog.log("sync", "failed: HTTP ${e.status}")
       store.dispatch(SyncFailed("HTTP ${e.status}"))
     }
   }
