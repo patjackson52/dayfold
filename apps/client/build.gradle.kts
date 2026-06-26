@@ -45,6 +45,13 @@ kotlin {
         implementation(compose.foundation)
         implementation(compose.material3)
         implementation(compose.ui)
+        // ADR 0036 visual enrichment: curated icon glyphs (name→ImageVector map) +
+        // Coil3 async image (KMP) with the ktor3 network fetcher (reuses the
+        // project's ktor 3.5.0). Per-platform engines: cio desktop / okhttp android /
+        // darwin iOS (already declared per source set).
+        implementation(compose.materialIconsExtended)
+        implementation("io.coil-kt.coil3:coil-compose:3.2.0")
+        implementation("io.coil-kt.coil3:coil-network-ktor3:3.2.0")
         // CL-7: BackHandler / PredictiveBackHandler (separate artifact, not pulled
         // by compose.ui transitively) — enables hardware/gesture back → NavBack.
         implementation("org.jetbrains.compose.ui:ui-backhandler:1.11.1")
