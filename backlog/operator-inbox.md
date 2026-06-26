@@ -9,7 +9,15 @@ Each item: question, context link, **proposed default**, urgency.
 
 ---
 
-- **INB-23 · 2026-06-25 · med · open — Mobile release pipeline: one-time store gates
+- **INB-23 · ANSWERED 2026-06-26 → ADR 0034 ACCEPTED.** Operator "inb 23 approved" →
+  ADR 0034 flipped Proposed→Accepted; **G5 posture ratified** (all tracks→prod Vercel
+  API, real sign-in AUTH-S3, never bake `HOUSEHOLD_SECRET`/`DEV_AUTH_SECRET`). The
+  remaining **G1–G4 are one-time operator setup actions** to switch the (merged, inert)
+  pipeline live — recommended order G1+G3 first (keystore + Play account) so merges
+  auto-ship to `internal`, then G2 (real Firebase) before relying on Google sign-in, G4
+  before a real beta. Runbook: `processes/mobile-release.md`. Original below.
+
+  **Mobile release pipeline: one-time store gates
   (ADR 0034).** The 3-track Android pipeline is built + merged
   (`release-android.yml` + signing/versioning + a CI compile smoke) and **inert until**
   these operator-only gates are done (secrets / accounts / spend / store listing).

@@ -2,15 +2,21 @@
 
 ## Status
 
-**Proposed** 2026-06-25 (agent-drafted from a 3-agent best-practices review;
-**operator-gated** — platform/vendor choice + external app publishing + spend, so it
-crosses CLAUDE.md guardrails #2/#6 and the external-action line, beyond the ADR 0012
-agent-build rails). The **agent-buildable pipeline is implemented** under this ADR
-(`release-android.yml`, the `:androidApp` signing/versioning Gradle changes, and a
-PR `assembleDebug` smoke job in `ci.yml`); the **operator setup gates remain open**
-(G1–G5 below) and the publish path is **inert** until they're done — mirroring the
-ADR 0031 CLI-release posture (every external step is gated on its secret; with no
-secrets the workflow builds an unsigned AAB and skips publish, staying green).
+**Accepted** 2026-06-26 (operator-approved — "inb 23 approved"; agent-drafted from a
+3-agent best-practices review). **Operator-gated** — platform/vendor choice + external
+app publishing + spend, so it crosses CLAUDE.md guardrails #2/#6 and the external-action
+line, beyond the ADR 0012 agent-build rails. The **agent-buildable pipeline is
+implemented** under this ADR (`release-android.yml`, the `:androidApp` signing/versioning
+Gradle changes, and a PR `assembleDebug` smoke job in `ci.yml`); the publish path is
+**inert** until the operator setup gates are done — mirroring the ADR 0031 CLI-release
+posture (every external step is gated on its secret; with no secrets the workflow builds
+an unsigned AAB and skips publish, staying green). **On acceptance: G5 (the API-env +
+auth posture) is RATIFIED as written** — all three tracks build against the prod Vercel
+API (no staging exists), rely on real sign-in (AUTH-S3), and never bake
+`HOUSEHOLD_SECRET`/`DEV_AUTH_SECRET` into a store build. **G1–G4 remain operator setup
+actions** (keystore, real Firebase config, Play account + first manual upload, store
+listing) — they are the one-time human steps to switch the pipeline live, not code
+blockers (INB-23; runbook `processes/mobile-release.md`).
 Composes with **ADR 0012** (agent-operated build — but the gates here exceed those
 rails: store accounts, signing keys, spend), **ADR 0026** (`com.sloopworks.dayfold`
 app id), **ADR 0023/0027** (Firebase config the store build needs), **ADR 0021**
