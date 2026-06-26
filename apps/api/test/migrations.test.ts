@@ -34,8 +34,8 @@ describe("migration set is complete and applies cleanly (drift guard)", () => {
     expect(tables).toEqual([
       "audit_log", "blocks", "briefing_cards", "credential_grants", "credentials",
       "device_authorizations", "families", "hubs", "invites", "memberships",
-      "places", "rate_limits", "refresh_tokens", "resource_visibility", "sections",
-      "user_identities", "users",
+      "places", "rate_limits", "refresh_tokens", "resource_visibility",
+      "schema_migrations", "sections", "user_identities", "users",
     ]);
   });
 

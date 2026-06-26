@@ -2,9 +2,14 @@
 
 ## Status
 
-**Proposed** 2026-06-26 (agent-drafted from the authoring-doc audit behind PR #134 /
-`OQ-block-payload-schema`; **operator-gated** — it changes the content schema, a
-source-of-truth spec). Resolves `OQ-block-payload-schema`.
+**Accepted** 2026-06-26 (operator: "I accept 0035, 0033"). Implementation (align
+`content.schema.json` to the client render model + regenerate `Content.kt` + add
+block-payload validation in the CLI `validateHubTree` and the server) follows in its
+own PR.
+
+Originally **Proposed** 2026-06-26 (agent-drafted from the authoring-doc audit behind
+PR #134 / `OQ-block-payload-schema`; **operator-gated** — it changes the content
+schema, a source-of-truth spec). Resolves `OQ-block-payload-schema`.
 
 ## Context
 
