@@ -36,6 +36,8 @@ dayfold push <blockId> block.json --block         # block (body carries sectionI
 - `--type` runs local structural validation against the generated schema BEFORE
   the network — catches wrong payload variant / unknown field / type mismatch.
   Without `--type`, a card is sent unchanged (no local validation).
+- Hub/section/block pushes (via `--hub`, `--section`, `--block`) run an always-on
+  structural pre-check with no flag — the server is the authority for hub-tree shape.
 - The path `<id>` overwrites the body `id` server-side — the body `id` can stay
   `REPLACE_WITH_CARD_ID`.
 - Output: `push <resource>/<id> -> <httpStatus>`. Non-200 prints the server body
