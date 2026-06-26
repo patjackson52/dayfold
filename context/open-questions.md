@@ -193,6 +193,12 @@ New prototype-level open items:
   is `body_md`-only). **Action:** reconcile the two to one source of truth (likely
   regenerate/realign `content.schema.json` ↔ client model) before structured-payload
   authoring is relied on; until then authors use the client-model field names (now in
-  `apps/cli/templates/README.md`) or `body_md`. → **ADR 0035 (Proposed)** picks the
-  direction (Option A: align the schema to the client render model + add block-payload
-  validation); awaiting operator accept.
+  `apps/cli/templates/README.md`) or `body_md`. → **ADR 0035 (Accepted 2026-06-26)**
+  → on implementation, adopted **Option C** (the schema is **frozen + well-designed**,
+  there's no Kotlin codegen, and the renderer needs fields the schema lacks, so the
+  original Option A was wrong). **Done (M0):** block-payload validation in the CLI
+  `validateHubTree` (#144) + the server (#145, also fixing the `BlockSchema.payload =
+  z.any()` codegen stub), renderer reads canonical schema names alongside client ones
+  (#146), authoring doc marks the schema canonical. **Residual (M1):** collapse to ONE
+  representation (rename client → schema, decide location `lat/lng` vs `mapUrl` + budget
+  itemized vs summary, build Kotlin codegen) — until then both names are accepted.

@@ -17,9 +17,11 @@ validation** (CLI + server) that is *tolerant of both* the schema and current
 client-render field names; make the renderer read the canonical names alongside its
 current ones; document the schema as canonical. The single-representation unification
 (rename client → schema, decide the location/budget representations, build Kotlin
-codegen) is deferred to **M1** — tracked in `OQ-block-payload-schema`. Delivered in
-steps: **CLI `validateHubTree` block-payload pre-check (this PR)** → server validation
-→ renderer tolerance → authoring-doc update.
+codegen) is deferred to **M1** — tracked in `OQ-block-payload-schema`. **Option C M0
+shipped:** ✅ CLI `validateHubTree` block-payload pre-check (#144) · ✅ server-side
+validation (#145, also fixing the `BlockSchema.payload = z.any()` codegen stub) · ✅
+renderer reads canonical schema names alongside client ones (#146) · ✅ authoring doc
+marks the schema canonical. M1 residual = collapse to one representation.
 
 Originally **Proposed** 2026-06-26 (agent-drafted from the authoring-doc audit behind
 PR #134 / `OQ-block-payload-schema`; **operator-gated** — it changes the content
