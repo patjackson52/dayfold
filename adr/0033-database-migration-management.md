@@ -2,7 +2,13 @@
 
 ## Status
 
-**Proposed** 2026-06-25 (agent-drafted from the 2026-06-25 prod auth outage).
+**Accepted** 2026-06-26 (operator: "I accept 0035, 0033"). Runner implemented —
+`schema_migrations` tracking table (migration `0012`), `scripts/migrate.mjs`
+(`pg`-only; `db:migrate` / `--dry-run` / `--backfill`), pure-logic tests, drift
+fixtures updated. Running it on prod (incl. the one-time `--backfill`) is the deploy
+step, agent-operated under ADR 0012 rails.
+
+Originally **Proposed** 2026-06-25 (agent-drafted from the 2026-06-25 prod auth outage).
 Operator-gated: this changes the deploy/migration **process** and adds a tracking
 table → ADR-class (maintenance burden + customer-data handling). Composes with the
 already-merged guard rails — PR #91 (`migrations.test.ts` drift guard: the full set
