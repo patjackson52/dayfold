@@ -48,35 +48,92 @@ object FakeScenarios {
   private val medicalHub = Hub(id = "h_medical", type = "medical", title = "Maya — pediatric follow-up",
     status = "active", startAt = "2026-06-30T09:30:00Z", visibility = "restricted", createdBy = "u_owner")
 
+  // h_party stays at EXACTLY two sections (a fake-backend test pins the tree shape);
+  // richness is added as MORE blocks inside them, not more sections.
   private val partySections = listOf(
     HubSection(id = "s_party_plan", hubId = "h_party", title = "Plan", ord = 0),
     HubSection(id = "s_party_logistics", hubId = "h_party", title = "Logistics", ord = 1),
   )
   private val partyBlocks = listOf(
+    // markdown block → the full renderBlockMarkdown path: heading, bold/italic, a
+    // table, a vetted link, and an ![image](https) that degrades to a 🖼 label.
+    HubBlock(id = "b_party_brief", sectionId = "s_party_plan", type = "markdown",
+      bodyMd = """
+        ## Party day plan
+
+        Doors at **3:00 PM** — backyard if it's _dry_.
+
+        | Time | What |
+        |---|---|
+        | 1:00 PM | Rentals arrive |
+        | 2:30 PM | Set up tables |
+        | 3:00 PM | Guests arrive |
+
+        See the [shared playlist](https://open.spotify.com/playlist/party).
+
+        ![Backyard layout sketch](https://files.example/backyard-layout.png)
+      """.trimIndent(), provenance = Provenance("claude"), ord = 0),
     HubBlock(id = "b_party_checklist", sectionId = "s_party_plan", type = "checklist",
       payload = BlockPayload(items = listOf(
         ChecklistItem(text = "Order cake", done = true),
         ChecklistItem(text = "Send invites", done = true),
         ChecklistItem(text = "Buy balloons", done = false),
         ChecklistItem(text = "Pick up rentals", done = false, due = "2026-06-21T13:00:00Z", assignee = "Sam"),
-      )), provenance = Provenance("claude"), ord = 0),
+      )), provenance = Provenance("claude"), ord = 1),
     HubBlock(id = "b_party_milestone", sectionId = "s_party_plan", type = "milestone",
-      bodyMd = "Party starts", payload = BlockPayload(date = "2026-06-21T15:00:00Z"), ord = 1),
+      bodyMd = "Party starts", payload = BlockPayload(date = "2026-06-21T15:00:00Z"), ord = 2),
     HubBlock(id = "b_party_contact", sectionId = "s_party_logistics", type = "contact",
       payload = BlockPayload(name = "Jake's Rentals", role = "Party equipment",
-        phone = "+15555550142", email = "hello@jakes.example"), ord = 0),
+        phone = "+15555550142", email = "hello@jakes.example"), provenance = Provenance("email"), ord = 0),
     HubBlock(id = "b_party_location", sectionId = "s_party_logistics", type = "location",
       payload = BlockPayload(label = "Home — backyard", address = "200 Riverside Dr",
         lat = 37.42, lng = -122.08), ord = 1),
+    // link block → 🔗 icon tile + label/domain; document block → 📄 icon tile.
+    HubBlock(id = "b_party_link", sectionId = "s_party_logistics", type = "link",
+      payload = BlockPayload(url = "https://open.spotify.com/playlist/party",
+        label = "Party playlist", domain = "open.spotify.com"), provenance = Provenance("user"), ord = 2),
+    HubBlock(id = "b_party_doc", sectionId = "s_party_logistics", type = "document",
+      payload = BlockPayload(label = "Catering menu.pdf", docRef = "https://drive.example/menu.pdf"),
+      provenance = Provenance("email"), ord = 3),
   )
   private val vacationSections = listOf(
     HubSection(id = "s_vac_itin", hubId = "h_vacation", title = "Itinerary", ord = 0),
   )
   private val vacationBlocks = listOf(
     HubBlock(id = "b_vac_note", sectionId = "s_vac_itin", type = "markdown",
-      bodyMd = "Drive up Saturday morning. Beach house check-in 3pm.", ord = 0),
+      bodyMd = """
+        ## Cape Cod — Aug 2–9
+
+        Drive up **Saturday** morning. Beach house check-in _3 PM_.
+
+        - [x] Book house
+        - [x] Reserve ferry
+        - [ ] Pack beach gear
+
+        | Day | Plan |
+        |---|---|
+        | Sat | Drive up + check in |
+        | Sun | Beach + lobster shack |
+
+        Listing: [Seaside cottage](https://rentals.example/cape-cod-cottage).
+
+        ![Cottage photo](https://rentals.example/cottage.jpg)
+      """.trimIndent(), provenance = Provenance("claude"), ord = 0),
+    HubBlock(id = "b_vac_loc", sectionId = "s_vac_itin", type = "location",
+      payload = BlockPayload(label = "Seaside cottage", address = "8 Dune Rd, Truro MA",
+        lat = 41.99, lng = -70.05), provenance = Provenance("user"), ord = 1),
+    HubBlock(id = "b_vac_link", sectionId = "s_vac_itin", type = "link",
+      payload = BlockPayload(url = "https://rentals.example/cape-cod-cottage",
+        label = "Rental listing", domain = "rentals.example"), provenance = Provenance("user"), ord = 2),
+    // itemized budget (canonical schema shape) → BudgetBar derives total/spent from
+    // items[{amount, paid}] rather than the flat total/spent summary.
     HubBlock(id = "b_vac_budget", sectionId = "s_vac_itin", type = "budget",
-      payload = BlockPayload(total = 2400.0, spent = 750.0), ord = 1),
+      payload = BlockPayload(items = listOf(
+        ChecklistItem(label = "House", amount = 1500.0, paid = true),
+        ChecklistItem(label = "Ferry", amount = 180.0, paid = true),
+        ChecklistItem(label = "Groceries", amount = 300.0, paid = false),
+        ChecklistItem(label = "Activities", amount = 420.0, paid = false),
+      )), provenance = Provenance("claude"), ord = 3),
   )
   private val medicalSections = listOf(
     HubSection(id = "s_med_notes", hubId = "h_medical", title = "Notes", ord = 0),
@@ -84,6 +141,12 @@ object FakeScenarios {
   private val medicalBlocks = listOf(
     HubBlock(id = "b_med_note", sectionId = "s_med_notes", type = "text",
       bodyMd = "Bring the referral letter and insurance card.", ord = 0),
+    HubBlock(id = "b_med_contact", sectionId = "s_med_notes", type = "contact",
+      payload = BlockPayload(name = "Dr. Alice Nguyen", role = "Pediatrics — Riverside Clinic",
+        phone = "+15555550188"), provenance = Provenance("claude"), ord = 1),
+    HubBlock(id = "b_med_doc", sectionId = "s_med_notes", type = "document",
+      payload = BlockPayload(label = "Referral letter.pdf", docRef = "https://drive.example/referral.pdf"),
+      provenance = Provenance("email"), ord = 2),
   )
 
   private val busyHubs = listOf(partyHub, vacationHub, medicalHub)
