@@ -82,6 +82,15 @@ class PlatformActionsTest {
     assertNull(vettedOpenUri("http://x.com")) // http never allowed (https only)
   }
 
+  @Test fun `vettedOpenUri is evasion-resistant — scheme is normalized (trim + case)`() {
+    // the inline-tap defense-in-depth must not be bypassable by casing/whitespace
+    // (separate seam from the render-time markdown guard; both use schemeOf).
+    assertEquals("HTTPS://x.com", vettedOpenUri("HTTPS://x.com"))        // uppercase scheme allowed (case preserved)
+    assertEquals("mailto:a@b.com", vettedOpenUri("  mailto:a@b.com  "))  // surrounding whitespace trimmed
+    assertNull(vettedOpenUri("JavaScript:alert(1)"))                     // mixed-case still rejected
+    assertNull(vettedOpenUri(" javascript:alert(1)"))                    // leading whitespace still rejected
+  }
+
   @Test fun `desktop perform does not throw on any action`() {
     val pa = PlatformActions()
     // smoke: none of these should throw even with no browser/handler (runCatching)
