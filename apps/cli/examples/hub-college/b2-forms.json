@@ -1,0 +1,1 @@
+{ "sectionId": "sample-dates", "type": "checklist", "ord": 1, "payload": { "items": [ { "text": "Submit FAFSA", "done": true }, { "text": "Upload immunization records", "done": false }, { "text": "Accept aid + Direct Loans", "done": false } ] } }
