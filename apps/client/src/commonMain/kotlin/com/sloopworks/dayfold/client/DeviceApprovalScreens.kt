@@ -109,7 +109,7 @@ private fun BackChevron(onBack: () -> Unit) {
   Box(
     Modifier.size(38.dp).clip(RoundedCornerShape(50)).clickable(onClick = onBack),
     contentAlignment = Alignment.Center,
-  ) { Text("‹", style = MaterialTheme.typography.headlineSmall, color = cs.onSurface) }
+  ) { androidx.compose.material3.Icon(DayfoldIcons.ArrowBack, contentDescription = "Back", tint = cs.onSurface, modifier = Modifier.size(24.dp)) }
 }
 
 // 8 monospace code cells split 4-4 with a dash. `editable` cells show a filled

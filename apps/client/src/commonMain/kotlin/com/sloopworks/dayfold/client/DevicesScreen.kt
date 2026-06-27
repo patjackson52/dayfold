@@ -48,7 +48,7 @@ fun DevicesScreen(
       verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
       Box(Modifier.size(38.dp).clip(RoundedCornerShape(50)).clickable(onClick = onBack).semantics { contentDescription = "Back" }, contentAlignment = Alignment.Center) {
-        Text("‹", style = MaterialTheme.typography.headlineSmall, color = cs.onSurface, modifier = Modifier.clearAndSetSemantics {})
+        androidx.compose.material3.Icon(DayfoldIcons.ArrowBack, contentDescription = null, tint = cs.onSurface, modifier = Modifier.size(24.dp).clearAndSetSemantics {})
       }
       Text("Connected devices", style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
     }

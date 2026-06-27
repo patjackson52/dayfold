@@ -48,7 +48,7 @@ fun JoinInviteScreen(
     Box(
       Modifier.size(38.dp).clip(RoundedCornerShape(50)).clickable(onClick = onDismiss),
       contentAlignment = Alignment.Center,
-    ) { Text("‹", style = MaterialTheme.typography.headlineSmall, color = cs.onSurface) }
+    ) { androidx.compose.material3.Icon(DayfoldIcons.ArrowBack, contentDescription = "Back", tint = cs.onSurface, modifier = Modifier.size(24.dp)) }
 
     when (state.joinOutcome) {
       null -> JoinEntry(state.joinBusy, onJoin)

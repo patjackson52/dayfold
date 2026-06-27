@@ -83,7 +83,7 @@ fun AccountScreen(
         Modifier.size(38.dp).clip(RoundedCornerShape(50)).clickable(onClick = onClose)
           .semantics { contentDescription = "Close" },
         contentAlignment = Alignment.Center,
-      ) { Text("‹", style = MaterialTheme.typography.headlineSmall, color = cs.onSurface, modifier = Modifier.clearAndSetSemantics {}) }
+      ) { androidx.compose.material3.Icon(DayfoldIcons.ArrowBack, contentDescription = null, tint = cs.onSurface, modifier = Modifier.size(24.dp).clearAndSetSemantics {}) }
       Text("Account", style = MaterialTheme.typography.titleLarge, color = cs.onSurface)
     }
 
