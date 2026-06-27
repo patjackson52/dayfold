@@ -1,0 +1,1 @@
+{ "sectionId": "sample-money", "type": "contact", "ord": 0, "payload": { "name": "Financial Aid Office", "role": "Billing & aid", "phone": "888-555-0100", "email": "finaid@example.edu" } }

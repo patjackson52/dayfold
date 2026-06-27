@@ -1,0 +1,1 @@
+{ "sectionId": "sample-money", "type": "budget", "ord": 2, "payload": { "items": [ { "label": "Tuition", "amount": 12000, "paid": true }, { "label": "Housing", "amount": 6000, "paid": false }, { "label": "Books", "amount": 800, "paid": false } ] } }
