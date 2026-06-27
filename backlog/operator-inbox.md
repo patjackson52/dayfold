@@ -9,6 +9,38 @@ Each item: question, context link, **proposed default**, urgency.
 
 ---
 
+- **INB-25 · 2026-06-27 · med · open — Two-way collaborative content (interactive
+  to-do): accept ADR 0038 + pick the member write-scope.** A 4-agent brainstorm +
+  2 adversarial rounds designed Dayfold's **first two-way data-flow** primitive
+  (members tap to-do items done; edits converge across devices). Design + audit
+  trail: `specs/two-way-collaborative-content-design.md`; Proposed **ADR 0038**.
+  Headline calls (all reviewed): a **content-delta** primitive **beside** ADR 0016
+  `intents` (a checkbox needs no AI reasoning); **client-side per-item LWW over a
+  server-opaque relay** — the only design that survives the M1 E2EE flip without a
+  re-model; the **one load-bearing M0 schema reservation = a stable ULID `id` on
+  checklist items** (today id-less, so concurrent toggles clobber); **whole-block
+  PUT + `If-Match`→412 + `op_id` idempotency**; **toggle-only** first slice. The
+  review also surfaced **two latent security defects** to fix the moment members can
+  write (visibility-on-write + block-resurrection-on-write) — built into slice 2.
+  **Two things need you:**
+  1. **Accept/amend ADR 0038** (ADR-class — automation-autonomy + customer-data
+     write path + E2EE posture + scope). **Proposed default: accept as written.**
+  2. **Member write-scope (values/scope):** member app credentials get **global
+     `content:write`** with the visibility filter as the human boundary
+     (**recommended** — simplest, calm; per-hub credential scoping was for
+     least-privilege *automation* tokens) **vs** keep **per-hub member scoping** to
+     allow a future **read-only member** role (e.g. an eldercare hub a member may
+     see but not edit). **Proposed default: global `content:write`; revisit
+     read-only-member if a real case appears.**
+  - Recorded as **agent-leaning, decided-with-record unless you object** (pulled
+    off the hard gate by the simplification round): **todo-only first** (mirror to
+    budget `paid` when budget goes two-way — a cheap additive copy); **strict-LWW,
+    no done-wins**; **wall-clock+actor stamp, HLC reserved**. Say the word to put
+    any on the gate.
+  - Build is **blocked** on (1)+(2) and, for the client UI, on an **ADR 0008 hi-fi
+    mockup + sign-off** (new interactive surface). Urgency med — this is the
+    primitive every later two-way mini-feature inherits, so worth a careful read.
+
 - **INB-24 · ANSWERED 2026-06-26 → Hub/card visual-enrichment BUILD gates CLEARED.**
   Operator (in-session): (1) **ADR 0008 hi-fi signoff = "Approve as-is"** on the
   imported `designs/hub-card-enrichment/` mockup (Enrichment + Hub-Enrichment-Phone +

@@ -50,6 +50,26 @@ bootstrap from validation round 1 (`research/validation-round1-2026-06.md`).
   it before the action surface matters for WTP. → `specs/prototype/12-briefing-
   card-spec.md`.
 
+- **OQ-twoway-member-scope** *(ADR 0038 / INB-25 #2)*: do member app credentials
+  get **global `content:write`** (visibility filter = the human boundary;
+  recommended) or **per-hub member scoping** to allow a **read-only member** role
+  (e.g. an eldercare hub a member may see but not edit)? Values/scope; gates ADR
+  0038. → `specs/two-way-collaborative-content-design.md` §6.5/§11.
+- **OQ-twoway-clock** *(ADR 0038)*: M0 ships **wall-clock + per-install `actorId`
+  LWW** for `done` (converges deterministically; **not** causally correct under
+  large offline clock skew → a rare stale state, one-tap-recoverable). **HLC is the
+  reserved drop-in** (forward-compatible field shape). Revisit trigger: dogfooding
+  surfaces a real skew anomaly. → design §5.2.
+- **OQ-twoway-transport** *(ADR 0038)*: M0 transport = **whole-block PUT** per
+  toggle (re-sends the full payload). An append-only **op-log / granular
+  `{item,field,value,stamp}`** transport is **reserved** (merge function identical;
+  no re-model). Revisit trigger: whole-block re-send bandwidth on long lists, or
+  concurrent-edit contention the client LWW-on-retry can't resolve calmly. → §6.1.
+- **OQ-twoway-generalize** *(ADR 0038)*: build the generalized **addressable-
+  togglable-item** primitive (checklist `done` + budget `paid` + RSVP) now, or
+  **todo-only first** and mirror the id/stamp fields onto `BudgetPayload` when
+  budget actually goes two-way (a cheap additive copy, no re-model)? Lean: todo-
+  only first (avoid premature abstraction before the 2nd real caller). → §11.
 - **OQ-e2e-encryption:** Adopt end-to-end encryption (CLI encrypts → server
   stores blind → device decrypts)? Feasible because the server never processes
   content. Crux = family-content-key distribution across the multi-member +
