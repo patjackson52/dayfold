@@ -54,6 +54,16 @@ private fun getStatus(url: String, token: String?): Pair<Int, String> {
   return Pair(res.statusCode(), res.body())
 }
 
+/** DELETE; returns Pair<statusCode, body>. */
+private fun deleteStatus(url: String, token: String?): Pair<Int, String> {
+  val b = HttpRequest.newBuilder(URI.create(url))
+    .apply { if (token != null) header("authorization", "Bearer $token") }
+    .DELETE()
+    .build()
+  val res = client().send(b, HttpResponse.BodyHandlers.ofString())
+  return Pair(res.statusCode(), res.body())
+}
+
 private fun signout(c: Creds) {
   postStatus("${c.api}/auth/signout", "{}", c.accessToken)
 }
@@ -79,6 +89,28 @@ private fun authedGet(
       na
     }
     val retry = getStatus("$api$path", newAccess); code = retry.first; body = retry.second
+  }
+  return Pair(code, body)
+}
+
+/** Authed DELETE with one transparent refresh on 401 (mirrors authedGet). */
+private fun authedDelete(
+  store: Credentials?, keychain: SecretStore?,
+  api: String, token: String, refreshable: Creds?, path: String,
+): Pair<Int, String> {
+  var (code, body) = deleteStatus("$api$path", token)
+  if (code == 401 && store != null && refreshable != null) {
+    val st = store
+    val newAccess = st.withRefreshLock {
+      val cur = loadCreds(st, keychain) ?: run { System.err.println("credentials removed — run: dayfold login"); exitProcess(1) }
+      val (rc, rt) = postStatus("${cur.api}/auth/refresh", """{"refresh":"${cur.refreshToken}"}""", null)
+      if (rc != 200) { System.err.println("session expired — run: dayfold login"); exitProcess(1) }
+      val o = J.parseToJsonElement(rt).jsonObject
+      val na = o["access"]!!.jsonPrimitive.content
+      saveCreds(st, keychain, cur.copy(accessToken = na, refreshToken = o["refresh"]!!.jsonPrimitive.content))
+      na
+    }
+    val retry = deleteStatus("$api$path", newAccess); code = retry.first; body = retry.second
   }
   return Pair(code, body)
 }
@@ -177,6 +209,23 @@ fun main(args: Array<String>) {
         println("""{"cards":$cards,"hubs":$hubs}""")
       }
       maybeNudgeUpdate()   // ADR 0037: throttled once/day update nudge (interactive only)
+    }
+
+    // dayfold delete <id> [--card]  — remove a hub (default; cascades its sections+blocks)
+    // or a card. There is no section/block delete route (MVP); to drop a stray block,
+    // delete its hub and re-push the tree.
+    "delete", "rm" -> {
+      val id = args.getOrNull(1) ?: usage()
+      val resource = if (hasFlag(args, "--card")) "cards" else "hubs"
+      val store = Credentials(); val keychain = resolveKeychain()
+      val creds = loadCreds(store, keychain)
+      requireAuthSetup(creds != null)
+      val (api, fam, tok) =
+        if (creds != null) Triple(creds.api, creds.familyId, creds.accessToken)
+        else Triple(env("DAYFOLD_API"), env("FAMILY_ID"), env("HOUSEHOLD_SECRET"))
+      val (code, body) = authedDelete(store.takeIf { creds != null }, keychain, api, tok, creds, "/families/$fam/$resource/$id")
+      if (code !in 200..299) { System.err.println("delete failed ($code): $body"); exitProcess(1) }
+      println("deleted $resource/$id")
     }
 
     // dayfold push <id> <file.json> [--hub|--section|--block]  — card (default) or hub tree.
