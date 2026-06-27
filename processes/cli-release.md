@@ -52,6 +52,32 @@ agent-buildable:
      (skipped if `HOMEBREW_TAP_TOKEN` is unset).
 3. Users get it via `brew install sloopworks/tap/dayfold` / `brew upgrade dayfold`.
 
+## Continuous "edge" channel (ADR 0037)
+
+Stable releases stay tag-driven (above). For everyday dogfooding, **every push to
+`main`** that touches `apps/cli/**` or `packages/schema/**` auto-publishes an edge
+build — no manual tag:
+
+- `.github/workflows/release-cli-edge.yml` builds the dist as `0.0.0-edge.<shortsha>`
+  and refreshes a single **`cli-edge` GitHub pre-release** with a **stable asset
+  name** `dayfold-edge.tar` (stable download URL across commits).
+- It uses only the built-in `github.token` (no operator secret), so it runs **today**.
+  PRs never publish (only `main` pushes). `cli-edge` is a *pre-release*, so the
+  `releases/latest` API (stable) — and therefore `dayfold update`'s version check —
+  ignores it. The Homebrew tap formula is **never** touched by edge (stable only).
+- Grab an edge build directly:
+  `curl -L https://github.com/SloopWorks/dayfold/releases/download/cli-edge/dayfold-edge.tar`.
+
+## Updating an install (ADR 0037)
+
+- `brew upgrade dayfold` — the canonical path (once the tap is live).
+- **`dayfold update`** — reports the latest stable vs the running version, then runs
+  `brew upgrade dayfold` if the CLI is brew-managed (else prints the install/upgrade
+  instructions + the releases URL).
+- A throttled (once/24h), TTY-only, fail-silent **nudge** prints after an interactive
+  `push`/`pull` when a newer stable exists. Silence it with `DAYFOLD_NO_UPDATE_CHECK=1`
+  (also auto-skipped under `CI`, when piped, and on dev/edge builds).
+
 ## How it works (ADR 0031, Option A)
 
 - **Packaging:** the Gradle `application` plugin's `distTar` ships a runnable tree

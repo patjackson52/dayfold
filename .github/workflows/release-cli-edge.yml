@@ -1,0 +1,71 @@
+# Rolling "edge" CLI build on every push to `main` (ADR 0037, extends ADR 0031).
+# Builds the dist and refreshes a single `cli-edge` GitHub PRE-RELEASE with a stable
+# asset name (dayfold-edge.tar) so the latest main is always installable for testing.
+#
+# This is the continuous channel. STABLE releases stay tag-driven (release-cli.yml,
+# ADR 0031) and are the only thing the Homebrew tap formula tracks — this workflow
+# never touches the tap, needs no operator token (only the built-in github.token),
+# and runs today. Because `cli-edge` is a PRE-release, the GitHub `releases/latest`
+# API ignores it, so `dayfold update`'s stable-version check is unaffected.
+#
+# Security: same posture as release-cli.yml — version goes through env then a quoted
+# "$VAR" (never `${{ }}` straight into a run block); only the pre-installed `gh` CLI;
+# SHA-pinned actions. Only pushes to `main` trigger it (not PRs — never publish
+# unreviewed code); paths-filtered to the CLI + the schema it consumes.
+name: Release CLI (edge)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/cli/**"
+      - "packages/schema/**"
+      - ".github/workflows/release-cli-edge.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write          # move the cli-edge tag + refresh the pre-release asset
+
+concurrency:
+  group: release-cli-edge  # one rolling build at a time
+  cancel-in-progress: true
+
+jobs:
+  edge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5    # v4 (SHA-pinned)
+      - uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9  # v4 (SHA-pinned)
+        with: { distribution: temurin, java-version: "17" }
+
+      - name: Derive an edge version (0.0.0-edge.<shortsha>)
+        id: v
+        run: echo "version=0.0.0-edge.${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Build the dist (standalone CLI Gradle build)
+        working-directory: apps/cli
+        env:
+          VERSION: ${{ steps.v.outputs.version }}   # env → quoted shell var (no run-block interpolation)
+        run: ./gradlew --no-daemon distTar -PcliVersion="$VERSION"
+
+      - name: Refresh the rolling cli-edge pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          set -euo pipefail
+          # Stable asset name → stable download URL across commits (the version inside
+          # still carries the sha, so `dayfold version` stays traceable).
+          cp "apps/cli/build/distributions/dayfold-${VERSION}.tar" dayfold-edge.tar
+          notes="Rolling build of \`main\` (${GITHUB_SHA}). NOT a stable release — for testing only. Stable install: \`brew install sloopworks/tap/dayfold\` (ADR 0031/0037)."
+          # Move the cli-edge tag to this commit (force — it is a rolling pointer).
+          git tag -f cli-edge
+          git push -f origin cli-edge
+          if gh release view cli-edge >/dev/null 2>&1; then
+            gh release edit cli-edge --target "$GITHUB_SHA" \
+              --title "dayfold CLI edge ($VERSION)" --notes "$notes" --prerelease
+            gh release upload cli-edge dayfold-edge.tar --clobber
+          else
+            gh release create cli-edge dayfold-edge.tar --target "$GITHUB_SHA" \
+              --title "dayfold CLI edge ($VERSION)" --notes "$notes" --prerelease
+          fi
