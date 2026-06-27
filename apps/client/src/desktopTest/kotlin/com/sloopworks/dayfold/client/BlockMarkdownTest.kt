@@ -53,6 +53,32 @@ class BlockMarkdownTest {
     assertEquals(1, out.getLinkAnnotations(0, out.length).size)                  // the [label](url), not a second bare-email link
   }
 
+  @Test fun `a non-email @ string is not autolinked (no false mailto on handles)`() {
+    // requires local-part@domain.tld — a leading-@ handle, a no-dot domain, and a
+    // tld-less host must NOT become a mailto link (else @mentions render as wrong links).
+    for (md in listOf("ping @maya about it", "ask a@b for help", "user@localhost reboot")) {
+      val out = renderBlockMarkdown(md)
+      assertEquals(md, out.text)
+      assertTrue(out.getLinkAnnotations(0, out.length).isEmpty(), "unexpected link for: $md")
+    }
+  }
+
+  @Test fun `an email inside a bare URL is the URL link, not a second mailto`() {
+    // the URL pattern precedes the email pattern, so user@host in https://user@host/…
+    // is part of the ONE url link — not separately autolinked as an email.
+    val out = renderBlockMarkdown("see https://user@host.example/path now")
+    val links = out.getLinkAnnotations(0, out.length)
+    assertEquals(1, links.size)
+    assertEquals("https://user@host.example/path", (links[0].item as androidx.compose.ui.text.LinkAnnotation.Url).url)
+  }
+
+  @Test fun `plus-addressing and subdomains autolink to the full address`() {
+    val out = renderBlockMarkdown("reply to admissions+fall@mail.butler.edu")
+    val links = out.getLinkAnnotations(0, out.length)
+    assertEquals(1, links.size)
+    assertEquals("mailto:admissions+fall@mail.butler.edu", (links[0].item as androidx.compose.ui.text.LinkAnnotation.Url).url)
+  }
+
   @Test fun `italic strips underscores and styles the run`() {
     val out = renderBlockMarkdown("_529 drawdown notes_")
     assertEquals("529 drawdown notes", out.text)
