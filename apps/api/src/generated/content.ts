@@ -64,39 +64,7 @@ export type LocationPayload = z.infer<typeof LocationPayloadSchema>;
 export const BudgetPayloadSchema = z.object({ "items": z.array(z.object({ "label": z.string(), "amount": z.number(), "paid": z.boolean().default(false) }).strict()) }).strict()
 export type BudgetPayload = z.infer<typeof BudgetPayloadSchema>;
 
-export const BlockSchema = z.object({ "id": z.any(), "type": z.enum(["text","markdown","link","checklist","document","milestone","contact","location","budget"]), "ord": z.number().int().default(0), "version": z.any().optional(), "body_md": z.string().max(1048576).describe("long-form markdown (text/markdown blocks); inline ≤1MB at M0, else spill to body_ref (06, M1)").optional(), "body_ref": z.string().describe("object-storage KEY when spilled (M1); never a URL; XOR with body_md").optional(), "payload": z.any().superRefine((x, ctx) => {
-    const schemas = [z.any(), z.any(), z.any(), z.any(), z.any(), z.any(), z.any()];
-    const { errors, failed } = schemas.reduce<{
-      errors: z.core.$ZodIssue[];
-      failed: number;
-    }>(
-      ({ errors, failed }, schema) =>
-        ((result) =>
-          result.error
-            ? {
-                errors: [...errors, ...result.error.issues],
-                failed: failed + 1,
-              }
-            : { errors, failed })(
-          schema.safeParse(x),
-        ),
-      { errors: [], failed: 0 },
-    );
-    const passed = schemas.length - failed;
-    if (passed !== 1) {
-      ctx.addIssue(errors.length ? {
-        path: [],
-        code: "invalid_union",
-        errors: [errors],
-        message: "Invalid input: Should pass single schema. Passed " + passed,
-      } : {
-        path: [],
-        code: "custom",
-        errors: [errors],
-        message: "Invalid input: Should pass single schema. Passed " + passed,
-      });
-    }
-  }).describe("structured fields for non-markdown block types; variant by `type` (see $comment)").optional(), "triggers": z.array(z.any()).optional(), "actions": z.array(z.any()).optional(), "provenance": z.any() }).strict().and(z.any())
+export const BlockSchema = z.object({ "id": z.any(), "type": z.enum(["text","markdown","link","checklist","document","milestone","contact","location","budget"]), "ord": z.number().int().default(0), "version": z.any().optional(), "body_md": z.string().max(1048576).describe("long-form markdown (text/markdown blocks); inline ≤1MB at M0, else spill to body_ref (06, M1)").optional(), "body_ref": z.string().describe("object-storage KEY when spilled (M1); never a URL; XOR with body_md").optional(), "payload": z.any().describe("structured fields for non-markdown block types; variant by `type` (see $comment)").optional(), "triggers": z.array(z.any()).optional(), "actions": z.array(z.any()).optional(), "provenance": z.any() }).strict().and(z.any())
 export type Block = z.infer<typeof BlockSchema>;
 
 export const SectionSchema = z.object({ "id": z.any(), "title": z.string().describe("[CONTENT/E2E-hole]").optional(), "ord": z.number().int().default(0), "version": z.any().optional(), "blocks": z.array(z.any()).optional() }).strict()

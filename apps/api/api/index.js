@@ -860,42 +860,17 @@ var TriggerSchema = z.any().superRefine((x, ctx) => {
   }
 }).describe("ADR 0014 \u2014 matched ON-DEVICE; live position never leaves.");
 var ActionSchema = z.object({ "label": z.string(), "action_id": z.string(), "params": z.record(z.string(), z.any()).optional() }).strict().describe("ADR 0016 RESERVED (bounded-now: buttons + structured asks; not built at MVP).");
-var LinkPayloadSchema = z.object({ "url": z.string().url(), "label": z.string().optional(), "source": z.string().optional() }).strict();
+var LinkPayloadSchema = z.object({ "url": z.string().url(), "label": z.string().optional(), "source": z.string().optional(), "thumbnailUrl": z.string().url().max(2048).describe("link preview image; https + allowlisted host (ADR 0036)").optional(), "thumbnailAlt": z.string().max(256).describe("a11y alt for thumbnailUrl").optional() }).strict();
 var ChecklistPayloadSchema = z.object({ "items": z.array(z.object({ "text": z.string(), "done": z.boolean().default(false), "due": z.any().optional(), "assignee": z.string().optional() }).strict()) }).strict();
-var DocumentPayloadSchema = z.object({ "ref": z.string().describe("url | fileRef (links+small refs at MVP)"), "label": z.string().optional(), "kind": z.string().optional() }).strict();
+var DocumentPayloadSchema = z.object({ "ref": z.string().describe("url | fileRef (links+small refs at MVP)"), "label": z.string().optional(), "kind": z.string().optional(), "thumbnailUrl": z.string().url().max(2048).describe("document preview image; https + allowlisted host (ADR 0036)").optional(), "thumbnailAlt": z.string().max(256).describe("a11y alt for thumbnailUrl").optional() }).strict();
 var MilestonePayloadSchema = z.object({ "date": z.any(), "label": z.string() }).strict();
-var ContactPayloadSchema = z.object({ "name": z.string(), "role": z.string().optional(), "phone": z.string().optional(), "email": z.string().optional() }).strict();
+var ContactPayloadSchema = z.object({ "name": z.string(), "role": z.string().optional(), "phone": z.string().optional(), "email": z.string().optional(), "avatarUrl": z.string().url().max(2048).describe("contact avatar photo; https + allowlisted host (ADR 0036); falls back to initials").optional(), "accentColor": z.string().regex(new RegExp("^#[0-9a-fA-F]{6}$")).describe("decorative-only accent seed (ADR 0036)").optional() }).strict();
 var LocationPayloadSchema = z.object({ "label": z.string(), "address": z.string().optional(), "mapUrl": z.string().optional() }).strict();
 var BudgetPayloadSchema = z.object({ "items": z.array(z.object({ "label": z.string(), "amount": z.number(), "paid": z.boolean().default(false) }).strict()) }).strict();
-var BlockSchema = z.object({ "id": z.any(), "type": z.enum(["text", "markdown", "link", "checklist", "document", "milestone", "contact", "location", "budget"]), "ord": z.number().int().default(0), "version": z.any().optional(), "body_md": z.string().max(1048576).describe("long-form markdown (text/markdown blocks); inline \u22641MB at M0, else spill to body_ref (06, M1)").optional(), "body_ref": z.string().describe("object-storage KEY when spilled (M1); never a URL; XOR with body_md").optional(), "payload": z.any().superRefine((x, ctx) => {
-  const schemas = [z.any(), z.any(), z.any(), z.any(), z.any(), z.any(), z.any()];
-  const { errors, failed } = schemas.reduce(
-    ({ errors: errors2, failed: failed2 }, schema) => ((result) => result.error ? {
-      errors: [...errors2, ...result.error.issues],
-      failed: failed2 + 1
-    } : { errors: errors2, failed: failed2 })(
-      schema.safeParse(x)
-    ),
-    { errors: [], failed: 0 }
-  );
-  const passed = schemas.length - failed;
-  if (passed !== 1) {
-    ctx.addIssue(errors.length ? {
-      path: [],
-      code: "invalid_union",
-      errors: [errors],
-      message: "Invalid input: Should pass single schema. Passed " + passed
-    } : {
-      path: [],
-      code: "custom",
-      errors: [errors],
-      message: "Invalid input: Should pass single schema. Passed " + passed
-    });
-  }
-}).describe("structured fields for non-markdown block types; variant by `type` (see $comment)").optional(), "triggers": z.array(z.any()).optional(), "actions": z.array(z.any()).optional(), "provenance": z.any() }).strict().and(z.any());
+var BlockSchema = z.object({ "id": z.any(), "type": z.enum(["text", "markdown", "link", "checklist", "document", "milestone", "contact", "location", "budget"]), "ord": z.number().int().default(0), "version": z.any().optional(), "body_md": z.string().max(1048576).describe("long-form markdown (text/markdown blocks); inline \u22641MB at M0, else spill to body_ref (06, M1)").optional(), "body_ref": z.string().describe("object-storage KEY when spilled (M1); never a URL; XOR with body_md").optional(), "payload": z.any().describe("structured fields for non-markdown block types; variant by `type` (see $comment)").optional(), "triggers": z.array(z.any()).optional(), "actions": z.array(z.any()).optional(), "provenance": z.any() }).strict().and(z.any());
 var SectionSchema = z.object({ "id": z.any(), "title": z.string().describe("[CONTENT/E2E-hole]").optional(), "ord": z.number().int().default(0), "version": z.any().optional(), "blocks": z.array(z.any()).optional() }).strict();
-var HubSchema = z.object({ "id": z.any(), "type": z.string().describe("bounded template-catalog key (ADR 0004/0006): vacation|starting-college|move|party-event|new-baby|medical|school-year \u2014 app-validated"), "title": z.string().describe("[CONTENT/E2E-hole]"), "status": z.enum(["planning", "active", "archived"]).default("active"), "start_at": z.any().optional(), "end_at": z.any().optional(), "countdown_to": z.any().optional(), "version": z.any().optional(), "sections": z.array(z.any()).optional() }).strict();
-var BriefingCardSchema = z.object({ "id": z.any(), "kind": z.enum(["action", "info", "weather", "countdown"]).default("info"), "title": z.string().max(4096), "body_md": z.string().max(1048576).describe("limited inline markdown only (1MB cap, F8)").optional(), "target": z.object({ "hubId": z.string().optional(), "sectionId": z.string().optional(), "blockId": z.string().optional() }).strict().describe("deep-link into a hub (resolved client-side vs local cache, nearest-ancestor)").optional(), "triggers": z.array(z.any()).optional(), "actions": z.array(z.any()).optional(), "not_before": z.any().optional(), "expires_at": z.any().optional(), "version": z.any().optional(), "provenance": z.any(), "type": z.enum(["file", "link", "invite", "contact", "geo", "email"]).describe("content type (ADR 0022 D1) \u2014 drives the Now-card / detail layout. OPTIONAL for back-compat with kind-only M0 cards.").optional(), "hubRef": z.string().describe("parent Hub id \u2014 the adaptive supporting pane's 'PART OF THIS HUB' (ADR 0022; CL-10). Optional.").optional(), "relatedKicker": z.string().describe("section header for the RELATED rows (e.g. 'FROM THE SAME EMAIL'). CL-8.").optional(), "related": z.array(z.object({ "relation": z.string().describe("same-email | same-thread | same-hub | same-trip | attachment | contact-of"), "targetId": z.string(), "targetType": z.enum(["file", "link", "invite", "contact", "geo", "email"]), "title": z.string().optional(), "sub": z.string().optional() }).strict()).describe("cross-links to other cards in THIS family (CL-8). targetId resolves client-side vs the local cache; title/sub are author-denormalized so a row renders without resolving. Same-tenant only (rides authorizeTenant).").optional(), "privacy": z.object({ "storage": z.enum(["on_device", "in_browser", "location_local", "matched_on_device"]).optional() }).strict().describe("honesty chip (ADR 0014/0015) \u2014 a claim allowed ONLY where a real schema/API/client boundary enforces it.").optional(), "payload": z.any().superRefine((x, ctx) => {
+var HubSchema = z.object({ "id": z.any(), "type": z.string().describe("bounded template-catalog key (ADR 0004/0006): vacation|starting-college|move|party-event|new-baby|medical|school-year \u2014 app-validated"), "title": z.string().describe("[CONTENT/E2E-hole]"), "status": z.enum(["planning", "active", "archived"]).default("active"), "start_at": z.any().optional(), "end_at": z.any().optional(), "countdown_to": z.any().optional(), "version": z.any().optional(), "sections": z.array(z.any()).optional(), "media": z.object({ "heroUrl": z.string().url().max(2048).describe("hero image (Hub detail header + list-row fallback). https + allowlisted host.").optional(), "thumbnailUrl": z.string().url().max(2048).describe("list-row 1:1 thumbnail; absent \u2192 falls back to heroUrl client-side.").optional(), "heroFit": z.enum(["cover", "contain"]).describe("cover=photo edge-to-edge crop; contain=logo letterboxed on accent tint.").optional(), "imageAlt": z.string().max(256).describe("a11y alt \u2192 contentDescription (else derived from title).").optional(), "icon": z.string().max(40).describe("curated icon NAME, server-validated vs the bundled set (ADR 0036); unknown \u2192 fallback tile.").optional(), "accentColor": z.string().regex(new RegExp("^#[0-9a-fA-F]{6}$")).describe("decorative-only accent seed (edge/tile/chip/scrim); never body text (WCAG 1.4.1). Lowercased on write.").optional() }).strict().describe("visual enrichment (ADR 0036; all optional, absent = unenriched/today's look). URLs are https + allowlisted-host (ADR 0036 shared validator); icon \u2208 curated set; accentColor is decorative-only.").optional() }).strict();
+var BriefingCardSchema = z.object({ "id": z.any(), "kind": z.enum(["action", "info", "weather", "countdown"]).default("info"), "title": z.string().max(4096), "body_md": z.string().max(1048576).describe("limited inline markdown only (1MB cap, F8)").optional(), "target": z.object({ "hubId": z.string().optional(), "sectionId": z.string().optional(), "blockId": z.string().optional() }).strict().describe("deep-link into a hub (resolved client-side vs local cache, nearest-ancestor)").optional(), "triggers": z.array(z.any()).optional(), "actions": z.array(z.any()).optional(), "not_before": z.any().optional(), "expires_at": z.any().optional(), "version": z.any().optional(), "provenance": z.any(), "type": z.enum(["file", "link", "invite", "contact", "geo", "email"]).describe("content type (ADR 0022 D1) \u2014 drives the Now-card / detail layout. OPTIONAL for back-compat with kind-only M0 cards.").optional(), "media": z.object({ "icon": z.string().max(40).describe("curated icon NAME (server-validated); unknown \u2192 fallback.").optional(), "accentColor": z.string().regex(new RegExp("^#[0-9a-fA-F]{6}$")).describe("decorative-only accent seed; never body text. Lowercased on write.").optional(), "thumbnailUrl": z.string().url().max(2048).describe("optional leading thumbnail; https + allowlisted host.").optional(), "imageAlt": z.string().max(256).describe("a11y alt for thumbnailUrl.").optional(), "imageFit": z.enum(["cover", "contain"]).optional() }).strict().describe("card visual enrichment (ADR 0036; all optional). icon+accent on the kind chip + optional leading thumbnail. Same shared URL/host/icon/hex validation as Hub.media.").optional(), "hubRef": z.string().describe("parent Hub id \u2014 the adaptive supporting pane's 'PART OF THIS HUB' (ADR 0022; CL-10). Optional.").optional(), "relatedKicker": z.string().describe("section header for the RELATED rows (e.g. 'FROM THE SAME EMAIL'). CL-8.").optional(), "related": z.array(z.object({ "relation": z.string().describe("same-email | same-thread | same-hub | same-trip | attachment | contact-of"), "targetId": z.string(), "targetType": z.enum(["file", "link", "invite", "contact", "geo", "email"]), "title": z.string().optional(), "sub": z.string().optional() }).strict()).describe("cross-links to other cards in THIS family (CL-8). targetId resolves client-side vs the local cache; title/sub are author-denormalized so a row renders without resolving. Same-tenant only (rides authorizeTenant).").optional(), "privacy": z.object({ "storage": z.enum(["on_device", "in_browser", "location_local", "matched_on_device"]).optional() }).strict().describe("honesty chip (ADR 0014/0015) \u2014 a claim allowed ONLY where a real schema/API/client boundary enforces it.").optional(), "payload": z.any().superRefine((x, ctx) => {
   const schemas = [z.object({ "file": z.object({ "filename": z.string().optional(), "mime": z.string().optional(), "size": z.number().int().optional(), "pages": z.number().int().optional(), "source": z.string().optional(), "owner": z.string().optional(), "modified": z.string().datetime({ offset: true }).optional(), "sharedWith": z.array(z.string()).optional(), "docRef": z.string().describe("url | opaque storage ref").optional() }).strict() }).strict(), z.object({ "link": z.object({ "url": z.string().url().optional(), "domain": z.string().optional(), "title": z.string().optional(), "ogDesc": z.string().describe("author-stamped OG; server never fetches the URL (no SSRF)").optional(), "favicon": z.string().optional(), "kind": z.enum(["page", "form"]).optional(), "fieldCount": z.number().int().optional(), "closesAt": z.string().datetime({ offset: true }).optional(), "savedAt": z.string().datetime({ offset: true }).optional() }).strict() }).strict(), z.object({ "invite": z.object({ "eventName": z.string().optional(), "host": z.string().optional(), "startAt": z.string().datetime({ offset: true }).optional(), "place": z.string().optional(), "rsvpBy": z.string().datetime({ offset: true }).optional(), "rsvpState": z.enum(["yes", "no", "none"]).describe("display-of-state at M0 (no write path; ADR 0020/0016)").optional(), "guestCount": z.number().int().optional(), "confirmedCount": z.number().int().optional(), "notes": z.string().optional() }).strict() }).strict(), z.object({ "contact": z.object({ "name": z.string().optional(), "company": z.string().optional(), "role": z.string().optional(), "phone": z.string().optional(), "email": z.string().optional(), "address": z.string().optional(), "hours": z.string().optional(), "linkedEventId": z.string().optional(), "deliveryWindow": z.string().optional() }).strict() }).strict(), z.object({ "geo": z.object({ "label": z.string().optional(), "address": z.string().optional(), "lat": z.number().optional(), "lng": z.number().optional(), "etaMin": z.number().int().optional(), "distance": z.string().optional(), "travelMode": z.string().optional(), "parking": z.string().optional(), "leaveBy": z.string().datetime({ offset: true }).optional(), "linkedEventId": z.string().optional() }).strict() }).strict(), z.object({ "email": z.object({ "from": z.string().optional(), "fromAddr": z.string().optional(), "subject": z.string().optional(), "date": z.string().datetime({ offset: true }).optional(), "threadLen": z.number().int().optional(), "bodyExcerpt": z.string().describe("[E2E-ciphertext] authored over the operator's OWN mail (CLI/Claude) \u2014 never a server-side Gmail restricted-scope read (Guardrail 3)").optional(), "attachments": z.array(z.object({ "name": z.string().optional(), "mime": z.string().optional(), "size": z.number().int().optional() }).strict()).optional(), "labels": z.array(z.string()).optional() }).strict() }).strict()];
   const { errors, failed } = schemas.reduce(
     ({ errors: errors2, failed: failed2 }, schema) => ((result) => result.error ? {
@@ -944,6 +919,123 @@ function crossValidateCard(card) {
   }
   return [];
 }
+function blockPayloadIssues(block) {
+  const { type, payload, body_md } = block;
+  if (payload == null) return [];
+  if (typeof payload !== "object" || Array.isArray(payload)) {
+    return [{ path: ["payload"], message: "payload must be an object" }];
+  }
+  if (type === "text" || type === "markdown") return [];
+  const p = payload;
+  const has = (...keys) => keys.some((k) => p[k] != null);
+  const arr = (k) => Array.isArray(p[k]) && p[k].length > 0;
+  const hasBody = typeof body_md === "string" && body_md.trim().length > 0;
+  const ok = type === "checklist" ? arr("items") : type === "budget" ? arr("items") || has("total", "spent") : type === "document" ? has("ref", "docRef") : type === "link" ? has("url") : type === "contact" ? has("name") : type === "location" ? has("label") : type === "milestone" ? has("date", "label") || hasBody : true;
+  return ok ? [] : [{ path: ["payload"], message: `block ${String(type)}: payload present but missing its core field` }];
+}
+
+// src/media-validation.ts
+var ALLOWED_IMAGE_HOSTS = /* @__PURE__ */ new Set(["upload.wikimedia.org"]);
+var CURATED_ICONS = /* @__PURE__ */ new Set([
+  "school",
+  "luggage",
+  "medical",
+  "move",
+  "party",
+  "baby",
+  "calendar",
+  "location",
+  "link",
+  "document",
+  "contact",
+  "budget",
+  "travel",
+  "car",
+  "food",
+  "pet",
+  "sport",
+  "list"
+]);
+var MAX_URL_LEN = 2048;
+var ACCENT_RE = /^#[0-9a-fA-F]{6}$/;
+function imageUrlError(url) {
+  if (typeof url !== "string") return "must be a string";
+  if (url.length === 0 || url.length > MAX_URL_LEN) return "url length out of range";
+  if (/[\x00-\x20\x7f\\]/.test(url)) return "url contains illegal characters";
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return "url does not parse";
+  }
+  if (u.protocol !== "https:") return "scheme must be https";
+  if (u.username !== "" || u.password !== "") return "userinfo not allowed";
+  if (u.port !== "") return "explicit port not allowed";
+  const host = u.hostname.replace(/\.$/, "");
+  if (!ALLOWED_IMAGE_HOSTS.has(host)) return `host "${host}" is not on the image allowlist`;
+  if (u.pathname.toLowerCase().endsWith(".svg")) return "SVG images are not allowed";
+  return null;
+}
+function iconError(icon) {
+  if (typeof icon !== "string") return "must be a string";
+  return CURATED_ICONS.has(icon) ? null : `icon "${icon}" is not in the curated set`;
+}
+function accentHexError(hex) {
+  if (typeof hex !== "string") return "must be a string";
+  return ACCENT_RE.test(hex) ? null : "accentColor must match #RRGGBB";
+}
+function urlField(media, key, base, out) {
+  if (media[key] == null) return;
+  const e = imageUrlError(media[key]);
+  if (e) out.push({ path: [...base, key], message: e });
+}
+function validateHubMedia(media) {
+  if (media == null) return [];
+  if (typeof media !== "object") return [{ path: ["media"], message: "must be an object" }];
+  const m = media, out = [];
+  urlField(m, "heroUrl", ["media"], out);
+  urlField(m, "thumbnailUrl", ["media"], out);
+  if (m.icon != null) {
+    const e = iconError(m.icon);
+    if (e) out.push({ path: ["media", "icon"], message: e });
+  }
+  if (m.accentColor != null) {
+    const e = accentHexError(m.accentColor);
+    if (e) out.push({ path: ["media", "accentColor"], message: e });
+  }
+  return out;
+}
+function validateCardMedia(media) {
+  if (media == null) return [];
+  if (typeof media !== "object") return [{ path: ["media"], message: "must be an object" }];
+  const m = media, out = [];
+  urlField(m, "thumbnailUrl", ["media"], out);
+  if (m.icon != null) {
+    const e = iconError(m.icon);
+    if (e) out.push({ path: ["media", "icon"], message: e });
+  }
+  if (m.accentColor != null) {
+    const e = accentHexError(m.accentColor);
+    if (e) out.push({ path: ["media", "accentColor"], message: e });
+  }
+  return out;
+}
+function validateBlockPayloadMedia(type, payload) {
+  if (payload == null || typeof payload !== "object") return [];
+  const p = payload, out = [];
+  if (type === "link" || type === "document") urlField(p, "thumbnailUrl", ["payload"], out);
+  if (type === "contact") {
+    urlField(p, "avatarUrl", ["payload"], out);
+    if (p.accentColor != null) {
+      const e = accentHexError(p.accentColor);
+      if (e) out.push({ path: ["payload", "accentColor"], message: e });
+    }
+  }
+  return out;
+}
+function normalizedAccent(hex) {
+  return typeof hex === "string" ? hex.toLowerCase() : null;
+}
 
 // src/repo.ts
 init_db();
@@ -973,8 +1065,8 @@ async function upsertCard(familyId, id3, b) {
     `INSERT INTO briefing_cards
        (id, family_id, kind, title, body_md, target_hub_id, target_section_id,
         target_block_id, provenance, triggers, actions, not_before, expires_at,
-        type, payload, privacy, hub_ref, related, related_kicker, visibility, audience, version)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,1)
+        type, payload, privacy, hub_ref, related, related_kicker, visibility, audience, media, version)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,1)
      ON CONFLICT (family_id, id) DO UPDATE SET
        kind=EXCLUDED.kind, title=EXCLUDED.title, body_md=EXCLUDED.body_md,
        target_hub_id=EXCLUDED.target_hub_id, target_section_id=EXCLUDED.target_section_id,
@@ -983,7 +1075,7 @@ async function upsertCard(familyId, id3, b) {
        not_before=EXCLUDED.not_before, expires_at=EXCLUDED.expires_at,
        type=EXCLUDED.type, payload=EXCLUDED.payload, privacy=EXCLUDED.privacy,
        hub_ref=EXCLUDED.hub_ref, related=EXCLUDED.related, related_kicker=EXCLUDED.related_kicker,
-       visibility=EXCLUDED.visibility, audience=EXCLUDED.audience,
+       visibility=EXCLUDED.visibility, audience=EXCLUDED.audience, media=EXCLUDED.media,
        version=briefing_cards.version + 1, deleted_at=NULL
      RETURNING *`,
     [
@@ -1007,7 +1099,8 @@ async function upsertCard(familyId, id3, b) {
       J(b.related),
       b.relatedKicker ?? null,
       visibility,
-      audience
+      audience,
+      J(b.media)
     ]
   );
   return r.rows[0];
@@ -1158,12 +1251,13 @@ async function upsertHub(familyId, id3, b, caller, visibility, audience) {
   try {
     await client.query("BEGIN");
     const r = await client.query(
-      `INSERT INTO hubs (id, family_id, type, title, status, start_at, end_at, countdown_to, visibility, created_by, version)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,1)
+      `INSERT INTO hubs (id, family_id, type, title, status, start_at, end_at, countdown_to, visibility, created_by, media, version)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,1)
        ON CONFLICT (family_id, id) DO UPDATE SET
          type=EXCLUDED.type, title=EXCLUDED.title, status=EXCLUDED.status,
          start_at=EXCLUDED.start_at, end_at=EXCLUDED.end_at, countdown_to=EXCLUDED.countdown_to,
          visibility=EXCLUDED.visibility, created_by=COALESCE(hubs.created_by, EXCLUDED.created_by),
+         media=EXCLUDED.media,
          version=hubs.version + 1, deleted_at=NULL
        RETURNING *`,
       [
@@ -1176,7 +1270,8 @@ async function upsertHub(familyId, id3, b, caller, visibility, audience) {
         b.end_at ?? null,
         b.countdown_to ?? null,
         visibility,
-        caller.userId
+        caller.userId,
+        J2(b.media)
       ]
     );
     await client.query(`DELETE FROM resource_visibility WHERE family_id=$1 AND hub_id=$2`, [familyId, id3]);
@@ -1614,6 +1709,10 @@ app.get("/device", (c) => {
 });
 app.put("/families/:fid/cards/:id", async (c) => {
   const fid = c.req.param("fid"), id3 = c.req.param("id");
+  {
+    const e = idError(id3);
+    if (e) return c.json(e, 422);
+  }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   if (!await requireScope(a.cred.id, "content", "write")) return c.json({ type: "forbidden" }, 403);
@@ -1635,6 +1734,10 @@ app.put("/families/:fid/cards/:id", async (c) => {
   if (!parsed.success) return c.json({ type: "validation", issues: parsed.error.issues }, 422);
   const cross = crossValidateCard(parsed.data);
   if (cross.length) return c.json({ type: "validation", issues: cross }, 422);
+  const media = parsed.data.media;
+  const mediaIssues = validateCardMedia(media);
+  if (mediaIssues.length) return c.json({ type: "validation", issues: mediaIssues }, 422);
+  if (media?.accentColor) media.accentColor = normalizedAccent(media.accentColor);
   return c.json(await upsertCard(fid, id3, { ...parsed.data, visibility, audience }), 200);
 });
 app.get("/families/:fid/cards", async (c) => {
@@ -1659,12 +1762,17 @@ app.get("/families/:fid/members", async (c) => {
 });
 app.delete("/families/:fid/cards/:id", async (c) => {
   const fid = c.req.param("fid"), id3 = c.req.param("id");
+  {
+    const e = idError(id3);
+    if (e) return c.json(e, 422);
+  }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   if (!await requireScope(a.cred.id, "content", "write")) return c.json({ type: "forbidden" }, 403);
   return c.body(null, await softDeleteCard(fid, id3) ? 204 : 404);
 });
-var HUB_ID = /^[A-Za-z0-9_-]{1,128}$/;
+var RESOURCE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+var idError = (id3) => RESOURCE_ID.test(id3) ? null : { type: "validation", issues: [{ path: ["id"], message: "id must match [A-Za-z0-9_-]{1,128}" }] };
 app.get("/families/:fid/hubs", async (c) => {
   const fid = c.req.param("fid");
   const a = await authorizeTenant(c, fid);
@@ -1712,7 +1820,10 @@ app.get("/families/:fid/hubs/:id/audience", async (c) => {
 });
 app.put("/families/:fid/hubs/:id", async (c) => {
   const fid = c.req.param("fid"), id3 = c.req.param("id");
-  if (!HUB_ID.test(id3)) return c.json({ type: "validation", issues: [{ path: ["id"], message: "hub id must be [A-Za-z0-9_-]{1,128}" }] }, 422);
+  {
+    const e = idError(id3);
+    if (e) return c.json(e, 422);
+  }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   if (!await requireScope(a.cred.id, `hub:${id3}`, "write")) return c.json({ type: "forbidden" }, 403);
@@ -1730,6 +1841,12 @@ app.put("/families/:fid/hubs/:id", async (c) => {
   const { visibility: _v, audience: _a, ...rest } = raw;
   const parsed = HubSchema.safeParse({ ...rest, id: id3 });
   if (!parsed.success) return c.json({ type: "validation", issues: parsed.error.issues }, 422);
+  const hubMediaIssues = validateHubMedia(parsed.data.media);
+  if (hubMediaIssues.length) return c.json({ type: "validation", issues: hubMediaIssues }, 422);
+  {
+    const m = parsed.data.media;
+    if (m?.accentColor) m.accentColor = normalizedAccent(m.accentColor);
+  }
   const caller = { userId: a.userId, legacy: a.legacy };
   const existing = await getHub(fid, id3);
   if (existing && !caller.legacy && existing.created_by && existing.created_by !== caller.userId) {
@@ -1747,6 +1864,10 @@ app.post("/families/:fid/hubs/:id/archive", async (c) => {
 });
 app.delete("/families/:fid/hubs/:id", async (c) => {
   const fid = c.req.param("fid"), id3 = c.req.param("id");
+  {
+    const e = idError(id3);
+    if (e) return c.json(e, 422);
+  }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   if (!await requireScope(a.cred.id, `hub:${id3}`, "write")) return c.json({ type: "forbidden" }, 403);
@@ -1754,6 +1875,10 @@ app.delete("/families/:fid/hubs/:id", async (c) => {
 });
 app.put("/families/:fid/sections/:id", async (c) => {
   const fid = c.req.param("fid"), id3 = c.req.param("id");
+  {
+    const e = idError(id3);
+    if (e) return c.json(e, 422);
+  }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   const raw = await c.req.json().catch(() => null);
@@ -1769,6 +1894,10 @@ app.put("/families/:fid/sections/:id", async (c) => {
 });
 app.put("/families/:fid/blocks/:id", async (c) => {
   const fid = c.req.param("fid"), id3 = c.req.param("id");
+  {
+    const e = idError(id3);
+    if (e) return c.json(e, 422);
+  }
   const a = await authorizeTenant(c, fid);
   if ("status" in a) return c.body(null, a.status);
   const raw = await c.req.json().catch(() => null);
@@ -1782,6 +1911,14 @@ app.put("/families/:fid/blocks/:id", async (c) => {
   const body = stampProvenance(rest, a.cred.id);
   const parsed = BlockSchema.safeParse({ ...body, id: id3 });
   if (!parsed.success) return c.json({ type: "validation", issues: parsed.error.issues }, 422);
+  const payloadIssues = blockPayloadIssues(parsed.data);
+  if (payloadIssues.length) return c.json({ type: "validation", issues: payloadIssues }, 422);
+  const blockMediaIssues = validateBlockPayloadMedia(parsed.data.type, parsed.data.payload);
+  if (blockMediaIssues.length) return c.json({ type: "validation", issues: blockMediaIssues }, 422);
+  {
+    const p = parsed.data.payload;
+    if (p?.accentColor) p.accentColor = normalizedAccent(p.accentColor);
+  }
   const row = await upsertBlock(fid, id3, sectionId, parsed.data);
   return row ? c.json(row, 200) : c.json({ type: "conflict", detail: "parent section missing or deleted" }, 409);
 });

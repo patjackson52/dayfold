@@ -28,6 +28,17 @@ for (const name of order) {
   if (!defs[name]) throw new Error(`missing $def: ${name}`);
   // Pass the def plus full $defs so internal $refs (#/$defs/ulid, etc.) resolve.
   const sub = { ...defs[name], $defs: defs };
+  // Block.payload is a oneOf of $refs. json-schema-to-zod does NOT resolve nested
+  // $refs inside a oneOf and emits a 7×z.any() superRefine requiring "exactly one to
+  // pass" — but every z.any() passes, so ALL structured block payloads are rejected
+  // ("Should pass single schema. Passed 7"). The server validates block payloads
+  // structurally in content-validation.ts (blockPayloadIssues, ADR 0035), so the TS
+  // type is an intentional z.any() stub. Strip the oneOf for the TS emit ONLY; the
+  // Kotlin/quicktype pass below keeps the full schema (real per-type union). A new
+  // `properties` object is created so the shared `defs` is never mutated.
+  if (name === "Block" && sub.properties?.payload?.oneOf) {
+    sub.properties = { ...sub.properties, payload: { description: sub.properties.payload.description } };
+  }
   const code = jsonSchemaToZod(sub, { name: `${name}Schema`, module: false, type: false });
   out += `export ${code}\n`;
   out += `export type ${name} = z.infer<typeof ${name}Schema>;\n\n`;
