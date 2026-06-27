@@ -122,6 +122,7 @@ fun main(args: Array<String>) {
   when (args.getOrNull(0)) {
     "--version", "-v", "version" -> println("dayfold ${cliVersion()}")
     "help", "-h", "--help" -> println(USAGE)   // explicit help → stdout, exit 0 (not an error)
+    "update", "upgrade" -> runUpdate()         // ADR 0037: brew upgrade + version check
 
     "login" -> deviceLogin(
       api = System.getenv("DAYFOLD_API") ?: "https://family-ai-dashboard.vercel.app",
@@ -175,6 +176,7 @@ fun main(args: Array<String>) {
         if (hc != 200) { System.err.println("pull hubs failed ($hc): $hubs"); exitProcess(1) }
         println("""{"cards":$cards,"hubs":$hubs}""")
       }
+      maybeNudgeUpdate()   // ADR 0037: throttled once/day update nudge (interactive only)
     }
 
     // dayfold push <id> <file.json> [--hub|--section|--block]  — card (default) or hub tree.
@@ -229,6 +231,7 @@ fun main(args: Array<String>) {
         println("push $resource/$id -> $code")
         if (code != 200) { System.err.println(body); exitProcess(1) }
       }
+      maybeNudgeUpdate()   // ADR 0037: throttled once/day update nudge (interactive only)
     }
 
     // dayfold template <type>  — print a starter card OR hub-tree body (hub/section/block).
@@ -367,6 +370,7 @@ internal val USAGE =
     "         --type runs local typed card validation before the server)\n" +
     "  pull [--hub <id>]          read content back (cards+hubs, or one hub tree)\n" +
     "  template <type>            starter body: a card type, or hub|section|block\n" +
+    "  update                     update to the latest dayfold (brew upgrade)\n" +
     "  version | --version       print the CLI version\n" +
     "  help | -h | --help         print this usage"
 
