@@ -230,8 +230,9 @@ fun main(args: Array<String>) {
 
     // dayfold push <id> <file.json> [--hub|--section|--block]  — card (default) or hub tree.
     "push" -> {
-      val id = args.getOrNull(1) ?: usage()
-      val file = args.getOrNull(2) ?: usage()
+      val pos = pushPositionals(args)
+      val id = pos.getOrNull(0) ?: usage()
+      val file = pos.getOrNull(1) ?: usage()
       val payload = try { Files.readString(Path.of(file)) }
         catch (e: Exception) { System.err.println(fileReadError(file, e)); exitProcess(2) }
       // --hub/--section/--block target the hub tree (PUT /hubs|sections|blocks/:id)
@@ -319,6 +320,24 @@ internal fun deleteResource(args: Array<String>): String = if (hasFlag(args, "--
  *  can come before OR after the id (a flag is never mistaken for the id — `delete --card x`
  *  deletes x, not "--card"). null when no id was given → usage. */
 internal fun deleteId(args: Array<String>): String? = args.drop(1).firstOrNull { !it.startsWith("--") }
+
+/** push positionals [id, file] = the args after the subcommand minus flags, so the flags
+ *  can come before/after/between the id+file (mirrors pushResource — a `--hub` is never
+ *  mistaken for the id). `--type` is the one value-flag, so skip it AND its value; the
+ *  rest (--hub/--section/--block/--card) are bare. */
+internal fun pushPositionals(args: Array<String>): List<String> {
+  val out = mutableListOf<String>()
+  var i = 1 // skip the subcommand token
+  while (i < args.size) {
+    val a = args[i]
+    when {
+      a == "--type" -> i += 2          // value-flag: skip the flag + its value
+      a.startsWith("--") -> i += 1     // bare flag
+      else -> { out.add(a); i += 1 }
+    }
+  }
+  return out
+}
 
 /** Value following a `--flag` token (position-agnostic), or null. */
 private fun flagValue(args: Array<String>, flag: String): String? {
