@@ -1,0 +1,10 @@
+{
+  "id": "sample-finaid-card",
+  "kind": "action",
+  "title": "Financial Aid Office — open your college hub",
+  "body_md": "Billing questions before the **Aug 1** e-bill.",
+  "provenance": { "source": "claude", "at": "2026-06-26T10:00:00Z" },
+  "type": "contact",
+  "payload": { "contact": { "name": "Financial Aid Office", "role": "Billing & aid", "phone": "888-555-0100", "email": "finaid@example.edu" } },
+  "target": { "hubId": "sample-college", "sectionId": "sample-money" }
+}
