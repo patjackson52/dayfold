@@ -40,6 +40,15 @@ class AuthFlowUiTest {
     onNodeWithText("Continue with Apple").assertIsNotEnabled()    // a different provider — also blocked
   }
 
+  @Test fun createFamilyDisabledWhileBusy() = runComposeUiTest {
+    // A double-tap on "Create family" would create TWO families (a data-integrity bug). While
+    // the create is in flight (busy, via CreateFamilyRequested→authBusy) the button disables —
+    // initialName supplies a VALID name so the guard under test is `busy`, not the blank-name
+    // check (enabled = !busy && name.isNotBlank()). The happy-path test only covers non-busy.
+    setContent { DayfoldTheme { CreateFamilyScreen(busy = true, initialName = "The Smiths") } }
+    onNodeWithText("Creating…").assertIsNotEnabled()
+  }
+
   @Test fun signIn_createFamily_feed_account_signOut() = runComposeUiTest {
     val store = createAppStore(AppState(route = Route.SignIn), debug = false)
     setContent {
