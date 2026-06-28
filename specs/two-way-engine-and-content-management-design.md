@@ -572,11 +572,11 @@ agent-decided**:
 
 ## 13. ADRs to write / amend
 
-- **NEW — the generalized two-way engine** (supersede/extend ADR 0038 before it's
-  Accepted): the typed-op spine + `/mutations` batch endpoint; two channels; op_log
-  idempotency; delete=tombstone / hide=per-member view-state; generalize the
-  visibility-on-write + 410-on-tombstone must-fixes to all mutations; media-in-
-  opaque-payload.
+- **DRAFTED — `adr/0039-two-way-mutation-engine.md` (Proposed):** the typed-op spine
+  + `/mutations` batch endpoint; two channels; op_log idempotency; delete=tombstone /
+  hide=per-member-self-scoped-in-ciphertext; the visibility-on-write + 410-on-
+  tombstone generalization; media-in-opaque-payload; the reserve-shape/build-minimal
+  slice. Generalizes ADR 0038 (its first instance), not a supersession.
 - **NEW — member authoring & content-management authz**: the permission matrix;
   `created_by`/`author_kind` columns; `content:delete` scope (extend ADR 0029, widen
   the `Action` type); no-owner-override; the loop-never-edits-member-blocks
