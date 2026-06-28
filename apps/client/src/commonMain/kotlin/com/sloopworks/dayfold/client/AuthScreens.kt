@@ -143,13 +143,7 @@ internal fun AppleGlyph(tint: Color) {
 // ── Splash (cold-start, restoring the session) ──
 @Composable
 fun SplashScreen() {
-  val cs = MaterialTheme.colorScheme
-  Box(Modifier.fillMaxSize().background(cs.surface), contentAlignment = Alignment.Center) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-      DayfoldMark(size = 64)
-      CircularProgressIndicator(color = cs.primary, strokeWidth = 2.dp, modifier = Modifier.size(22.dp))
-    }
-  }
+  com.sloopworks.dayfold.client.ui.loading.FullScreenLoading { DayfoldMark(size = 64) }
 }
 
 // ── Auth error / recovery ──
