@@ -92,6 +92,19 @@ bootstrap from validation round 1 (`research/validation-round1-2026-06.md`).
   shared payload, never the ADR 0030 ACL). Local-only first; on promotion,
   **resource-grain = cleartext per-member table** (= `resource_visibility` leak class),
   **item-grain = in-ciphertext**. Confirm. → §4-W5 / §11.
+- **OQ-freshness-spectrum** *(ADR 0020 — freshness owner; gates "support all client
+  cadences")*: the system must serve **daily-poll → foreground-poll → push → realtime**
+  clients simultaneously (a family may mix them). The keyset cursor already makes
+  cadence a stateless client-side policy, but two things must move from open-question
+  to contract: **(G1, load-bearing)** tombstone retention vs slow clients — track a
+  per-credential sync watermark, GC only tombstones older than the *oldest active*
+  watermark, and **force a full resync when a client cursor predates the GC horizon**
+  (else daily/long-offline clients show ghost-deleted content); **(G2–G4)** push is a
+  **contentless E2EE-safe signal** (not a transport) → needs a write-time change-signal
+  + per-family **debounce** + **jitter**; held-connection sub-second realtime doesn't
+  fit Vercel serverless → a managed pub/sub vendor later (the cursor sync underneath is
+  unchanged). → `specs/two-way-engine-and-content-management-design.md` §10.5; ADR 0020
+  must move R2/R3 from "push deferred" to this spectrum contract.
 - **OQ-decrypted-blob-cache** *(privacy)*: caching decrypted image thumbnails to disk
   for fast render weakens E2EE-at-rest; memory-only hurts scroll perf. Decide the
   cache policy. → engine design §7/§9.3.

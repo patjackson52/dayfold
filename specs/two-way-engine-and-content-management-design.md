@@ -521,6 +521,74 @@ client thumbnail reused as W3 vision input > outbox coalescing. **Don't:** ETag
 `/sync` (cursor already minimal), granular transport now, cross-family dedupe,
 server-side thumbnails.
 
+## 10.5 Freshness spectrum — daily-poll through realtime on one cursor
+
+The system must serve a **range of client cadences simultaneously** — some devices
+sync daily (a wall tablet, a rarely-opened phone), some foreground-poll (~45s), some
+will eventually want **near-realtime** — and a single family may mix them. The design
+supports this **by construction on the read path**, with one load-bearing gap to
+close and the realtime end to contract.
+
+**What already works (the foundational property):** the keyset cursor over
+`(updated_at, id)` + tombstones makes **cadence a client-side policy the server is
+stateless about**. A client resumes from its own cursor after 45s, a day, or a month
+— same query, no gaps, no double-pull; pagination (`has_more`/`next_cursor`) bounds
+the large change-set a slow client pulls after a long gap. Daily, poll, background
+(WorkManager/BGTask), and push-woken clients all use the **identical** read path.
+
+**The cadence ladder — one read path, escalating triggers:**
+
+| Tier | Trigger | Latency | Server infra | Fit |
+|---|---|---|---|---|
+| **Daily / background** | OS periodic (WorkManager/BGTask) | hours | none | next-open-is-fresh; nearly free (~1 invocation/day) |
+| **Foreground poll (M0)** | ~45s timer + sync-on-resume + sync-after-push | ≤45s | none | the M0 default |
+| **Push-woken (next)** | a contentless server **change-signal** → client runs the same sync | seconds | a write-time signal + debounce | the documented ADR 0020 upgrade |
+| **Held-connection realtime (later)** | managed pub/sub (Ably/Pusher/Supabase Realtime) wake | sub-second | a vendor (doesn't fit Vercel serverless) | vendor-add; cursor sync underneath is unchanged |
+
+**G1 — tombstone retention vs slow clients (must-decide; the real gap).** A daily/
+month-offline client must still receive the **tombstone** for anything deleted while
+away, or it shows ghost content forever — but tombstone **GC** must keep the sync
+window bounded. These collide. **Rule (load-bearing): track a per-credential sync
+watermark (last-synced cursor); GC only tombstones older than the *oldest active*
+watermark; and if a client's cursor predates the GC horizon, force a full resync
+(cursor → `-infinity` / snapshot).** Without this, "daily client" is unsafe. This is
+ADR 0020's decision (still Proposed) — it must move from open-question to contract.
+
+**G2 — push is a contentless, E2EE-safe *signal*, not a transport.** A push wake
+carries **no content** ("something changed in family X — sync now"): the push service
+(FCM/APNs) is an untrusted third party that can't see content under E2EE anyway, and
+keeping content out of push preserves the **one read path** + the zero-knowledge
+thesis. Realtime never becomes a second, leakier dataflow.
+
+**G3 — the change-signal mechanism + debounce + jitter (net-new for push/realtime).**
+Polling needs zero server push infra; push needs the server to know *when* a family
+changed and emit a wake — a write-time hook (Postgres `LISTEN/NOTIFY`, or a per-family
+`last_changed_at` an emitter reads, or enqueue-on-mutation), **debounced per family**
+(the loop authoring 10 cards, or an offline flush, fires **one** wake, not ten) and
+**jittered** (don't wake all 6 devices at once → a /sync thundering herd on Vercel).
+
+**G4 — realtime ceiling on Vercel serverless.** Push-driven gives *seconds* and fits
+the serverless model cheaply; **held-connection sub-second (WebSocket/SSE) does not
+fit Vercel** (request-scoped functions) → needs a managed pub/sub vendor, and even
+then it is only a faster *trigger* (the cursor sync is unchanged). "Eventually
+realtime" realistically = **push-seconds**, with held-connection a later vendor-add.
+
+**G5 — two-way under slow cadence (correct, with a note).** A daily client's writes
+sit in the outbox and propagate on its next sync; its `base_version` can be far behind
+→ more 412-merge-retries + a bigger merge surface, but **client-side LWW + `op_id`
+idempotency are cadence-agnostic** (stamps converge regardless of *when* exchanged),
+so correctness holds. Keep the burst-flush on **retry-friendly (429-retryable)** rate
+limits, and be honest in UX that a slow client shows intentionally stale shared state
+between syncs.
+
+**Net:** the read-path cursor already supports the full spectrum; the engine is
+cadence-agnostic and per-device cadence is independent. The two things that turn
+"supports all cadences" from *implicit* into *contracted* are **G1** (tombstone-
+retention + stale-cursor full-resync — required for daily clients to be safe) and
+**G2/G3/G4** (push as a contentless debounced signal, with held-connection realtime
+as a later vendor-add). Both land in **ADR 0020** (freshness owner), composing this
+engine.
+
 ## 11. Resolved cross-agent conflicts
 
 The panel disagreed on three points; the synthesis resolves them:
