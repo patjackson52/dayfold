@@ -208,8 +208,8 @@ fun EnterCodeScreen(
     }
     Spacer(Modifier.weight(1f))
     PillButton(
-      if (state.deviceBusy) "Checking…" else "Continue",
-      container = cs.primary, content = cs.onPrimary, enabled = ready,
+      "Continue",
+      container = cs.primary, content = cs.onPrimary, enabled = ready, busy = state.deviceBusy,
       modifier = Modifier.fillMaxWidth().testTag("device-continue"), onClick = { submit() },
     )
   }
@@ -338,8 +338,7 @@ fun AuthorizeDeviceScreen(
           onClick = { selectedFid?.let { onDeny(it) } },
         )
         PillButton(
-          if (state.deviceBusy) "Working…" else "Approve",
-          container = cs.primary, content = cs.onPrimary, enabled = canApprove,
+          "Approve", container = cs.primary, content = cs.onPrimary, enabled = canApprove, busy = state.deviceBusy,
           modifier = Modifier.weight(1.2f).testTag("device-approve"),
           onClick = { selectedFid?.let { onApprove(it) } },
         )
