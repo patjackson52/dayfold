@@ -1,7 +1,7 @@
 # Example: a "Starting College" hub
 
 A complete, ready-to-push hub tree exercising the main block types — **milestone,
-checklist, contact, document, budget, markdown** — with the **canonical schema
+checklist, contact, document, budget, markdown, location** — with the **canonical schema
 payloads** (ADR 0035), plus **hub visual enrichment** (ADR 0036 — a curated `icon`
 + `accentColor` on `hub.json`, rendered as the hero banner's tile). Use it to see
 the full hub renderer end-to-end without hand-authoring, or as a filled reference
