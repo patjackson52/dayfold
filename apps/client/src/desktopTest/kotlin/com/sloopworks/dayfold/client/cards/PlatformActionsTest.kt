@@ -69,6 +69,38 @@ class PlatformActionsTest {
     assertEquals("%E6%97%A5", percentEncode("日"))
   }
 
+  @Test fun `percentEncode encodes URI-injection chars (no geo query smuggling)`() {
+    // a Navigate label is authored content dropped into geo:0,0?q=<label>; &, =, #, and
+    // CR/LF must encode so a label can't smuggle a second query param, a fragment, or a line.
+    assertEquals("a%26q%3Devil", percentEncode("a&q=evil"))   // & and = → no extra param
+    assertEquals("x%23frag", percentEncode("x#frag"))          // # → no fragment
+    assertEquals("a%0D%0Ab", percentEncode("a\r\nb"))          // CRLF → no line smuggling
+    // and end-to-end through the geo action
+    assertEquals("geo:0,0?q=Park%20%26%20Rec", cardActionUri(CardAction.Navigate("Park & Rec")))
+  }
+
+  @Test fun `vettedOpenUri allows only allowlisted schemes`() {
+    // allowlisted → returned (trimmed)
+    assertEquals("tel:+15551234567", vettedOpenUri("tel:+15551234567"))
+    assertEquals("mailto:a@b.com", vettedOpenUri("mailto:a@b.com"))
+    assertEquals("https://x.com", vettedOpenUri("https://x.com"))
+    assertEquals("geo:0,0?q=x", vettedOpenUri("geo:0,0?q=x"))
+    assertEquals("sms:+15551234567", vettedOpenUri("sms:+15551234567"))
+    // disallowed → null (defense-in-depth; never opened)
+    assertNull(vettedOpenUri("javascript:alert(1)"))
+    assertNull(vettedOpenUri("data:text/html,x"))
+    assertNull(vettedOpenUri("http://x.com")) // http never allowed (https only)
+  }
+
+  @Test fun `vettedOpenUri is evasion-resistant — scheme is normalized (trim + case)`() {
+    // the inline-tap defense-in-depth must not be bypassable by casing/whitespace
+    // (separate seam from the render-time markdown guard; both use schemeOf).
+    assertEquals("HTTPS://x.com", vettedOpenUri("HTTPS://x.com"))        // uppercase scheme allowed (case preserved)
+    assertEquals("mailto:a@b.com", vettedOpenUri("  mailto:a@b.com  "))  // surrounding whitespace trimmed
+    assertNull(vettedOpenUri("JavaScript:alert(1)"))                     // mixed-case still rejected
+    assertNull(vettedOpenUri(" javascript:alert(1)"))                    // leading whitespace still rejected
+  }
+
   @Test fun `desktop perform does not throw on any action`() {
     val pa = PlatformActions()
     // smoke: none of these should throw even with no browser/handler (runCatching)

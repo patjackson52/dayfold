@@ -56,8 +56,10 @@ class FeedScreenTest {
     // empty + syncing now renders the FeedSkeleton (liveRegion "Loading your day")
     // after rememberStableLoading's ~200ms debounce; waitForIdle drives the delay.
     setContent { MaterialTheme { FeedScreen(AppState(syncing = true)) } }
-    mainClock.advanceTimeBy(250)   // past rememberStableLoading's 200ms debounce
-    onNodeWithContentDescription("Loading your day").assertIsDisplayed()
+    // #164 SyncingState skeleton ("Catching up on your day"), now gated by the
+    // loading-states rememberStableLoading ~200ms anti-flash debounce.
+    mainClock.advanceTimeBy(250)   // past the 200ms debounce
+    onNodeWithContentDescription("Catching up on your day").assertIsDisplayed()
   }
 
   @Test
@@ -82,5 +84,16 @@ class FeedScreenTest {
     onNodeWithText("Soccer 4pm").assertIsDisplayed()           // cached card still shown
     onNodeWithText("Retry").performClick()
     assertTrue(retried)                                        // retry triggers a re-sync
+  }
+
+  @Test
+  fun caughtUpHubsPillNavigatesToHubs() = runComposeUiTest {
+    // #164: the caught-up state's quiet forward path must actually navigate to Hubs, not
+    // just render — an established family (has a hub) gets the "Your hubs are here →" pill.
+    var navigated = false
+    val established = AppState(hubs = listOf(Hub(id = "h1", title = "College", status = "active", visibility = "family")))
+    setContent { MaterialTheme { FeedScreen(established, onNavHubs = { navigated = true }) } }
+    onNodeWithText("Your hubs are here").performClick()
+    assertTrue(navigated, "the caught-up 'Your hubs are here' pill should navigate to Hubs")
   }
 }

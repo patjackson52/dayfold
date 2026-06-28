@@ -105,6 +105,18 @@ class ReducerTest {
     assertEquals(tree, s.currentHubTree)
   }
 
+  @Test fun `HubsFailed stops the spinner + sets the error, but keeps the open hub`() {
+    // Unlike HubsLoaded's revocation path, a FAILED list refresh is non-destructive: it must
+    // not evict the hub you're reading (transient network blip) — just clear busy + say why.
+    val tree = HubTree(hub = hub("h1"))
+    val open = AppState(currentHubId = "h1", currentHubTree = tree, hubsBusy = true)
+    val s = rootReducer(open, HubsFailed("network down"))
+    assertFalse(s.hubsBusy)                  // no stuck spinner on the error path
+    assertEquals("network down", s.hubError)
+    assertEquals("h1", s.currentHubId)        // still reading h1
+    assertEquals(tree, s.currentHubTree)      // open hub preserved through the failure
+  }
+
   @Test fun `OpenHub enters a hub busy and clears any stale arrival focus`() {
     val s = rootReducer(AppState(hubFocusBlockId = "old-blk"), OpenHub("h9"))
     assertEquals("h9", s.currentHubId)
@@ -117,5 +129,24 @@ class ReducerTest {
     assertEquals("blk-7", focused.hubFocusBlockId)
     val closed = rootReducer(focused.copy(currentHubTree = HubTree(hub = hub("h1"))), CloseHub)
     assertNull(closed.currentHubId); assertNull(closed.currentHubTree); assertNull(closed.hubFocusBlockId)
+  }
+
+  // ADR 0030 audience sheet (who-can-see-this-hub). The non-obvious property: open AND
+  // close both CLEAR currentHubAudience, so a previously-loaded audience can't flash while
+  // a different hub's sheet loads. (No test referenced these transitions before.)
+  @Test fun `audience sheet lifecycle — open clears stale, load populates, close clears`() {
+    val stale = HubAudience(visibility = "just_me", members = listOf(HubAudienceMember(uid = "u1")))
+    // open from a state carrying a stale audience → sheet open, audience cleared (no flash)
+    val opened = rootReducer(AppState(currentHubAudience = stale), OpenAudienceSheet)
+    assertTrue(opened.audienceSheetOpen); assertNull(opened.currentHubAudience)
+    // load populates the audience; the sheet stays open
+    val loaded = rootReducer(opened, HubAudienceLoaded(HubAudience(visibility = "family",
+      members = listOf(HubAudienceMember(uid = "u1", permitted = true), HubAudienceMember(uid = "u2")))))
+    assertTrue(loaded.audienceSheetOpen)
+    assertEquals("family", loaded.currentHubAudience?.visibility)
+    assertEquals(2, loaded.currentHubAudience?.members?.size)
+    // close clears both the open flag and the audience
+    val closed = rootReducer(loaded, CloseAudienceSheet)
+    assertFalse(closed.audienceSheetOpen); assertNull(closed.currentHubAudience)
   }
 }

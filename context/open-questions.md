@@ -28,6 +28,50 @@ bootstrap from validation round 1 (`research/validation-round1-2026-06.md`).
   ever pursued. → feeds A2, A3, post-MVP Gmail ADR.
 
 ## Important, not blocking
+- **OQ-web-target** *(NEW 2026-06-28, operator interest)*: Add a **Compose-for-Web
+  (`wasmJs`) client**? CLAUDE.md lists Android/iOS/**Web**, but only `androidTarget()`,
+  `jvm("desktop")`, and iOS (arm64 + sim) are wired in `apps/client/build.gradle.kts` — no
+  `wasmJs` target, web source set, web module, or `index.html` entry exists. **Feasibility
+  (investigated + dependency-verified against Maven Central 2026-06-28):**
+  1. **No dependency blocker — every wasmJs artifact is PUBLISHED.** Verified each module's
+     Gradle `.module` metadata declares `platform.type: "wasm"` (wasmJs*Elements):
+     redux-kotlin `1.0.0-alpha03` (all four: `-threadsafe`/`-compose`/`-granular`/
+     `-devtools-core`) ✓; `io.ktor:ktor-client-core:3.5.0` ✓; `io.coil-kt.coil3:coil-compose`
+     + `coil-network-ktor3:3.2.0` ✓; `app.cash.sqldelight:runtime` + `coroutines-extensions`
+     + **`web-worker-driver`** `2.3.2` ✓; kotlin 2.3.20 + Compose 1.11.1 native wasmJs.
+     (Correction of an earlier guess: redux-kotlin wasmJs *is* published — only the **iosX64**
+     native publication is genuinely missing, a separate gap.)
+  2. **6 `expect`/`actual` seams need wasmJs actuals.** The easy five compile straight away:
+     `PlatformActions` (`window.open` / `tel:` / `mailto:`) and `QrScanner` /
+     `rememberCameraPermissionRequester` / `qrScanSupported` (stub unsupported on web). Plus the
+     ktor wasmJs/js engine wiring (Coil), a web entry (`index.html` + `main()` with
+     `ComposeViewport`), and a build/deploy path. **`DriverFactory` is the real gate (not a
+     stub):** the only web SQLDelight driver is `web-worker-driver`, which is **async**, so it
+     requires `generateAsync = true`. But the current DB layer is **synchronous** — no
+     `generateAsync` in the `sqldelight {}` block; `ContentStore` uses `.executeAsList()` /
+     `.executeAsOneOrNull()`; `DriverFactory.createDriver(): SqlDriver` is sync; and the driver
+     is created **eagerly at startup** (desktop `Main.kt`, android `MainActivity`). So a working
+     web DB means a **sync→async migration** of `ContentStore` + every caller (SyncEngine /
+     HubEngine / the shells' startup) to suspend — which touches **all** shipping platforms
+     (Android/desktop/iOS), so it's a deliberate architectural change + its own risk, NOT a
+     drop-in actual. (A web build that merely *renders* could stub the driver to throw, but the
+     shells construct `ContentStore` at startup → it'd crash before first paint unless that's
+     also deferred.) **This async migration is the true effort gate for a functional web client.**
+  3. **Design:** the **Expanded** adaptive breakpoint (`designs/content/adaptive/
+     Breakpoints.dc.html` + the two-pane content/detail comps + `Settings-Adaptive`) is the
+     layout reference. Web-chrome-specific affordances are deliberately unbuilt
+     (`DESIGN-BRIEF-content-adaptive.md`: "web is not a build target yet — design desktop as
+     the 'expanded' reference; don't design web-chrome-specific affordances"). A *minimal*
+     browser build renders the existing Compose UI as-is; anything web-platform-specific
+     (browser chrome, URL/deep-link routing, web auth-redirect flow) needs fresh design +
+     sign-off (ADR 0008).
+  **Decision (operator):** dependencies are all available (no Maven blocker), but a *functional*
+  web client is gated on the **SQLDelight sync→async DB migration** (the true effort, touches all
+  platforms) — that's the architectural call to make first. Sequence: (1) decide + do the async
+  DB migration (its own ADR-ish change), then (2) the wasmJs target + the 5 easy actuals + the
+  async `DriverFactory` + web entry (agent-doable), then (3) web-platform-specific UX (design-
+  gated, ADR 0008). The non-DB scaffolding (target + 5 actuals + entry, DB deferred) could land
+  first to de-risk, but a runnable web app needs step 1.
 - **OQ-geocode-claim-wording** *(ADR 0028)*: the exact, legally-defensible
   marketing/UX wording for the location-privacy tiers — especially any
   first-party opt-in geocoding service (T5) "not sold / not shared / not linked
@@ -219,5 +263,9 @@ New prototype-level open items:
   `designs/Family AI dashboard design brief/designs/States-Feed.dc.html` (caught-up,
   first-run, syncing, offline; recommends `established = hubs.isNotEmpty() ||
   members.size > 1`, with the `familyHasContent`-on-sync variant; includes the
-  M3→FeedScreen mapping). **Next: operator sign-off → then build re-routes
-  FeedScreen's single empty branch into the four states (ADR 0008).**
+  M3→FeedScreen mapping). → **Built 2026-06-27 (#209)**: operator signed off; FeedScreen
+  now routes its empty branch into the four posture states keyed on the recommended signal
+  `established = state.hubs.isNotEmpty() || state.members.size > 1` (both already on the Now
+  surface — SyncEngine watches `activeHubsFlow`, roster loads at session). All four states
+  snapshotted (light+dark) with the misframing branch-logic + the caught-up→Hubs forward-path
+  nav tested (#210/#211). **Fully resolved.**

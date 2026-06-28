@@ -12,4 +12,5 @@ dayfold push sample-finaid  b3-finaid.json --block
 dayfold push sample-imm     b4-imm.json    --block
 dayfold push sample-budget  b5-budget.json --block
 dayfold push sample-notes   b6-notes.json  --block
+dayfold push sample-campus  b7-campus.json --block
 echo "Pushed. Open the app → Hubs → 'Sample → Starting College'."
