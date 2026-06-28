@@ -1,6 +1,8 @@
 # Predictive Back — Design (Core: P0 + P1)
 
-**Date:** 2026-06-27 · **Target:** Android 17 / SDK 37 (minSdk 34), Compose Multiplatform 1.11.1 · **Status:** approved, pre-implementation
+**Date:** 2026-06-27 (re-validated 2026-06-28) · **Target:** Android 17 / SDK 37 (minSdk 34), Compose Multiplatform 1.11.1 · **Status:** approved, pre-implementation
+
+> **Re-validated against `origin/main` 8c12429 (2026-06-28):** Route set + the single `BackHandler` (`DetailScreen.kt:63`) are unchanged, so the back-model and core approach hold. Two updates folded in: `ContentHost` moved to `FeedApp.kt:202`; and `rememberReduceMotion()` now exists (added #223/#225) and is **reused** in Unit 5 instead of a new `expect/actual`.
 
 ## Goal
 
@@ -10,7 +12,7 @@ Bring dayfold's back navigation onto the predictive-back model recommended by Go
 
 - Nav is **custom redux** (a `when(route)` gate, no nav library — ADR 0013). Two dimensions in `AppState`: `route: Route` (top gate) and substacks (`detailStack: List<String>` for feed↔detail inside `Route.Feed`; `currentHubId` for hubs).
 - **Exactly one** `BackHandler` exists — `cards/DetailScreen.kt:63` (`androidx.compose.ui.backhandler.BackHandler`) → `NavBack`. It is **commit-only**: the reverse morph is `AnimatedContent` + `tween` fired *after* dispatch, not driven by gesture progress.
-- The card→detail morph uses `SharedTransitionLayout` + `cardSharedBounds(id)` in `ContentHost` (`FeedApp.kt:189-213`), keyed on `detail?.id`.
+- The card→detail morph uses `SharedTransitionLayout` + `cardSharedBounds(id)` in `ContentHost` (`FeedApp.kt:202`), keyed on the open id (null = feed).
 - ⚠️ **Bug:** every other screen (hub detail, Account, Members, Devices, AuthorizeDevice, EnterCode, Scan*, JoinInvite) has **no `BackHandler`**, so on Android 16/17 the system back gesture/button **exits the app** instead of going up one level (`onBackPressed`/`KEYCODE_BACK` are dead at targetSdk ≥ 36).
 - `AndroidManifest.xml` lacks `android:enableOnBackInvokedCallback`.
 
@@ -58,10 +60,10 @@ Refactor `ContentHost` from `AnimatedContent(targetState = detail?.id)` to a **`
 - DetailScreen's plain `BackHandler` (line 63) is **removed**; its in-hero back arrow keeps dispatching `NavBack` (flows through the sync→animate path).
 - The render structure becomes `SharedTransitionLayout { rememberTransition(seekable).AnimatedContent(contentKey = { it }) { key -> if (key == null) Feed else Detail } }`.
 
-### Unit 5 — Motion helpers (small, shared) — `PredictiveBackMotion.kt`
-- `EmphasizedDecelerate` easing constant.
-- `decelerateProgress(raw: Float): Float` — decelerate interpolation of gesture progress.
-- `reducedMotion()` guard — read `Settings.Global.ANIMATOR_DURATION_SCALE`; when `0f`, skip the preview scrub and jump to commit (honor user setting). Android-specific read via `expect/actual` (Android reads Settings; other platforms return false).
+### Unit 5 — Motion helpers (small, pure) — `PredictiveBackMotion.kt`
+- `EmphasizedDecelerate` easing constant (`CubicBezierEasing(0.05f, 0.7f, 0.1f, 1.0f)`, ADR 0022).
+- `decelerateProgress(raw: Float): Float` — decelerate interpolation of gesture progress (Google: never feed raw linear).
+- **Reduced-motion: reuse the existing `rememberReduceMotion()`** (`com.sloopworks.dayfold.client.ui.loading`, added #223/#225 — its Android `actual` already reads `ANIMATOR_DURATION_SCALE == 0f`; iOS reads `UIAccessibilityIsReduceMotionEnabled`). Unit 4 reads it; when true it skips the preview scrub and jumps straight to commit. **No new `expect/actual`** (so nothing for the #226 parity gate to catch) — Unit 5 stays pure `commonMain`.
 
 ## Data flow
 
@@ -75,7 +77,7 @@ Gesture → `PredictiveBackHandler.progress` → `seekable.seekTo` (morph tracks
 | 2 | `Model.kt` (the `Action` hierarchy), `Reducer.kt`, new `BackNav.kt` (the `appHandlesBack`/`Back`-resolution selector) | back semantics (pure) | AppState |
 | 3 | `FeedApp.kt` | shell back → `Back` | Unit 2, `compose.ui.backhandler` |
 | 4 | `FeedApp.kt` (`ContentHost`), `cards/DetailScreen.kt` | gesture-driven morph | Unit 5, seekable + shared-element APIs |
-| 5 | `PredictiveBackMotion.kt` (+ `actual` on Android) | easing, progress curve, reduced-motion | platform Settings (Android) |
+| 5 | `PredictiveBackMotion.kt` (pure, `commonMain`) | easing + decelerate-progress helpers | existing `rememberReduceMotion()` (no new platform code) |
 
 ## Testing
 
@@ -86,7 +88,7 @@ Gesture → `PredictiveBackHandler.progress` → `seekable.seekTo` (morph tracks
 
 ## Cross-platform note
 
-All changes live in `commonMain` except the Android manifest line and the `actual` reduced-motion read. Android gets the gesture; iOS interactive-pop drives the same handler; desktop is unaffected (no back gesture, `BackHandler` still fires on its platform trigger).
+All changes live in `commonMain` except the one Android manifest line — reduced-motion reuses the existing cross-platform `rememberReduceMotion()`, so there is **no new `expect/actual`**. Android gets the gesture; iOS interactive-pop drives the same handler; desktop is unaffected (no back gesture, `BackHandler` still fires on its platform trigger).
 
 ## Risks / mitigations
 
