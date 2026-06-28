@@ -78,10 +78,11 @@ fun FeedScreen(state: AppState, onAction: (CardAction) -> Unit = {}, onOpenAccou
   ) { pad ->
     if (state.cards.isEmpty()) {
       when {
-        rememberStableLoading(state.syncing) ->
-          FeedSkeleton(Modifier.padding(pad))
         state.error != null ->
           Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) { EmptyFeedError(state.error, onRefresh) }
+        rememberStableLoading(state.syncing) ->
+          FeedSkeleton(Modifier.padding(pad))
+        state.syncing -> Unit   // pre-debounce window: render nothing, not the onboarding state
         else ->
           Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) { FamilyNullState(onConnectDevice = onConnectDevice) }
       }

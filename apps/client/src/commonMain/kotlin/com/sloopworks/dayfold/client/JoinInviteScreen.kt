@@ -122,7 +122,7 @@ private fun ColumnScope.JoinEntry(busy: Boolean, onJoin: (String) -> Unit) {
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(9.dp),
     ) {
-      if (busy) androidx.compose.material3.CircularProgressIndicator(strokeWidth = 2.dp, color = cs.onPrimary, modifier = Modifier.size(18.dp))
+      if (busy) androidx.compose.material3.CircularProgressIndicator(strokeWidth = 2.dp, color = cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
       Text(
         "Join",
         style = MaterialTheme.typography.labelLarge,
