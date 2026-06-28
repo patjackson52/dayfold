@@ -219,5 +219,9 @@ New prototype-level open items:
   `designs/Family AI dashboard design brief/designs/States-Feed.dc.html` (caught-up,
   first-run, syncing, offline; recommends `established = hubs.isNotEmpty() ||
   members.size > 1`, with the `familyHasContent`-on-sync variant; includes the
-  M3→FeedScreen mapping). **Next: operator sign-off → then build re-routes
-  FeedScreen's single empty branch into the four states (ADR 0008).**
+  M3→FeedScreen mapping). → **Built 2026-06-27 (#209)**: operator signed off; FeedScreen
+  now routes its empty branch into the four posture states keyed on the recommended signal
+  `established = state.hubs.isNotEmpty() || state.members.size > 1` (both already on the Now
+  surface — SyncEngine watches `activeHubsFlow`, roster loads at session). All four states
+  snapshotted (light+dark) with the misframing branch-logic + the caught-up→Hubs forward-path
+  nav tested (#210/#211). **Fully resolved.**
