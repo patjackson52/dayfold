@@ -222,10 +222,11 @@ private fun HubsHost(store: Store<AppState>, state: AppState, onLoadHubs: () -> 
       HubDetailScreen(
         state, onBack = { onCloseHub(); store.dispatch(CloseHub) }, onNow = { store.dispatch(OpenFeed) },
         onOpenAudience = { state.currentHubId?.let { store.dispatch(OpenAudienceSheet); onLoadAudience(it) } },
+        onRetry = { state.currentHubId?.let { id -> onOpenHub(id, null) } },
       )
     } else {
-      HubListScreen(state, onOpenHub = { onOpenHub(it, null) }, onNow = { store.dispatch(OpenFeed) }, onFilter = { store.dispatch(SetHubFilter(it)) })
+      HubListScreen(state, onOpenHub = { onOpenHub(it, null) }, onNow = { store.dispatch(OpenFeed) }, onFilter = { store.dispatch(SetHubFilter(it)) }, onRetry = onLoadHubs)
     }
-    if (state.audienceSheetOpen) WhoCanSeeSheet(state, onClose = { store.dispatch(CloseAudienceSheet) })  // overlay
+    if (state.audienceSheetOpen) WhoCanSeeSheet(state, onClose = { store.dispatch(CloseAudienceSheet) }, onRetryAudience = { state.currentHubId?.let { onLoadAudience(it) } })  // overlay
   }
 }
