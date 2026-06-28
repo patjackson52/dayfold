@@ -3,13 +3,15 @@
 **Date:** 2026-06-27
 **Branch:** `worktree-loading-states` (from `main`)
 **Surface:** Dayfold Compose Multiplatform client (`apps/client`, `apps/androidApp`)
-**Status:** Approved (design) — pending multi-agent review → implementation plan
+**Status:** Approved (design) + folded 3-agent review — pending implementation plan
+**Toolchain (verified):** Compose-MP **1.11.1**, redux-kotlin **1.0.0-alpha03**,
+Kotlin 2.3.20, Material 3. (Earlier draft said CMP 1.9.3 / alpha01 — wrong.)
 
 ## Problem
 
 Several user-triggered async actions show no feedback; the app appears frozen.
-Named by operator: **sign-in** ("Continue with Google", etc.) and **sign-out**.
-A full audit found more.
+Operator-named: **sign-in** ("Continue with Google", etc.) and **sign-out**. Audit
+found more — including silent *failures*, not just silent loads.
 
 ### Audit findings
 
@@ -18,7 +20,9 @@ flags (`authBusy`, `syncing`, `hubsBusy`, `deviceBusy`, `approvalsBusy`, …) in
 `Model.kt` (`AppState`, ~L283). No shared `Loadable`/`AsyncState` wrapper. Per-action
 loading (which member row is approving) is not tracked. Only two real spinners exist
 (`SplashScreen` cold-start, `DeviceFinishingScreen`). No skeletons/shimmer. Theme is
-Material 3 (`theme/Theme.kt`), custom Box-based `AuthButton` (not M3 `Button`).
+Material 3 (`theme/Theme.kt`), custom Box-based `AuthButton` (not M3 `Button`). All
+ops are serialized through one `Mutex` in `AuthEngine` (`AuthEngine.kt:43`) — at most
+one in flight at a time.
 
 | Action | Composable | Current | Gap |
 |---|---|---|---|
@@ -41,93 +45,133 @@ Material 3 (`theme/Theme.kt`), custom Box-based `AuthButton` (not M3 `Button`).
 
 ## Decisions (operator-approved)
 
-1. **Scope:** full coherent pass — fix silent actions, upgrade text-only states, add
-   list/content skeletons + pull-to-refresh; one consistent loading vocabulary.
-2. **Vocabulary:** full Material 3 kit — button-busy, skeleton/shimmer, `PullToRefreshBox`,
+1. **Scope:** full coherent pass — fix silent loads, upgrade text-only states, add
+   list/content skeletons + pull-to-refresh, **and** add first-class error + empty
+   states (silent failures are part of the "doing nothing" feel). One consistent
+   loading vocabulary.
+2. **Vocabulary:** full Material 3 kit — button-busy, shimmer skeletons (with
+   reduced-motion fallback), `PullToRefreshBox` + top `LinearProgressIndicator`,
    full-screen splash, reusable components.
-3. **State model:** keep the `*Busy/*Error` boolean pattern (low blast radius, matches
-   codebase); add in-flight **id-set** tracking where per-row busy is needed. No
-   `Loadable<T>` refactor.
+3. **State model:** keep the `*Busy/*Error` boolean pattern; add a single nullable
+   **op-id** per domain where per-row busy is needed (ops are Mutex-serialized → at
+   most one in flight, so no `Set` needed). No `Loadable<T>` refactor.
 
 ## Principles (Material 3 + mobile UX)
 
 - Acknowledge every tap in <100ms — action buttons flip to busy instantly.
 - Skeletons where layout is known (lists, feed cards); spinners where it isn't
-  (button actions, blocking restores). Skeletons improve perceived speed.
-- Inline over full-screen. Block the whole screen only when the screen can't exist
-  yet (cold-start restore, sign-out teardown).
-- No flash: screen-level skeletons/spinners gated by a min-duration helper so fast
-  responses don't flicker. Button-busy is exempt (it is the press acknowledgement).
-- Accessible: indicators carry semantics ("Loading"); busy buttons announce
-  disabled+busy. All states are network → indeterminate indicators.
+  (button actions, blocking restores). Inline over full-screen — block the whole
+  screen only when it can't exist yet (cold-start restore).
+- Every loading region resolves 3 ways: **content / empty / error**. A skeleton that
+  resolves to a blank screen reads as a hang.
+- No flash: screen-level skeletons gated by a **delay-show ~200ms, no min-floor**
+  helper (lingering skeletons feel slower). Button-busy is exempt (it is the press
+  acknowledgement).
+- Accessible: busy buttons carry `semantics { stateDescription = "Busy" }`; skeletons
+  are `invisibleToUser()` with ONE `liveRegion = Polite` node announcing "Loading …";
+  shimmer respects reduced-motion; focus is placed sanely after teardown/route change.
+  All states are network → indeterminate indicators.
 
 ## Component kit — new package `client/.../ui/loading/`
 
-All in `commonMain` (no platform deps; Compose-MP `rememberInfiniteTransition` for
-shimmer). Reusable, unit/snapshot-testable.
+All `commonMain` (Compose-MP `rememberInfiniteTransition` for shimmer). Reusable,
+unit/snapshot-testable.
 
 | Component | Responsibility | Notes |
 |---|---|---|
-| `AuthButton(busy: Boolean)` (extend existing) | tapped provider/action button | label stays, leading glyph → 18dp `CircularProgressIndicator` in `content` color, `enabled=false` while busy |
-| `RowBusy()` | 16dp inline spinner replacing a list-row's trailing affordance | approve/decline/remove/revoke rows |
-| `Modifier.shimmer()` | animated shimmer brush sweep | foundation for skeletons |
-| `SkeletonBox` + `FeedSkeleton`, `HubListSkeleton`, `MemberListSkeleton`, `DeviceListSkeleton` | placeholder layouts mirroring real content shape | use `shimmer()` |
-| `FullScreenLoading` | center mark + spinner | reuse/share `SplashScreen` pattern |
-| `LoadingScrim` | dim scrim + centered spinner overlay | sign-out teardown |
-| `rememberStableLoading(flag): Boolean` | anti-flash: delay-show (~120ms) + min-visible (~400ms) | screen-level states only |
+| `AuthButton(busy: Boolean)` (extend existing) | tapped provider/action button | label stays; leading glyph → ~20dp `CircularProgressIndicator` strokeWidth 2dp in `content` color; `enabled=false`; stable width (no reflow); `stateDescription="Busy"` |
+| `RowBusy()` | spinner sized to the row's icon, wrapped in the same **48dp** touch box | replaces the trailing affordance without layout jump; sibling row actions disabled while in flight |
+| `Modifier.shimmer()` | animated sweep brush; **static dimmed fill when reduce-motion on** | reduced-motion via `expect/actual` (Android `ANIMATOR_DURATION_SCALE`, iOS `isReduceMotionEnabled`, Web `prefers-reduced-motion`) |
+| `SkeletonBox` + `ListSkeleton(rows, rowHeight)` + `FeedSkeleton` | placeholder layouts mirroring real content **metrics** (avoid layout shift on swap) | `invisibleToUser()`; one wrapping `liveRegion` "Loading …" |
+| `ErrorRetry(message, onRetry, retrying)` | inline error text + Retry button (button-busy) | one component reused across feed/hubs/members/devices/audience |
+| `EmptyState(icon, title, body)` | empty-list presentation | feed/hubs/members/devices |
+| `FullScreenLoading` | center mark + spinner | **`SplashScreen` refactored to use it** (no third twin) |
+| `rememberStableLoading(flag): Boolean` | anti-flash: delay-show ~200ms, no min-floor | screen-level skeletons only |
 
-M3 `PullToRefreshBox` (compose-material3 in CMP 1.9.3) wraps the FeedScreen list.
+`PullToRefreshBox` (`androidx.compose.material3.pulltorefresh`, `@OptIn(ExperimentalMaterial3Api)`)
+wraps the FeedScreen list for the manual gesture; a top indeterminate
+`LinearProgressIndicator` covers programmatic/background refresh (resume, post-mutation).
 
-## State changes (`Model.kt` + `Reducer.kt`)
+## State changes (`Model.kt` + `Reducer.kt` + `AuthEngine.kt` + actions)
 
-Additive only; existing flags untouched.
+Additive; existing flags untouched.
 
-- `pendingProvider: String?` — which sign-in provider button spins.
-- `signOutBusy: Boolean` — drives `LoadingScrim` + sign-out button busy.
-- `devicesBusy: Boolean` — device list load (no flag existed).
-- `audienceBusy: Boolean` — WhoCanSee audience load.
-- Members: `approvingIds: Set<String>`, `removingIds: Set<String>`.
-- Devices: `revokingIds: Set<String>`.
+- `pendingProvider: String?` — which sign-in button spins. Already carried by
+  `SignInRequested(provider)`; cleared by `SignInSucceeded`/`SignInFailed`.
+- `signOutBusy: Boolean` — set on `SignOutRequested` (today a reducer no-op);
+  needs **no** failure path — `signOut()` always dispatches `SignedOut`, which resets
+  to `AppState()` (auto-clears).
+- `deviceListBusy: Boolean` — device *list* load (renamed to avoid colliding with the
+  existing device-*approval* `deviceBusy`). Needs new Requested + Failed actions.
+- `audienceBusy: Boolean` — WhoCanSee audience load. Needs a new **AudienceFailed**
+  action (today only `HubAudienceLoaded` exists → on failure the sheet spins forever).
+- roster load — surface the existing/added busy flag for `MemberListSkeleton`; needs a
+  Failed action for the error state.
+- `memberOpId: String?` / `deviceOpId: String?` — id of the row currently
+  approving/declining/removing (member) or revoking (device). Single nullable, not a
+  Set, because the `Mutex` serializes ops.
 
-Reducer: on `*Requested` insert the id into the set (or set the boolean); on the
-matching success/fail action remove the id (or clear the boolean). Decline shares the
-members in-flight treatment.
+**New actions required** (review P0 — current code has no per-row Requested actions and
+several failure paths drop the id):
+- `MemberOpRequested(uid)` / `MemberOpFailed(uid?)`, `MemberRemoveRequested(uid)` /
+  `MemberRemoveFailed(uid?)`; `DeviceRevokeRequested(id)` / `DeviceRevokeFailed(id?)`;
+  `DevicesRequested` / `DevicesFailed`; `RosterRequested` / `RosterFailed`;
+  `AudienceFailed`. `AuthEngine` dispatches the Requested action before each call and
+  the Failed action in the catch.
+
+**Reducer:** set the op-id / boolean on the Requested action; clear it on the matching
+success, the matching Failed, or a reload (`RosterLoaded`/`DevicesLoaded`). Because at
+most one op is in flight, clearing on any terminal action of that domain is safe.
+
+**Recompose hygiene:** pass each row a plain `Boolean` (`uid == memberOpId`) so
+unrelated rows don't recompose. (`FeedApp.kt` currently selects the whole tree, so this
+adds no new churn; immutable `copy` keeps equality value-based.)
 
 ## Screen application
 
-- **Sign-in** (`SignInScreen`): set `pendingProvider` on tap → that `AuthButton`
-  shows busy spinner, others `enabled=false`.
-- **Sign-out** (`AccountScreen`): confirm dialog → on confirm set `signOutBusy` →
-  sign-out button busy + `LoadingScrim` over the screen until session clears/route
-  changes.
-- **Create-family / join / enter-code / approve-device**: replace text-morph with
-  `AuthButton(busy=…)` (label stays).
-- **Feed** (`FeedScreen`): initial load → `FeedSkeleton` (gated by
-  `rememberStableLoading(syncing)`); wrap list in `PullToRefreshBox` driving the
-  existing sync; error-retry button → button-busy.
-- **Hubs** (`HubListScreen` / `HubDetailScreen`): replace "Loading…" text with
-  `HubListSkeleton` / detail skeleton.
-- **Members / Devices**: list load → `MemberListSkeleton` / `DeviceListSkeleton`;
-  per-row `RowBusy` via the id sets.
-- **WhoCanSeeSheet**: small spinner while `audienceBusy`.
+- **Sign-in:** `pendingProvider` → that `AuthButton` busy, others `enabled=false`.
+- **Sign-out:** confirm → `signOutBusy` button-busy + immediate route change; teardown
+  behind the new screen. **No scrim.**
+- **Create-family / join / enter-code / approve-device:** text-morph → `AuthButton(busy=)`.
+- **Feed:** initial load → `FeedSkeleton` via `rememberStableLoading`; `PullToRefreshBox`
+  for the gesture (driven by a refresh flag distinct from initial `syncing`); top
+  `LinearProgressIndicator` for programmatic refresh; load error → `ErrorRetry`; no
+  cards + loaded → `EmptyState`.
+- **Hubs list/detail:** "Loading…" text → `ListSkeleton` / detail skeleton; error →
+  `ErrorRetry`; empty → `EmptyState`.
+- **Members / Devices:** list load → `ListSkeleton`; per-row `RowBusy` via the op-ids;
+  error → `ErrorRetry`; empty → `EmptyState`.
+- **WhoCanSeeSheet:** small spinner on `audienceBusy`; `AudienceFailed` → inline retry.
 
 ## Verification
 
-- **Fake backend** (`client/.../fake/FakeBackend.kt`): add an artificial-latency knob
-  so loading states are observable; reuse scenarios `sync-error`, `owner-approvals`,
-  `busy-family`, `empty-new`. Desktop `DAYFOLD_API=fake://…`; Android debug drawer.
+- **Fake backend latency knob:** add `latencyMs` to `FakeBackendData`
+  (`FakeBackend.kt:49`) and `delay(it)` in the **suspend** MockEngine adapters
+  (`desktopMain/.../fake/FakeHttpClient.kt:24` and
+  `androidApp/src/debug/.../FakeBackend.kt:26`) — NOT in the pure non-suspend
+  `handle()`. Debug-only, zero prod surface. Reuse scenarios `sync-error`,
+  `owner-approvals`, `busy-family`, `empty-new`. Desktop `DAYFOLD_API=fake://…`;
+  Android debug drawer.
 - **`rk` snapshot PNGs** + `apps/scripts/ondevice-demo.sh` for on-device visual check.
-- **Tests:** reducer tests for the id-set / new-boolean transitions; Compose snapshot
-  tests for each `Skeleton*` component (repo already snapshot-tests cards, ADR 0036).
+- **Tests:** reducer tests for op-id set/clear across success **and** failure actions;
+  Compose snapshot tests (`runComposeUiTest` + `captureToImage()`, per
+  `AuthScreensSnapshotTest.kt`, ADR 0036) for `ListSkeleton`/`FeedSkeleton`/
+  `ErrorRetry`/`EmptyState` and the busy `AuthButton`/`RowBusy`. Assert skeleton bounds
+  ≈ loaded bounds (no layout shift).
 
 ## Out of scope
 
-- No `Loadable<T>`/sealed `AsyncState` refactor (explicitly deferred).
-- No new network/optimistic-update behavior — purely feedback/presentation.
+- No `Loadable<T>`/sealed `AsyncState` refactor (deferred).
+- No new network behavior; no optimistic updates (approve/remove stay
+  spinner-then-resolve).
 - No changes to non-client surfaces (api, cli).
 
-## Review plan
+## Review trail
 
-Three parallel review agents before the implementation plan: (1) mobile-UX / M3
-critique, (2) Compose + redux-kotlin correctness, (3) simplification / YAGNI. Fold
-feedback, then `writing-plans`.
+Three parallel agents reviewed the first draft: mobile-UX/M3, Compose+redux
+correctness, simplification/YAGNI. Folded: factual version fixes, op-id (not Set) +
+the missing Requested/Failed actions, sign-out scrim removed, anti-flash single
+strategy, a11y (busy semantics / reduced-motion / liveRegion), refresh split
+(gesture vs programmatic), latency-knob placement, component consolidation. Added by
+operator decision: first-class error/empty states; shimmer kept with reduced-motion
+fallback.
