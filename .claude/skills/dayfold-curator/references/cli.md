@@ -2,12 +2,15 @@
 
 The skill drives ONLY these commands. Assume `dayfold` is on PATH and logged in.
 
-## Prereq
+## Auth
 
 ```
-dayfold whoami      # family=<id> api=<url> (device|legacy); prints scope=...
+dayfold login [--allow-env-key]   # RFC 8628 device grant; shows QR + user_code
+dayfold logout                    # revoke credential + clear saved token
+dayfold whoami                    # family=<id> api=<url> (device|legacy); prints scope=...
 ```
-If it shows `(legacy)` with empty family or errors → operator must `dayfold login`.
+If `whoami` shows `(legacy)` with empty family or errors → operator must `dayfold login`.
+`--allow-env-key` permits a 0600-file fallback on headless hosts (no OS keychain).
 
 ## Read current state (Phase C, and to get ids before push)
 
@@ -46,8 +49,33 @@ dayfold push <blockId> block.json --block         # block (body carries sectionI
 - Output: `push <resource>/<id> -> <httpStatus>`. Non-200 prints the server body
   to stderr and exits 1 — the server is the authority; fix and re-push.
 
+## Delete
+
+```
+dayfold delete <id>          # remove a hub (cascades its sections + blocks)
+dayfold delete <id> --card   # remove a briefing card
+dayfold rm <id>              # alias for delete
+```
+There is no section/block delete at MVP; to drop a stray block, delete its hub and
+re-push the tree.
+
+## Validate (local, no network)
+
+```
+dayfold validate <file.json>   # validate a card or hub tree against schema + media rules
+```
+
+## Other
+
+```
+dayfold update                 # brew upgrade to latest stable (or prints nudge)
+dayfold version                # print the CLI version
+dayfold help                   # print full usage
+```
+
 ## Notes
 
-- Generate stable ulids for new ids client-side (26-char Crockford base32). Reuse
+- Generate stable ULIDs for new ids client-side (26-char Crockford base32). Reuse
   an existing id (from `dayfold pull`) to update rather than create.
-- There is NO `dayfold delete` / `create` / `list`. Update-by-push only.
+- Flags may appear before or after positional args: `delete --card <id>` and
+  `delete <id> --card` are equivalent.

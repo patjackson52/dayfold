@@ -115,6 +115,30 @@ private fun authedDelete(
   return Pair(code, body)
 }
 
+/** Authed PUT with one transparent refresh on 401 (mirrors authedGet + authedDelete). */
+private fun authedPut(
+  store: Credentials?, keychain: SecretStore?,
+  api: String, token: String, refreshable: Creds?, path: String,
+  body: String,
+): Pair<Int, String> {
+  var (code, resp) = putStatus("$api$path", body, token)
+  if (code == 401 && store != null && refreshable != null) {
+    val newAccess = store.withRefreshLock {
+      val cur = loadCreds(store, keychain) ?: run { System.err.println("credentials removed — run: dayfold login"); exitProcess(1) }
+      val (rc, rt) = postStatus("${cur.api}/auth/refresh", """{"refresh":"${cur.refreshToken}"}""", null)
+      if (rc != 200) { System.err.println("session expired — run: dayfold login"); exitProcess(1) }
+      val o = runCatching { J.parseToJsonElement(rt).jsonObject }.getOrNull()
+      val newToken = o?.get("access")?.jsonPrimitive?.contentOrNull
+      val newRefresh = o?.get("refresh")?.jsonPrimitive?.contentOrNull
+      if (newToken == null || newRefresh == null) { System.err.println("session refresh failed — run: dayfold login"); exitProcess(1) }
+      saveCreds(store, keychain, cur.copy(accessToken = newToken, refreshToken = newRefresh))
+      newToken
+    }
+    val retry = putStatus("$api$path", body, newAccess); code = retry.first; resp = retry.second
+  }
+  return Pair(code, resp)
+}
+
 /** The build version embedded by Gradle (generateVersionResource) — what a
  *  brew-installed user reports in a bug. Falls back to "unknown" if absent. */
 internal fun cliVersion(): String =
@@ -268,33 +292,12 @@ fun main(args: Array<String>) {
       val keychain = resolveKeychain()
       val creds = loadCreds(store, keychain)        // refresh token comes from the keychain
       requireAuthSetup(creds != null)
-      if (creds != null) {
-        var access = creds.accessToken
-        var (code, body) = putStatus("${creds.api}/families/${creds.familyId}/$resource/$id", payload, access)
-        if (code == 401) {
-          access = store.withRefreshLock {
-            val cur = loadCreds(store, keychain) ?: run { System.err.println("credentials removed — run: dayfold login"); exitProcess(1) }
-            val (rc, rt) = postStatus("${cur.api}/auth/refresh", """{"refresh":"${cur.refreshToken}"}""", null)
-            if (rc != 200) { System.err.println("session expired — run: dayfold login"); exitProcess(1) }
-            val o = runCatching { J.parseToJsonElement(rt).jsonObject }.getOrNull()
-            val newAccess = o?.get("access")?.jsonPrimitive?.contentOrNull
-            val newRefresh = o?.get("refresh")?.jsonPrimitive?.contentOrNull
-            if (newAccess == null || newRefresh == null) { System.err.println("session refresh failed — run: dayfold login"); exitProcess(1) }
-            saveCreds(store, keychain, cur.copy(accessToken = newAccess, refreshToken = newRefresh))
-            newAccess
-          }
-          val retry = putStatus("${creds.api}/families/${creds.familyId}/$resource/$id", payload, access)
-          code = retry.first; body = retry.second
-        }
-        println("push $resource/$id -> $code")
-        if (code != 200) { System.err.println(body); exitProcess(1) }
-      } else {
-        // legacy env path (unchanged)
-        val api = env("DAYFOLD_API"); val fam = env("FAMILY_ID"); val secret = env("HOUSEHOLD_SECRET")
-        val (code, body) = putStatus("$api/families/$fam/$resource/$id", payload, secret)
-        println("push $resource/$id -> $code")
-        if (code != 200) { System.err.println(body); exitProcess(1) }
-      }
+      val (api, fam, tok) =
+        if (creds != null) Triple(creds.api, creds.familyId, creds.accessToken)
+        else Triple(env("DAYFOLD_API"), env("FAMILY_ID"), env("HOUSEHOLD_SECRET"))
+      val (code, body) = authedPut(store.takeIf { creds != null }, keychain, api, tok, creds, "/families/$fam/$resource/$id", payload)
+      println("push $resource/$id -> $code")
+      if (code != 200) { System.err.println(body); exitProcess(1) }
       maybeNudgeUpdate()   // ADR 0037: throttled once/day update nudge (interactive only)
     }
 

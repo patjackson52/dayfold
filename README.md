@@ -43,13 +43,15 @@ side income is a co-goal.
 | `apps/api` | Content API — TypeScript / Hono / Postgres (Neon), on Vercel. Auth (token mint, device-grant RFC 8628, Firebase verify), hubs + cards, scope + per-hub visibility. |
 | `apps/client` | Compose Multiplatform UI (Android/iOS/desktop) — the feed + hub renderer; redux-kotlin store; SQLDelight offline cache. |
 | `apps/androidApp` | Android host — the dogfood target. |
-| `apps/cli` | The `dayfold` CLI (Kotlin) — `login` · `push` · `pull` · `template` · `validate` · `whoami`; authors content into the API. |
+| `apps/cli` | The `dayfold` CLI (Kotlin) — `login` · `logout` · `push` · `pull` · `template` · `validate` · `whoami` · `delete`; authors content into the API. |
 | `packages/schema` | Generated content schema (`content.schema.json` → Kotlin/TS) — the card/hub contract. |
 
 - **Build & run the apps:** `processes/agent-dev-loop.md` (fixed toolchain + the cheap
   feedback loop) and `specs/prototype/00-build-spec-plan.md` (the live M0).
 - **Author content (CLI + Claude):** `apps/cli/templates/README.md` — the typed-authoring
   doc for both cards and hub trees, plus the markdown the app renders.
+- **AI agents:** `AGENTS.md` — compact quick-reference (build commands, content authoring,
+  confidence protocol, safety rails).
 
 ## Running the planning loop
 
