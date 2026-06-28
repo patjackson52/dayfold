@@ -3,7 +3,9 @@ package com.sloopworks.dayfold.client
 import com.sloopworks.dayfold.client.theme.DayfoldTheme
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
 import java.io.File
@@ -53,7 +55,28 @@ class FeedSnapshotTest {
   )
 
   @Test
-  fun emptyFeedSnapshot() = snapshot("feed-empty", AppState())
+  fun emptyFeedSnapshot() = snapshot("feed-empty", AppState())   // first-run (new family: no hubs, no roster)
+
+  // ── #164: the four posture states for an empty feed (ADR 0008) ─────────────
+  // An ESTABLISHED family (has a hub) with no cards → "all caught up", NOT onboarding —
+  // the headline misframing fix. Syncing → skeleton. (feed-empty above = first-run.)
+  private val caughtUp = AppState(hubs = listOf(Hub(id = "h1", title = "Starting College", status = "active", visibility = "family")))
+  @Test fun caughtUpSnapshot() = snapshot("feed-caught-up", caughtUp)
+  @Test fun caughtUpDarkSnapshot() = snapshot("feed-caught-up-dark", caughtUp, dark = true)
+  @Test fun syncingSnapshot() = snapshot("feed-syncing", AppState(syncing = true))
+
+  // The misframing fix, asserted on the branch logic (not just pixels): an established
+  // family's empty feed reads "all caught up" with a path to Hubs; a first-run family's does NOT.
+  @Test fun `established empty feed shows caught-up, not onboarding`() = runComposeUiTest {
+    setContent { DayfoldTheme { FeedScreen(caughtUp) } }
+    onNodeWithText("You're all caught up").assertIsDisplayed()
+    onNodeWithText("Your hubs are here").assertIsDisplayed()
+  }
+
+  @Test fun `first-run empty feed is NOT misframed as caught-up`() = runComposeUiTest {
+    setContent { DayfoldTheme { FeedScreen(AppState()) } }
+    onNodeWithText("You're all caught up").assertDoesNotExist()
+  }
 
   // ── CL-5: the 6 typed Now cards, light + dark ──────────────────────────────
 

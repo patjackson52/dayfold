@@ -54,7 +54,8 @@ class FeedScreenTest {
   @Test
   fun showsSyncingStatus() = runComposeUiTest {
     setContent { MaterialTheme { FeedScreen(AppState(syncing = true)) } }
-    onNodeWithText("Syncing…").assertIsDisplayed()
+    // #164: first-load-no-cache now shows a calm skeleton (not a bare "Syncing…" text)
+    onNodeWithContentDescription("Catching up on your day").assertIsDisplayed()
   }
 
   @Test

@@ -10,13 +10,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.WbTwilight
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -75,13 +80,21 @@ fun FeedScreen(state: AppState, onAction: (CardAction) -> Unit = {}, onOpenAccou
     bottomBar = { DayfoldBottomNav(hubsActive = false, onNow = {}, onHubs = onNavHubs) },
   ) { pad ->
     if (state.cards.isEmpty()) {
-      // S5: an empty family shows the family-null onboarding (invite/connect),
-      // not a bare "nothing yet". Sync/error keep their terse status.
-      Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
-        when {
-          state.syncing -> Text("Syncing…")
-          state.error != null -> EmptyFeedError(state.error, onRefresh)   // dead-end before: no recovery
-          else -> FamilyNullState(onConnectDevice = onConnectDevice)
+      // ADR 0008 / #164: FOUR posture states, not one. The old code showed the first-run
+      // onboarding for ANY empty feed — misframing an ESTABLISHED family that's simply
+      // caught up (a hub authored, zero briefing cards) as "nothing set up yet". Established
+      // = has hubs (from the cache flow) or >1 member (from the session roster) — both already
+      // in state on the Now surface (SyncEngine watches activeHubsFlow; roster loads at session).
+      val established = state.hubs.isNotEmpty() || state.members.size > 1
+      when {
+        // first load, no cache → calm skeleton (not a spinner-in-a-void)
+        state.syncing -> SyncingState(Modifier.padding(pad))
+        else -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
+          when {
+            state.error != null -> EmptyFeedError(state.error, onRefresh)                          // offline / sync error
+            established -> CaughtUpState(hasHubs = state.hubs.isNotEmpty(), onOpenHubs = onNavHubs) // all clear (the headline fix)
+            else -> FamilyNullState(onConnectDevice = onConnectDevice)                             // first run
+          }
         }
       }
     } else {
@@ -100,6 +113,56 @@ fun FeedScreen(state: AppState, onAction: (CardAction) -> Unit = {}, onOpenAccou
           if (card.type != null) TypedCardItem(card, onAction) else CardItem(card)
         }
       }
+    }
+  }
+}
+
+// #164 CL-A8 — the headline new state: an ESTABLISHED family with nothing pressing right
+// now. Calm + positive ("all caught up"), never a nag (no badges/bait); a quiet path to
+// Hubs only when the family has them. Replaces "show onboarding for any empty feed".
+@Composable
+private fun CaughtUpState(hasHubs: Boolean, onOpenHubs: () -> Unit) {
+  val cs = MaterialTheme.colorScheme
+  Column(Modifier.padding(40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Icon(Icons.Rounded.WbTwilight, contentDescription = null, tint = cs.onSecondaryContainer, modifier = Modifier.size(50.dp))
+    Spacer(Modifier.height(20.dp))
+    Text("You're all caught up", style = MaterialTheme.typography.headlineSmall, color = cs.onSurface, textAlign = TextAlign.Center)
+    Spacer(Modifier.height(10.dp))
+    Text(
+      "Nothing needs you right now. We'll quietly surface what matters as your day fills in — no pings, no badges.",
+      style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant, textAlign = TextAlign.Center,
+    )
+    if (hasHubs) {
+      Spacer(Modifier.height(26.dp))
+      Surface(shape = RoundedCornerShape(999.dp), color = cs.surfaceContainer, modifier = Modifier.clickable(onClick = onOpenHubs)) {
+        Row(
+          Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          Icon(DayfoldIcons.Dashboard, contentDescription = null, tint = cs.secondary, modifier = Modifier.size(19.dp))
+          Text("Your hubs are here", style = MaterialTheme.typography.labelLarge, color = cs.onSurface)
+          Icon(DayfoldIcons.ArrowForward, contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(18.dp))
+        }
+      }
+    }
+  }
+}
+
+// #164 — first load with no cached cards: a calm skeleton in the loaded feed's rhythm
+// (the brief: NOT a spinner-in-a-void). Three placeholder card silhouettes.
+@Composable
+private fun SyncingState(modifier: Modifier = Modifier) {
+  Column(
+    modifier.fillMaxSize().padding(16.dp).semantics { contentDescription = "Catching up on your day" },
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    repeat(3) {
+      Surface(
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth().height(84.dp),
+      ) {}
     }
   }
 }
