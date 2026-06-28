@@ -1,0 +1,1 @@
+{ "sectionId": "sample-money", "type": "location", "ord": 5, "payload": { "label": "Butler University", "address": "4600 Sunset Ave, Indianapolis, IN", "mapUrl": "https://maps.example/butler" } }
