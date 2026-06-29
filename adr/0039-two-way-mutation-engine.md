@@ -2,7 +2,11 @@
 
 ## Status
 
-**Proposed** 2026-06-28 (agent-drafted from a 6-specialist review panel — system
+**Accepted** 2026-06-29 (operator ratified the two-way build bundle; INB-26 closed —
+R2 object store, W2 = author into visible hubs only + loop-never-edits-member-blocks +
+server-enforced audience-intersection, W5 hide = per-member self-scoped local-only
+first; W3/intents + cost constants accepted via ADR 0041/0042). Was **Proposed**
+2026-06-28 (agent-drafted from a 6-specialist review panel — system
 design · data modeling/transfer · privacy/E2EE · security/ACL · mobile/KMP ·
 performance — plus one adversarial round; **operator-gated** — ADR-class:
 automation-autonomy boundary + customer-data write path + E2EE posture + auth

@@ -9,6 +9,15 @@ Each item: question, context link, **proposed default**, urgency.
 
 ---
 
+- **INB-26 · ANSWERED 2026-06-29 → Two-way ENGINE bundle ratified.** Operator
+  (in-session): (1) **W3 free-text + CONSTITUTION** = accept (ADR 0041 amendment
+  applied → 0041/0042 Accepted; W3 EXPERIMENTAL/flagged); (2) **W3 AI-loop placement**
+  = key-holder-only (default); (3) **Object store** = **Cloudflare R2** (confirmed);
+  (4) **W2 authoring scope** = members author into existing visible hubs only
+  (loop-never-edits-member-blocks + server-enforced audience-intersection); (5) **W5
+  hide** = per-member self-scoped, **local-only first**; (6) **W3 cost constants** =
+  Sonnet default, batch-per-family-per-cadence, per-family daily cap. ADRs 0039/0040
+  → Accepted; 0041/0042 → Accepted. Original below.
 - **INB-26 · 2026-06-28 · med · open — Two-way ENGINE generalization (W1–W5): six
   operator decisions.** A **6-specialist panel** (system design · data modeling ·
   privacy/E2EE · security/ACL · mobile/KMP · performance) pressure-tested
@@ -54,6 +63,12 @@ Each item: question, context link, **proposed default**, urgency.
     **operator-gated** (#1/#2/#3/#6 are constitution/E2EE/spend; #4/#5 scope/values)
     — drafted, awaiting your direction before any ADR flips Proposed→Accepted.
 
+- **INB-25 · ANSWERED 2026-06-29 → ADR 0038 accepted; member scope = global
+  `content:write`.** Operator ratified the primitive: **accept ADR 0038 as written**
+  + member app credentials get **global `content:write`** with the visibility filter
+  as the human boundary (read-only-member revisited only if a real case appears). The
+  agent-leaning calls stand (todo-only first; strict-LWW no done-wins; wall-clock+actor
+  stamp). ADR 0038 → Accepted. Original below.
 - **INB-25 · 2026-06-27 · med · open — Two-way collaborative content (interactive
   to-do): accept ADR 0038 + pick the member write-scope.** A 4-agent brainstorm +
   2 adversarial rounds designed Dayfold's **first two-way data-flow** primitive

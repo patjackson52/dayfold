@@ -2,13 +2,18 @@
 
 ## Status
 
-**Proposed** 2026-06-28 (operator-directed: W3 = free-form composer, bounded to the
+**Accepted** 2026-06-29 (operator accepted ADR 0041 → its blocker is cleared; cost
+constants accepted — Sonnet default, batch-per-family-per-cadence, per-family daily
+cap, ~$2–6/mo/family dogfood spend. W3 builds **EXPERIMENTAL / flagged**; client
+surface gated on the `designs/two-way/Add-Context` mockup; promotion to shipped is a
+separate operator decision). Was **Proposed** 2026-06-28 (operator-directed: W3 =
+free-form composer, bounded to the
 submitter, key-holder-only; **operator-gated** — automation-autonomy boundary +
 customer-data write path + E2EE posture + spend). **Fires ADR 0016's revisit
 trigger** ("free-text conversational prompts are wanted → constitution amendment +
-ADR") and **builds within ADR 0041** (the constitution amendment). This ADR is
-**blocked on ADR 0041 acceptance** — if 0041 is rejected, W3 stays
-structured/template-bounded (ADR 0016 §4) and this ADR does not apply. Composes
+ADR") and **builds within ADR 0041** (the constitution amendment). This ADR was
+**blocked on ADR 0041 acceptance** — if 0041 had been rejected, W3 would stay
+structured/template-bounded (ADR 0016 §4) and this ADR would not apply. Composes
 ADR 0039 (Channel B / the typed-op spine), ADR 0015/0017 (E2EE / key-holder),
 ADR 0029 (scopes), ADR 0030 (visibility), ADR 0025 (abuse/cost limits), ADR 0036
 (member-URL allowlist), ADR 0018 (Vercel/Neon). Design + audit trail:

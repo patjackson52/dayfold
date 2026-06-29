@@ -2,9 +2,12 @@
 
 ## Status
 
-**Proposed** 2026-06-27 (agent-drafted from a 4-agent brainstorm + 2 adversarial
-review rounds; **operator-gated** — ADR-class: automation-autonomy boundary +
-customer-data write path + E2EE posture + auth scope). Extends/composes ADR 0016
+**Accepted** 2026-06-29 (operator ratified the two-way build bundle; INB-25 closed:
+ADR accepted as written + member write-scope = **global `content:write`** with the
+visibility filter as the human boundary). Was **Proposed** 2026-06-27 (agent-drafted
+from a 4-agent brainstorm + 2 adversarial review rounds; **operator-gated** —
+ADR-class: automation-autonomy boundary + customer-data write path + E2EE posture +
+auth scope). Extends/composes ADR 0016
 (reserved two-way `intents`), ADR 0020 (offline-first DB-as-SoT + reserved
 outbox), ADR 0015/0017 (E2EE), ADR 0029 (scoped grants), ADR 0030 (per-member
 visibility), ADR 0025 (abuse limits), ADR 0022 (typed content + fold), ADR 0006

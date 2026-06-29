@@ -2,7 +2,12 @@
 
 ## Status
 
-**Proposed** 2026-06-28 (operator-directed in-session: "use free form composer —
+**Accepted** 2026-06-29 (operator explicitly accepted the constitution amendment —
+HARD GUARDRAIL tier — in-session: "Accept — W3 builds (flagged)". The amended
+constitution text below has been applied to `context/business-constitution.md`. W3
+ships **EXPERIMENTAL / flagged / testable, not committed**; promotion to shipped is a
+separate operator decision per the Revisit Trigger). Was **Proposed** 2026-06-28
+(operator-directed in-session: "use free form composer —
 this will essentially work as a remote command for the backing AI"; **operator-gated
 — HARD GUARDRAIL: scope + business-constitution change**, the highest review tier).
 Amends `context/business-constitution.md` ("What it is not" → "Not an open-ended AI

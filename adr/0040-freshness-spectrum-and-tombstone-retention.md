@@ -2,7 +2,11 @@
 
 ## Status
 
-**Proposed** 2026-06-28 (agent-drafted from the heterogeneous-cadence review of the
+**Accepted** 2026-06-29 (operator ratified the two-way build bundle — the
+cursor/watermark/full-resync contract + tombstone-retention floor build now; **push
+credentials** (FCM/APNs) and any **held-connection realtime vendor** remain deferred
+drop-ins behind their own operator gates). Was **Proposed** 2026-06-28 (agent-drafted
+from the heterogeneous-cadence review of the
 two-way engine; **partly operator-gated** — the cursor/watermark/full-resync contract
 is agent-buildable, but the **push credentials** (FCM/APNs, composes ADR 0034/0023)
 and any **held-connection realtime vendor** (spend/vendor) are operator gates).
