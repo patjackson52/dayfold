@@ -29,18 +29,18 @@ hubs only; W5 hide = local-only first; INB-25/26 closed). Ratification merged vi
   resurrection), op_log idempotency + 7-day TTL sweep, tolerant validator gated to
   plaintext-M0. **Refines ADR 0030 §6**: a hub-rewrite the caller can't see is now 404.
   320 API tests green.
-- **Slice 3 (client sync engine / egress lane) — 🟡 IN PROGRESS (branch
-  `two-way-slice3-client-sync`, no PR yet)**: the two pure TDD cores are DONE +
-  tested (19 tests) — `ChecklistMerge` (per-item LWW on the done-triple, convergent +
-  idempotent) and `OutboxSender` (the 412/410/backoff/cap state machine), + the client
-  `ChecklistItem` done-triple fields. **Remaining**: outbox SQLDelight table +
-  `local_state` column, `SyncClient.putBlock` (If-Match + Idempotency-Key), the
-  SyncEngine sender loop sharing the sync mutex, optimistic apply, and the MockEngine
-  fake-backend egress test.
-- **Next**: finish Slice 3 wiring, then Slice 4 (toggle UI → `designs/two-way/States`+`Todo`,
-  needs the agent-dev-loop on-device verification), Slice 5 (delete+hide), Slice 6
-  (freshness). Deferred + gated last: W2 authoring, W1 media (R2), W3 add-context
-  (EXPERIMENTAL/flagged).
+- **Slice 3 (client sync engine / egress lane) — ✅ COMPLETE (PR open from
+  `two-way-slice3-client-sync`)**: `ChecklistMerge` (per-item done-triple LWW,
+  convergent + idempotent) + `OutboxSender` (412/410/backoff/cap FSM) + the egress
+  wiring — `outbox` SQLDelight table + `version`/`local_state` columns (migration
+  `4.sqm`), `ContentStore.enqueueBlockToggle` (optimistic apply), per-block-type merge
+  dispatch in `applyDelta` + echo-suppress, `SyncClient.putBlock` (If-Match +
+  Idempotency-Key), `SyncEngine.drainOutbox` under the sync mutex. **481 client tests
+  green** incl. 2 headless egress integration tests (happy path + 412 re-merge converge).
+- **Next**: Slice 4 (toggle UI → `designs/two-way/States`+`Todo`, needs the
+  agent-dev-loop on-device verification — `ChecklistRow` calls `enqueueBlockToggle`),
+  Slice 5 (delete+hide), Slice 6 (freshness). Deferred + gated last: W2 authoring,
+  W1 media (R2), W3 add-context (EXPERIMENTAL/flagged).
 
 **Status update (2026-06-26): first real on-device sign-in is LIVE on prod.** Real
 Google sign-in + foreground sync now work end-to-end on the Pixel against
