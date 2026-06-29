@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.platform.LocalUriHandler
 import com.sloopworks.dayfold.client.cards.CardAction
 import com.sloopworks.dayfold.client.cards.PlatformUriHandler
@@ -52,6 +54,7 @@ internal fun routeCardAction(
 // onSignIn / onCreateFamily drive the AuthEngine (T6); onPlatformAction performs
 // card OS-handoffs (CL-PLAT). All default to no-ops so screens stay snapshot-
 // testable in isolation.
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun FeedApp(
   store: Store<AppState>,
@@ -99,6 +102,16 @@ fun FeedApp(
   val uriHandler = remember(onOpenUri) { PlatformUriHandler(onOpenUri) }
   CompositionLocalProvider(LocalUriHandler provides uriHandler) {
   DayfoldTheme {
+    // Predictive-back P0: every non-detail screen routes system back to "up one
+    // level" (without this, system back exits the app at targetSdk >= 36). Disabled
+    // when a feed detail is open — ContentHost's PredictiveBackHandler owns that.
+    // Hub-detail back is special-cased: it must ALSO run onCloseHub() to cancel the
+    // HubEngine DB tree subscription (mirrors HubsHost's on-screen arrow); every other
+    // route — incl. closing the audience overlay — is pure and goes through `Back`.
+    BackHandler(enabled = appHandlesBack(state) && currentDetailCard(state) == null) {
+      if (backAction(state) == CloseHub) { onCloseHub(); store.dispatch(CloseHub) }
+      else store.dispatch(Back)
+    }
     // Deep-link resume beat: after sign-in, MembershipsLoaded has already set the
     // gate route, so show "Finishing…" over it while the stashed code is looked up.
     if (state.deviceResuming) { SafeArea { DeviceFinishingScreen() }; return@DayfoldTheme }
