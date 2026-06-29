@@ -48,14 +48,25 @@ see `specs/prototype/00-build-spec-plan.md`.
 | Path | Holds | Authority |
 |---|---|---|
 | `CLAUDE.md` | This file — session protocol, governance | Source of truth |
+| `CHANGELOG.md` | Product/API/feature changes by release — used in release notes | Working state |
 | `adr/` | Decision records + `decisions-index.md` | Source of truth (immutable once Accepted) |
 | `context/` | Values & direction (operator-owned), constitution, goals/constraints, kill switches, open questions, operating lessons | Source of truth |
 | `planning/` | Waterfall workstream board the loop executes | Live working state |
 | `research/` | Research reports with citations; validation reviews | Evidence (dated snapshots, never silently edited) |
 | `roadmap/` | Execution plan, milestone definitions (post-spec) | Source of truth for execution |
-| `specs/` | PRD, architecture, pricing model (post-validation) | Source of truth |
-| `processes/` | Planning loop, agent routing, research workflow, fleet patterns, loop journal | Source of truth for process |
+| `specs/` | PRD, architecture, domain model, prototype plan | Source of truth |
+| `processes/` | Planning loop, agent routing, dev loop, release runbooks, fleet patterns, loop journal | Source of truth for process |
 | `backlog/` | `now.md` / `next.md` / `later.md` / `operator-inbox.md` | Working state |
+| `apps/api` | Content API — TypeScript / Hono / Postgres (Neon) on Vercel | Live code |
+| `apps/client` | Compose Multiplatform core — feed+hub renderer, redux-kotlin store, SQLDelight | Live code |
+| `apps/androidApp` | Android host (thin app) | Live code |
+| `apps/cli` | `dayfold` CLI (Kotlin) — authors content via the API | Live code |
+| `apps/debugdrawer*` | Debug drawer library (redux-kotlin devtools, 3 variants) | Live code |
+| `packages/schema` | `content.schema.json` → codegen → Zod (TS) + Kotlin data classes | Source of truth for content contract |
+| `packages/linkrules` | Shared linkifier (Kotlin) — auto-links phone/email in `body_md`; used by CLI + client | Shared library |
+| `designs/` | Hi-fi UI/UX mockups (`.dc.html`) and design briefs — required by ADR 0008 before build | Source of truth for design |
+| `docs/superpowers/` | Agent working docs: design specs (`specs/`) and plans (`plans/`) produced during build | Working state |
+| `.claude/skills/dayfold-curator/` | Curator skill — Claude Code skill for authoring Hubs+Cards via the CLI | Live skill |
 
 ## Required start-of-session routine
 
@@ -66,9 +77,10 @@ see `specs/prototype/00-build-spec-plan.md`.
    4. `context/goals-and-constraints.md` + `context/kill-switches.md`
    5. `backlog/now.md` + `backlog/operator-inbox.md` (apply operator answers first)
    6. `planning/workstreams.md` (if doing loop/planning work)
-   7. Relevant ADRs (`adr/decisions-index.md` first)
-   8. Relevant research / specs for the task at hand
-   9. Persistent memory system (if available)
+   7. `processes/agent-dev-loop.md` (if building/editing `apps/` — fixed toolchain)
+   8. Relevant ADRs (`adr/decisions-index.md` first)
+   9. Relevant research / specs for the task at hand
+   10. Persistent memory system (if available)
 2. Do not begin substantive work until constraints are loaded.
 
 ## Required end-of-session routine
@@ -79,6 +91,8 @@ see `specs/prototype/00-build-spec-plan.md`.
    `context/open-questions.md`.
 4. Create or update ADRs when a durable decision was made.
 5. Update `backlog/now.md` / `next.md` / `later.md`.
+6. Update `CHANGELOG.md` when user-visible product/API/CLI features were added,
+   changed, or fixed.
 
 ## Process rules
 
