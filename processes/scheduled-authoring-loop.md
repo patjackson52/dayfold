@@ -78,6 +78,42 @@ bash scripts/install-dayfold-cli.sh   # → /usr/local/bin/dayfold
 > `release-cli.yml`), then change the setup script to download the prebuilt
 > `dayfold-X.Y.Z.tar` (needs only a JRE ≥17). See the NOTE in the install script.
 
+## Using it from OTHER repos' cloud environments
+
+Cloud environments (Claude Code on the web, GitHub Actions) are per-repo, so the
+dayfold source usually isn't checked out. Cross-repo use is a **distribution**
+problem, and it's easy here because **`SloopWorks/dayfold` is a public repo** — so
+`git clone` and GitHub Release assets need no auth from any environment.
+
+`scripts/install-dayfold-cli.sh` is self-contained: if `apps/cli` isn't present it
+shallow-clones the public repo and builds. So any repo's setup script can install
+the CLI with one line:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SloopWorks/dayfold/main/scripts/install-dayfold-cli.sh | bash
+```
+
+Ranked by cold-start cost / robustness:
+
+1. **Release tarball (best once available).** Cut a CLI release
+   (`git tag cli-v0.1.0` → `release-cli.yml`); then any env runs
+   `DAYFOLD_CLI_VERSION=0.1.0 …install-dayfold-cli.sh` to download the prebuilt
+   `dayfold-X.Y.Z.tar` — **JRE-only, no JDK/Gradle**, fast. *Operator gate:*
+   ADR 0031 requires a real license + a "confirm public binary distribution"
+   sign-off before the first publish (the repo being public ≠ the CLI being
+   licensed to distribute).
+2. **Clone + build (works today).** The one-liner above. No release needed, no
+   auth (public repo), but pulls JDK 17 + Gradle on each cold container — slow.
+3. **Hosted MCP (durable, no install at all).** The strongest cross-repo answer:
+   a remote dayfold MCP server the env lists in its MCP config with a bearer key —
+   no binary, no JDK, no clone, scales to N repos/envs. This is the deferred,
+   ADR-gated build; per-env binary installs are the thing it removes.
+
+**Auth is identical in every repo:** the same three secrets
+(`DAYFOLD_API`/`FAMILY_ID`/`HOUSEHOLD_SECRET`) set in *that* environment (modes 1–2),
+or the MCP bearer key (mode 3). One household token can be reused across many
+environments — and revoked in one place (its `credentials` row) if any leaks.
+
 ## Step 3 — The scheduled task
 
 Sanity check first — `dayfold whoami` must print the family with `(legacy)` (a
