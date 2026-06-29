@@ -3,6 +3,9 @@ package com.sloopworks.dayfold.client
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.ExperimentalTransitionApi
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -13,10 +16,16 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
+import androidx.compose.ui.backhandler.PredictiveBackHandler
 import androidx.compose.ui.platform.LocalUriHandler
+import com.sloopworks.dayfold.client.ui.loading.rememberReduceMotion
+import kotlin.coroutines.cancellation.CancellationException
 import com.sloopworks.dayfold.client.cards.CardAction
 import com.sloopworks.dayfold.client.cards.PlatformUriHandler
 import com.sloopworks.dayfold.client.cards.DetailScreen
@@ -52,6 +61,7 @@ internal fun routeCardAction(
 // onSignIn / onCreateFamily drive the AuthEngine (T6); onPlatformAction performs
 // card OS-handoffs (CL-PLAT). All default to no-ops so screens stay snapshot-
 // testable in isolation.
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun FeedApp(
   store: Store<AppState>,
@@ -99,6 +109,16 @@ fun FeedApp(
   val uriHandler = remember(onOpenUri) { PlatformUriHandler(onOpenUri) }
   CompositionLocalProvider(LocalUriHandler provides uriHandler) {
   DayfoldTheme {
+    // Predictive-back P0: every non-detail screen routes system back to "up one
+    // level" (without this, system back exits the app at targetSdk >= 36). Disabled
+    // when a feed detail is open — ContentHost's PredictiveBackHandler owns that.
+    // Hub-detail back is special-cased: it must ALSO run onCloseHub() to cancel the
+    // HubEngine DB tree subscription (mirrors HubsHost's on-screen arrow); every other
+    // route — incl. closing the audience overlay — is pure and goes through `Back`.
+    BackHandler(enabled = appHandlesBack(state) && currentDetailCard(state) == null) {
+      if (backAction(state) == CloseHub) { onCloseHub(); store.dispatch(CloseHub) }
+      else store.dispatch(Back)
+    }
     // Deep-link resume beat: after sign-in, MembershipsLoaded has already set the
     // gate route, so show "Finishing…" over it while the stashed code is looked up.
     if (state.deviceResuming) { SafeArea { DeviceFinishingScreen() }; return@DayfoldTheme }
@@ -193,23 +213,64 @@ private fun SafeArea(content: @Composable () -> Unit) {
   Box(Modifier.fillMaxSize().safeDrawingPadding()) { content() }
 }
 
-// CL-7b container transform: SharedTransitionLayout shares the tapped card's
-// bounds (key "card-$id") with the detail container → the card morphs into the
-// detail (and back). AnimatedContent keyed on the open id (null = feed) drives the
-// cross-fade; the shared element drives the bounds morph. Asymmetric timing.
-@OptIn(ExperimentalSharedTransitionApi::class)
+// CL-7b container transform, gesture-driven (predictive back, P1). The card morphs
+// into the detail via SharedTransitionLayout (key "card-$id"); a SeekableTransitionState
+// is the single animator. Non-gesture transitions (open detail, hero-arrow back, deep
+// pops) are driven by the redux→seekable LaunchedEffect; the back GESTURE scrubs the
+// seekable with the finger and commits (NavBack) or cancels (animate back).
+// The morph is edge-INDEPENDENT by design: it targets the card's fixed feed position,
+// so BackEventCompat.swipeEdge / RTL do not change it (no edge-signed shift to invert).
+// Threading swipeEdge is a P2 prerequisite only for the deferred full-screen route anim.
+@Suppress("DEPRECATION")   // CMP 1.11.1: PredictiveBackHandler/BackEventCompat are @Deprecated (→ NavigationEvent); intentional per design D2
+@OptIn(ExperimentalSharedTransitionApi::class, ExperimentalComposeUiApi::class, ExperimentalTransitionApi::class)
 @Composable
 private fun ContentHost(store: Store<AppState>, state: AppState, handle: (CardAction) -> Unit, onConnectDevice: () -> Unit = {}, onNavHubs: () -> Unit = {}, onRefresh: () -> Unit = {}) {
   val detail = currentDetailCard(state)
+  val targetKey: String? = detail?.id            // top of the detail stack (null = feed)
+  // Where a back POP lands: the card UNDERNEATH the top (null = feed for a 1-deep stack).
+  // Hardcoding null here would flash the feed on a nested detail→detail back.
+  val popTarget: String? = state.detailStack.getOrNull(state.detailStack.lastIndex - 1)
+  val seekable = remember { SeekableTransitionState<String?>(targetKey) }
+  val reduceMotion = rememberReduceMotion()
+
+  // Redux -> animation sync for NON-gesture transitions. The gesture path drives the
+  // seekable directly and dispatches NavBack on commit; afterwards targetKey == the
+  // settled state, so this no-ops.
+  LaunchedEffect(targetKey) {
+    if (seekable.currentState != targetKey) {
+      if (reduceMotion) seekable.snapTo(targetKey)
+      else seekable.animateTo(targetKey, animationSpec = tween(if (targetKey != null) 360 else 280, easing = EmphasizedDecelerate))
+    }
+  }
+
+  // Back GESTURE: only when a detail is open. Scrub toward popTarget with the finger;
+  // commit -> NavBack, cancel -> animate back to the current detail. Reduced-motion:
+  // skip the scrub, jump to commit. The scrub is clamped < 1f so only the explicit
+  // commit animateTo finishes the morph (a front-loaded decelerate can hit 1f while the
+  // finger is still down — without the clamp the detail would visually vanish pre-commit).
+  PredictiveBackHandler(enabled = detail != null) { progress ->
+    try {
+      progress.collect { e -> if (!reduceMotion) seekable.seekTo(decelerateProgress(e.progress).coerceAtMost(0.999f), targetState = popTarget) }
+      if (!reduceMotion) seekable.animateTo(popTarget, animationSpec = tween(280, easing = EmphasizedDecelerate))
+      store.dispatch(NavBack)                    // COMMIT
+    } catch (e: CancellationException) {
+      val back = detail?.id
+      if (!reduceMotion && back != null) seekable.animateTo(back, animationSpec = tween(280, easing = EmphasizedDecelerate))
+      throw e                                    // CANCEL — must rethrow
+    }
+  }
+
+  val transition = rememberTransition(seekable, label = "feed-detail")
   SharedTransitionLayout {
-    AnimatedContent(
-      targetState = detail?.id,
+    transition.AnimatedContent(
+      contentKey = { it },
       transitionSpec = {
+        // keep the original asymmetric fade+slide (360 open / 280 close); the default
+        // Transition.AnimatedContent spec adds a scaleIn that fights the shared morph.
         val opening = targetState != null
         val dur = if (opening) 360 else 280
         (fadeIn(tween(dur)) + slideInVertically(tween(dur)) { h -> h / 16 }) togetherWith fadeOut(tween(dur))
       },
-      label = "feed-detail",
     ) { id ->
       CompositionLocalProvider(
         LocalSharedTransitionScope provides this@SharedTransitionLayout,

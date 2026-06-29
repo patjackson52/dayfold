@@ -37,7 +37,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.ExperimentalComposeUiApi
 import com.sloopworks.dayfold.client.Card
 import com.sloopworks.dayfold.client.RelatedRef
 
@@ -54,13 +53,11 @@ import com.sloopworks.dayfold.client.RelatedRef
 internal fun hubLinkTarget(card: Card): Pair<String, String?>? =
   (card.targetHubId ?: card.hubRef)?.takeIf { it.isNotBlank() }?.let { it to card.targetBlockId }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun DetailScreen(card: Card, onBack: () -> Unit, onAction: (CardAction) -> Unit) {
-  // CL-7: hardware/gesture back (Android) + interactive-pop (iOS) → NavBack, so
-  // back returns to the feed instead of exiting. Predictive-back SCRUB animation
-  // is the CL-7b polish follow; this plain handler is the base.
-  androidx.compose.ui.backhandler.BackHandler(enabled = true) { onBack() }
+  // CL-7b: the back GESTURE (Android predictive back / iOS interactive-pop) is owned by
+  // ContentHost's PredictiveBackHandler (it scrubs the container-transform). The in-hero
+  // arrow below still dispatches onBack() -> NavBack for the explicit tap path.
   val accent = accentFor(card.type)
   val (heroBg, heroFg) = accentColors(accent, solid = false) // container + onContainer (AA)
   Column(Modifier.fillMaxSize().cardSharedBounds(card.id)) { // CL-7b: morph target
