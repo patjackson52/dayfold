@@ -9,6 +9,19 @@ Each item: question, context link, **proposed default**, urgency.
 
 ---
 
+- **INB-29 · PARTIALLY ANSWERED 2026-06-30 → Gate B RATIFIED (ADR 0044 Accepted); Gate A =
+  design prompt delivered (sign-off still pending); carryover pulled forward.** Operator
+  in-session: (1) **Gate B** — "Accept ADR 0044 as written" → ADR 0044 flipped Proposed →
+  Accepted (background-location posture ratified). (2) **Gate A** — operator asked for a
+  Claude Design prompt framing the feature as **opt-in**; delivered as
+  `designs/DESIGN-BRIEF-triggers-v2-phase-b.md` (self-contained; folds in the INB-13 §6b
+  fix-list + the opt-in posture). Mockups + **operator sign-off still required** before any
+  Phase-B implementation surface (geofence / local-notif / permission) builds — Gate A stays
+  open until then. (3) **Carryover** — "build it now": the ungated render-driven record-shown
+  EFFECT is being built on the Phase-B branch independently of the gates. **Phase-B
+  implementation (geofence/notification/permission) remains BLOCKED on Gate A sign-off.**
+  Original (the gate-stop write-up) below.
+
 - **INB-29 · 2026-06-30 · med · open — Now derived surfacing PHASE B is gated; the
   build loop STOPPED at the gate (no implementation code written).** Phase B = background
   geofence (on-device, live position never leaves) + **LOCAL** notifications (Android

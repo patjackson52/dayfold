@@ -13,24 +13,25 @@ NO-GO** → **building to learn**; the business unknowns (OQ-wtp / niche / gemin
 are **untouched by design**. The "brains" (G1 authoring loop) is a deliberate
 later milestone; interim authoring = operator + Claude Code via the CLI.
 
-**Status update (2026-06-30): Now derived surfacing — PHASE B build loop STOPPED at the operator
-gate (no implementation code written).** Phase B (background geofence + LOCAL notifications, ADR
-0043 §Phasing) is **operator-gated on two things, and NEITHER is met**, so per the build discipline
-the loop stopped and surfaced the decision instead of deciding in the loop (→ **INB-29**):
-- **Gate A — ADR 0008 design-first: NOT met.** The Phase-B surface ("Always" location primer,
-  LOCAL notification + lock-screen, offline/geo=on) lives in the `triggers/` brief; only a
-  first-pass exists and **INB-13 is still open** (P0 honesty bug + the §6b v2 fix-list never handed
-  to Claude Design; no operator sign-off — contrast INB-28 which signed off `now-derived/` for
-  Phase A and *excluded* background location / notifications / new permission as Phase B).
-- **Gate B — background-location posture: NOT ratified.** The "Always" permission + disclosure
-  review (HARD GUARDRAIL #3/#4) is drafted as **ADR 0044 (Proposed)** — local notifications only
-  (no FCM/APNs, no server change; dumb-server invariant intact), geofence nearest-N (iOS 20-region
-  cap), quiet-hours + daily-cap as device-local never-synced `RankConfig` knobs, `rank()` stays
-  pure. Awaiting operator ratification.
-- **Separable/ungated:** the Phase-A carryover (render-driven record-shown EFFECT so anti-nag decay
-  starts) is foreground-only over the signed-off `now-derived/` feed and can be pulled forward
-  independently of both gates on operator say-so. Grounding confirmed: `RankConfig` (`NowRank.kt:45`)
-  + the explicit "Quiet-hours config is deferred to Phase B" note (`NowRank.kt:18-19`).
+**Status update (2026-06-30): Now derived surfacing — PHASE B gate resolved by the operator;
+build proceeds only on the ungated carryover (Gate A still blocks the notification surface).**
+The loop stopped at the Phase-B gate (background geofence + LOCAL notifications, ADR 0043 §Phasing)
+and surfaced both gates as **INB-29**; operator answered in-session:
+- **Gate B — background-location posture: RATIFIED.** Operator "Accept ADR 0044 as written" →
+  **ADR 0044 Accepted** (the "Always" opt-in/reversible posture; LOCAL notifications only — no
+  FCM/APNs, no server change, dumb-server invariant intact; geofence nearest-N, iOS 20-region cap;
+  quiet-hours + daily-cap as device-local never-synced `RankConfig` knobs; `rank()` stays pure;
+  live position never leaves device).
+- **Gate A — ADR 0008 design-first: STILL OPEN (mockups + sign-off pending).** Operator asked for
+  a Claude Design prompt framing the feature as **opt-in**; delivered as
+  `designs/DESIGN-BRIEF-triggers-v2-phase-b.md` (self-contained; folds in INB-13 §6b + opt-in
+  ladder). **Phase-B implementation (geofence / local-notif / permission surfaces) stays BLOCKED
+  on signed-off mockups** — so the build loop does NOT proceed on those surfaces yet.
+- **Ungated carryover — BUILDING NOW (operator "build it now"):** the render-driven record-shown
+  EFFECT (action→effect→DB→`surfacingFlow` bridge, debounced) so anti-nag decay's `last_shown`
+  clock starts — foreground-only over the signed-off `now-derived/` feed, no new permission/surface.
+  Grounding: `RankConfig` (`NowRank.kt:45`) + the "Quiet-hours config is deferred to Phase B" note
+  (`NowRank.kt:18-19`).
 
 **Status update (2026-06-30): Now derived surfacing — Phase A built (ADR 0043).** Operator
 ratified both gates in-session (INB-28): **ADR 0043 → Accepted** + `designs/now-derived/` **signed

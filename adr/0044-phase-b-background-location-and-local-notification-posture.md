@@ -2,11 +2,16 @@
 
 ## Status
 
-**Proposed** 2026-06-30 (agent-drafted at the Phase B build-loop gate;
-**operator-gated — HARD GUARDRAIL tier**: requests a new background-location
-permission posture + a customer-disclosure review, touching guardrails #3
-[restricted-scope/location data] and #4 [customer-relationship line]). Nothing
-in this ADR builds until the operator ratifies it. **Extends ADR 0043 Phase B**
+**Accepted** 2026-06-30 (operator ratified in-session — "Accept ADR 0044 as
+written" → Gate B closed). Was **Proposed** 2026-06-30 (agent-drafted at the
+Phase B build-loop gate; **operator-gated — HARD GUARDRAIL tier**: requests a
+new background-location permission posture + a customer-disclosure review,
+touching guardrails #3 [restricted-scope/location data] and #4
+[customer-relationship line]). **Gate B (this posture) is now ratified; Gate A
+(the ADR 0008 Phase-B design sign-off, INB-13 §6b) is still open** — so Phase-B
+*implementation* (geofence / local-notification / permission surfaces) stays
+blocked on signed-off mockups; only the ungated Phase-A record-shown carryover
+proceeds. **Extends ADR 0043 Phase B**
 and **concretizes ADR 0014 §4/§5/§6** (the "later milestone" the trigger engine
 ADR reserved). Does **not** edit either (both Accepted/immutable) — it adds the
 Phase-B posture they deferred.
