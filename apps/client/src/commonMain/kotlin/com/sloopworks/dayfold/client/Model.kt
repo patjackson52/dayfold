@@ -21,6 +21,9 @@ data class Card(
   // the deep-link the render layer will use when Hubs land.
   @SerialName("not_before") val notBefore: String? = null,
   @SerialName("expires_at") val expiresAt: String? = null,
+  // ADR 0043 §2b — bounded author weight/hint fed to the on-device Priority & Ordering Engine.
+  // The device decides final position (no author ordinal); the engine CLAMPS it (no top-pin spam).
+  val importance: Double? = null,
   @SerialName("target_hub_id") val targetHubId: String? = null,
   @SerialName("target_section_id") val targetSectionId: String? = null,
   @SerialName("target_block_id") val targetBlockId: String? = null,
@@ -293,6 +296,15 @@ data class ChecklistItem(
   val label: String? = null, val amount: Double? = null, val paid: Boolean? = null,
 )
 
+// ADR 0043 Phase A — the deriveNow candidate set, projected from the local cache (one bridge, one
+// writer). The store only holds rows the member may read (sync applied ADR 0030 visibility), so
+// derived items inherit visibility for free. Hubs ride the existing state.hubs slice.
+data class NowContent(
+  val sections: List<HubSection> = emptyList(),
+  val blocks: List<HubBlock> = emptyList(),
+  val places: List<Place> = emptyList(),
+)
+
 // GET /hubs/:id/tree envelope. Blocks carry section_id; the renderer groups them.
 @Serializable
 data class HubTree(
@@ -416,6 +428,11 @@ data class AppState(
   // local-only + personal — never synced, no family-visible signal.
   val hiddenIds: Set<String> = emptySet(),
   val showHidden: Boolean = false,
+  // ADR 0043 Phase A — the derived-lane candidate inputs + LOCAL-ONLY engine state. Both are
+  // DB-fed projections (sole-writer bridges, like hiddenIds); the nowFeed selector runs
+  // deriveNow + rank over them at render time with an injected clock + location.
+  val nowContent: NowContent = NowContent(),
+  val surfacing: Map<String, SurfacingRecord> = emptyMap(),
   // "Who can see this hub" sheet (ADR 0030). audienceSheetOpen drives the overlay;
   // currentHubAudience null while loading.
   val audienceSheetOpen: Boolean = false,
@@ -461,6 +478,10 @@ data class SetHubFilter(val filter: String) : Action          // list filter chi
 // SetShowHidden flips the per-view "Show hidden" toggle. Hide/unhide effects run in HubEngine.
 data class HiddenLoaded(val ids: Set<String>) : Action
 data class SetShowHidden(val show: Boolean) : Action
+// ADR 0043 Phase A — DB→store bridges (sole writers of their slice). NowContentLoaded carries the
+// derived-lane candidate inputs; SurfacingLoaded carries the local-only engine state.
+data class NowContentLoaded(val content: NowContent) : Action
+data class SurfacingLoaded(val records: Map<String, SurfacingRecord>) : Action
 data object OpenAudienceSheet : Action                        // visibility chip tap → sheet (busy, loads)
 data class HubAudienceLoaded(val audience: HubAudience) : Action
 data object CloseAudienceSheet : Action

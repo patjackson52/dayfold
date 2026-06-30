@@ -7,6 +7,7 @@ CREATE TABLE card (
   source      TEXT,                       -- provenance.source
   not_before  TEXT,
   expires_at  TEXT,
+  importance  REAL,                       -- ADR 0043 §2b: bounded author weight for the engine
   type        TEXT,                       -- CL-4: content type (ADR 0022 D1)
   payload     TEXT,                       -- CL-4: JSON {"file":{…}}; decoded once at projection
   privacy     TEXT,                       -- CL-4: JSON {"storage":…}
@@ -33,11 +34,12 @@ CREATE TABLE sync_meta (
 );
 
 upsertCard:
-INSERT INTO card(id, kind, title, body_md, source, not_before, expires_at, type, payload, privacy, hub_ref, target_hub_id, target_section_id, target_block_id, related, related_kicker, media, updated_at, deleted)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+INSERT INTO card(id, kind, title, body_md, source, not_before, expires_at, importance, type, payload, privacy, hub_ref, target_hub_id, target_section_id, target_block_id, related, related_kicker, media, updated_at, deleted)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
 ON CONFLICT(id) DO UPDATE SET
   kind=excluded.kind, title=excluded.title, body_md=excluded.body_md,
   source=excluded.source, not_before=excluded.not_before, expires_at=excluded.expires_at,
+  importance=excluded.importance,
   type=excluded.type, payload=excluded.payload, privacy=excluded.privacy, hub_ref=excluded.hub_ref,
   target_hub_id=excluded.target_hub_id, target_section_id=excluded.target_section_id, target_block_id=excluded.target_block_id,
   related=excluded.related, related_kicker=excluded.related_kicker, media=excluded.media,
@@ -48,7 +50,7 @@ UPDATE card SET deleted=1, updated_at=? WHERE id=?;
 
 -- feed query: live cards, not_before NULLS LAST then id (matches the API contract)
 activeCards:
-SELECT id, kind, title, body_md, source, not_before, expires_at, type, payload, privacy, hub_ref, target_hub_id, target_section_id, target_block_id, related, related_kicker, media
+SELECT id, kind, title, body_md, source, not_before, expires_at, importance, type, payload, privacy, hub_ref, target_hub_id, target_section_id, target_block_id, related, related_kicker, media
 FROM card WHERE deleted=0
 ORDER BY (not_before IS NULL), not_before, id;
 

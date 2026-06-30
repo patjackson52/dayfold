@@ -52,6 +52,7 @@ class ContentStore(driver: SqlDriver) {
       changedCards.forEach { c ->
         q.upsertCard(
           c.id, c.kind, c.title, c.bodyMd, c.provenance?.source, c.notBefore, c.expiresAt,
+          c.importance,
           c.type,
           c.payload?.let { json.encodeToString(Payload.serializer(), it) },
           c.privacy?.let { json.encodeToString(CardPrivacy.serializer(), it) },
@@ -117,7 +118,7 @@ class ContentStore(driver: SqlDriver) {
   private fun rowToCard(row: com.sloopworks.dayfold.client.db.ActiveCards): Card = Card(
     id = row.id, kind = row.kind, title = row.title, bodyMd = row.body_md,
     provenance = row.source?.let { Provenance(it) },
-    notBefore = row.not_before, expiresAt = row.expires_at,
+    notBefore = row.not_before, expiresAt = row.expires_at, importance = row.importance,
     type = row.type, hubRef = row.hub_ref,
     targetHubId = row.target_hub_id, targetSectionId = row.target_section_id, targetBlockId = row.target_block_id,
     payload = decode(row.payload, Payload.serializer()),
@@ -314,6 +315,42 @@ class ContentStore(driver: SqlDriver) {
   /** ADR 0043 — reactive named-places projection (geo-proximity source for the deriver). */
   fun activePlacesFlow(): Flow<List<Place>> =
     q.activePlaces().asFlow().mapToList(Dispatchers.Default).map { rows -> rows.map(::rowToPlace) }
+
+  private fun rowToNowSection(r: com.sloopworks.dayfold.client.db.AllSections): HubSection =
+    HubSection(id = r.id, hubId = r.hub_id, title = r.title, ord = r.ord)
+
+  private fun rowToNowBlock(r: com.sloopworks.dayfold.client.db.AllBlocks): HubBlock =
+    HubBlock(
+      id = r.id, sectionId = r.section_id, type = r.type, bodyMd = r.body_md,
+      payload = decode(r.payload, BlockPayload.serializer()),
+      provenance = decode(r.provenance, Provenance.serializer()),
+      ord = r.ord, version = r.version, localState = r.local_state, createdBy = r.created_by,
+      triggers = decode(r.triggers, TRIGGERS_SER),
+    )
+
+  /**
+   * ADR 0043 Phase A — the deriveNow candidate bundle (all live sections + blocks + places across
+   * hubs), as ONE reactive projection (one bridge, one writer). Re-emits on any content change.
+   * Combined so the derived feed sees a consistent snapshot rather than three racing emissions.
+   */
+  fun nowContentFlow(): Flow<NowContent> {
+    val sections = q.allSections().asFlow().mapToList(Dispatchers.Default).map { it.map(::rowToNowSection) }
+    val blocks = q.allBlocks().asFlow().mapToList(Dispatchers.Default).map { it.map(::rowToNowBlock) }
+    val places = activePlacesFlow()
+    return kotlinx.coroutines.flow.combine(sections, blocks, places) { s, b, p -> NowContent(s, b, p) }
+  }
+
+  /** ADR 0043 §2b — reactive LOCAL-ONLY surfacing state (last-shown/dismissed), keyed by subjectKey. */
+  fun surfacingFlow(): Flow<Map<String, SurfacingRecord>> =
+    q.allSurfacing().asFlow().mapToList(Dispatchers.Default).map { rows ->
+      rows.associate { it.subject_key to SurfacingRecord(it.subject_key, it.last_shown_at, it.dismissed_at) }
+    }
+
+  /** Record that a subject was surfaced (anti-nag decay clock). LOCAL-ONLY — never synced. */
+  fun recordShown(subjectKey: String, nowIso: String) = q.recordShown(subjectKey, nowIso)
+
+  /** Record that a subject was dismissed (omit it from future ranking). LOCAL-ONLY — never synced. */
+  fun recordDismissed(subjectKey: String, nowIso: String) = q.recordDismissed(subjectKey, nowIso)
 
   /** Feed projection: live cards, not_before NULLS LAST then id (the API contract). */
   fun activeCards(): List<Card> = q.activeCards().executeAsList().map(::rowToCard)
