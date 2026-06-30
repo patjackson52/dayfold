@@ -17,6 +17,7 @@ dark is first-class. Component names map 1:1 to Compose M3.
 | Content library | `content/Index.dc.html` | 6 typed content types (file/link/invite/contact/geo/email) × Now card / Hub block / Detail; `Content-Library.dc.html` (type catalog), `Detail-Views.dc.html` + `Detail-Phone.dc.html` (per-type detail, L+D), `Tap-To-Detail.dc.html` (live container-transform prototype). Governs ADR 0022; epic `planning/content-detail-epic.md` |
 | Content · adaptive | `content/adaptive/Index.dc.html` | Two-pane content detail across breakpoints (`Breakpoints.dc.html`), the detail-in-pane per type (`Detail-Pane.dc.html` / `Detail-Pane-View.dc.html`), pane states (empty/foldable-hinge/loading/offline — `States.dc.html`), and nav continuity bar→rail→drawer with scaffold nesting (`Nav-Continuity.dc.html`). Built from `DESIGN-BRIEF-content-adaptive.md`; governs CL-NAV/CL-10 |
 | Triggers | `triggers/Index.dc.html` | Content/place/notification triggers + permission + privacy-affordance surfaces (ADR 0014) |
+| Now · derived | `now-derived/Index.dc.html` | Two-lane Now: merged feed (normal / geo-active / busy-overflow / dedup / softened / caught-up), priority & calm budget, deep-link arrival (container transform), why-chip catalog — light + dark. Governs ADR 0043; **signed off 2026-06-30** |
 
 `Now-Phone.dc.html`, `Hubs-Phone.dc.html` and `Auth-Phone.dc.html` are the
 parameterized phone components (props: `mode` = light/dark, `view`) the

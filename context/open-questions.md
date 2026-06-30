@@ -28,7 +28,9 @@ bootstrap from validation round 1 (`research/validation-round1-2026-06.md`).
   ever pursued. → feeds A2, A3, post-MVP Gmail ADR.
 
 ## Important, not blocking
-- **OQ-notbefore-gating** *(NEW 2026-06-29)*: Should the **client feed gate `not_before`**, or is
+- **OQ-notbefore-gating** — **RESOLVED 2026-06-30 by ADR 0043 (Accepted)**: the on-device
+  priority/ordering engine gates `not_before` (a derived/authored item surfaces only once its
+  window opens). Original question retained: Should the **client feed gate `not_before`**, or is
   sort-only intended for M0? The spec says `not_before` **gates surfacing** ("don't surface before
   this time", `specs/prototype/12-briefing-card-spec.md:56`; "gates surfacing",
   `specs/domain-model/scope-and-access-model.md:161`; "Now feed filters `not_before`/`expires_at`",
@@ -209,11 +211,13 @@ bootstrap from validation round 1 (`research/validation-round1-2026-06.md`).
   2026-06-23:** delete-on-request (Guardrail 4) is now covered by the MVP **manual
   hard-purge tool** (operator-chosen, schema review); what remains here is the
   *auto*-retention/export policy (auto-TTL stays OUT at MVP). → C4.
-- **OQ-now-emission** *(NEW 2026-06-23, schema review)*: Does **Hub → "Now"**
-  card emission stay **manual** (the Claude skill pulls hubs + authors imminent-
-  item cards — the MVP choice) or gain a **server-side cron / hybrid deriver**
-  post-MVP? MVP = manual, no server logic. → `specs/domain-model/scope-and-access-
-  model.md` §7.
+- **OQ-now-emission** — **RESOLVED 2026-06-30 by ADR 0043 (Accepted).** Hub→Now
+  *structural* surfacing becomes **on-device derived** (a third answer the OQ
+  never listed — and the only privacy-correct option for geo); the irreducible /
+  external / hubless remainder stays **manual skill-authored**. Server-cron
+  rejected (cannot do geo without leaking live location). *(Original: stay
+  manual vs server-side cron/hybrid deriver post-MVP; schema review 2026-06-23.)*
+  → ADR 0043; `specs/now-content-model-design.md`.
 - **OQ-hub-created-by** *(NEW 2026-06-23 → decided same day by ADR 0030 round-1
   review)*: Hubs (and cards) get a resolved-`user_id` `created_by` column —
   resolving authorship through child-block `provenance` fails closed on credential

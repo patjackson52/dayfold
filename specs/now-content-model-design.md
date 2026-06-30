@@ -1,10 +1,10 @@
-# Now Content Model — Strategy & Design (DRAFT)
+# Now Content Model — Strategy & Design
 
-**Status:** DRAFT — proposed. ADR-class (changes the Hub→Now boundary + the
-dumb-client posture); requires a Proposed ADR + operator sign-off, and a
-hi-fi mockup per ADR 0008 before any build.
+**Status:** ACCEPTED — governed by **ADR 0043** (Accepted 2026-06-30). The ADR
+0008 hi-fi mockups (`designs/now-derived/`) are signed off; Phase A has shipped
+(`#257`), Phase B is gated by **ADR 0044**.
 **Date:** 2026-06-29
-**Resolves on acceptance:** OQ-now-emission, OQ-notbefore-gating.
+**Resolves:** OQ-now-emission, OQ-notbefore-gating (see ADR 0043).
 **Composes:** ADR 0006 (event hubs), 0014 (private trigger engine), 0015
 (E2EE), 0020 (read-from-cache), 0030 (visibility), 0038-0040 (two-way),
 `scope-and-access-model.md` §7.
