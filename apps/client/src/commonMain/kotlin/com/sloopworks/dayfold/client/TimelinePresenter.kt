@@ -121,21 +121,38 @@ internal fun focalDay(tl: Timeline, nowIso: String, tz: TimeZone): LocalDate? {
     return tied.firstOrNull { it == today } ?: tied.minOrNull()
 }
 
+/** True when the timeline has ≥1 intraday-timed stop on the focal day (the day view is meaningful). */
+internal fun dayScaleAvailable(tl: Timeline, nowIso: String, tz: TimeZone): Boolean {
+    val focal = focalDay(tl, nowIso, tz)
+    return tl.stops.any { it.hasIntradayTime() &&
+        parseInstantFlexible(it.at, tz)?.toLocalDateTime(tz)?.date == focal }
+}
+
+/** True when the stops span >14 days, or ≥3 date-only stops, or >1 distinct month (the roadmap is meaningful). */
+internal fun hubScaleAvailable(tl: Timeline, tz: TimeZone): Boolean {
+    val dates = tl.stops.mapNotNull { parseInstantFlexible(it.at, tz)?.toLocalDateTime(tz)?.date }.sorted()
+    val spanDays = if (dates.size >= 2) dates.first().daysUntil(dates.last()) else 0
+    val dateOnlyCount = tl.stops.count { !it.hasIntradayTime() }
+    val distinctMonths = dates.map { it.year * 12 + it.month.ordinal }.distinct().size
+    return spanDays > 14 || dateOnlyCount >= 3 || distinctMonths > 1
+}
+
 /**
  * Day if ≥1 intraday-timed stop on the focal day;
  * Hub if stops span >14 days OR ≥3 date-only stops;
  * else Day.
  */
 internal fun selectScale(tl: Timeline, nowIso: String, tz: TimeZone): TimelineScale {
-    val focal = focalDay(tl, nowIso, tz)
-    val intradayOnFocal = tl.stops.any { it.hasIntradayTime() &&
-        parseInstantFlexible(it.at, tz)?.toLocalDateTime(tz)?.date == focal }
-    if (intradayOnFocal) return TimelineScale.Day
-    val dates = tl.stops.mapNotNull { parseInstantFlexible(it.at, tz)?.toLocalDateTime(tz)?.date }.sorted()
-    val spanDays = if (dates.size >= 2) dates.first().daysUntil(dates.last()) else 0
-    val dateOnlyCount = tl.stops.count { !it.hasIntradayTime() }
-    return if (spanDays > 14 || dateOnlyCount >= 3) TimelineScale.Hub else TimelineScale.Day
+    if (dayScaleAvailable(tl, nowIso, tz)) return TimelineScale.Day
+    return if (hubScaleAvailable(tl, tz)) TimelineScale.Hub else TimelineScale.Day
 }
+
+/**
+ * Both scales are meaningful → the detail offers the day↔hub scope toggle (spec §5).
+ * The hub shows one auto-selected card; the second scale is reachable only via this toggle.
+ */
+fun hasBothScales(tl: Timeline, nowIso: String, tz: TimeZone): Boolean =
+    dayScaleAvailable(tl, nowIso, tz) && hubScaleAvailable(tl, tz)
 
 /**
  * Index AFTER which the NOW line sits in [day] (0 = before all stops).
