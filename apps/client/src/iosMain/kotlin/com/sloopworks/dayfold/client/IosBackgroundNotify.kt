@@ -68,3 +68,46 @@ fun reconcileExactSchedules() {
     remainingCap--
   }
 }
+
+// ── GEOFENCE (place) lane ──────────────────────────────────────────────────────────────────────────
+// The single entry point the region-enter delegate + BGTask call: read the synchronous snapshot from the
+// process-shared store, run the SHARED pass (nowFeed + selectNotifications — no engine fork), post via
+// UNUserNotificationCenter, write notification_log. [location] = the arrived place coord on a region
+// enter (the live position never persists), or null for a time-only wake. Returns the plan (diagnostics).
+fun runBackgroundNotificationPass(location: DeviceLocation?): NotifPlan {
+  val cs = IosContentStoreHolder.get()
+  val nowIso = Clock.System.now().toString()
+  val runner = BackgroundNotificationRunner(IosLocalNotifier(), cs::logNotification)
+  return runner.run(cs.notifSnapshot(), nowIso, location, TimeZone.currentSystemDefault())
+}
+
+// Resolve a triggering region's id back to its saved-place coordinate — region-enter delivers an
+// identifier, not a location, so the coord comes from the synced places (the arrived place is the "live
+// position" proxy for the pass). Null if the id is unknown (place de-synced). Mirrors Android.
+fun placeLocationForRegion(regionId: String): DeviceLocation? =
+  IosContentStoreHolder.get().activePlaces().firstOrNull { it.id == regionId }
+    ?.let { DeviceLocation(it.lat, it.lng) }
+
+// (Re)register the geofences from the saved places (enable / place change / app foreground). ≤ the iOS
+// 20-region cap: register directly. > cap: take a one-shot location fix and register the nearest-N
+// (registerNearest). No-op / deregister when the feature is off. Mirrors Android's reRegisterGeofences.
+fun reRegisterGeofences() {
+  val cs = IosContentStoreHolder.get()
+  if (!cs.notifConfig().enabled) { IosNotifGlue.geofence.deregisterAll(); return }
+  val places = cs.activePlaces()
+  if (places.size <= IOS_REGION_CAP) {
+    IosNotifGlue.geofence.register(
+      places.map { GeoRegion(it.id, it.lat, it.lng, it.radiusM?.toDouble() ?: DEFAULT_GEOFENCE_RADIUS_M) },
+    )
+  } else {
+    IosNotifGlue.geofence.registerNearest(places)   // one-shot fix → nearest-20
+  }
+}
+
+// BGTaskScheduler handler entry (registered in Swift AppDelegate). Reconcile-only: neither lane needs a
+// BGTask to DELIVER (region monitoring wakes the app; scheduled local notifs fire directly) — this just
+// keeps the region set + exact schedules fresh opportunistically. Re-submit is done on the Swift side.
+fun bgReconcile() {
+  reRegisterGeofences()
+  reconcileExactSchedules()
+}

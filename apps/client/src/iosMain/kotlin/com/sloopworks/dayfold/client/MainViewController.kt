@@ -42,9 +42,21 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
     // ContentStore with sample cards + a saved place so the feed renders and both notification lanes
     // (time + geofence) have content to fire on, without a network/session. Mirrors Android's debug seed.
     cs.applyDelta(
-      SampleData.cards, emptyList(), emptyList(), emptyList(), emptyList(), null, "2026-06-20T10:00:00Z",
+      SampleData.cards,
+      listOf(Hub(id = "hub-demo", type = "party-event", title = "Soccer Saturday", status = "active")),
+      listOf(HubSection(id = "sec-demo", hubId = "hub-demo", title = "Game day", ord = 0)),
+      // A geo-triggered block: when the device is near the saved "Soccer field" place, deriveNow emits a
+      // geo-active NowItem → the geofence pass posts it. Also gives the tap→openHub a real destination.
+      listOf(
+        HubBlock(
+          id = "blk-geo", sectionId = "sec-demo", type = "text",
+          bodyMd = "Pack jackets — showers expected right at pickup.", ord = 0,
+          triggers = listOf(BlockTrigger(geo = TriggerGeo(placeRef = "place-soccer", label = "Soccer field"))),
+        ),
+      ),
+      emptyList(), null, "2026-06-20T10:00:00Z",
       changedPlaces = listOf(
-        Place(id = "place-home", kind = "home", label = "Home", lat = 37.3349, lng = -122.0090, radiusM = 150),
+        Place(id = "place-soccer", kind = "other", label = "Soccer field", lat = 37.3349, lng = -122.0090, radiusM = 150),
       ),
     )
     syncEngine.start()

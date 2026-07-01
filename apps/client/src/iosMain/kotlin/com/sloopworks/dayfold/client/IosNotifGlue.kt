@@ -14,6 +14,10 @@ import platform.UserNotifications.UNUserNotificationCenter
 object IosNotifGlue {
   val localNotifier = IosLocalNotifier()
   val unDelegate = IosUNDelegate()
+  // Process-global geofence controller (owns its CLLocationManager; retained here for the app lifetime).
+  // Lazily created on first access — which is IosNotifGlue.start() on the MAIN THREAD (CLLocationManager
+  // must be created on the thread whose run loop delivers its callbacks). Do not touch before start().
+  val geofence = IosGeofenceController()
 
   private var started = false
 
@@ -24,6 +28,7 @@ object IosNotifGlue {
     if (started) return
     started = true
     UNUserNotificationCenter.currentNotificationCenter().setDelegate(unDelegate)
+    geofence   // force creation on the main thread (its CLLocationManager wires its delegate in init)
     IosContentStoreHolder.get()
     requestNotificationAuthorization()
   }
@@ -51,6 +56,14 @@ object IosNotifGlue {
         ),
       ),
     )
+  }
+
+  // S3 verification scaffold — enable device-local proximity + register geofences for the seeded places
+  // (the real path is the settings toggle → notifConfigFlow reaction, wired in S4). Then a simulator
+  // location crossing a region fires didEnterRegion → runBackgroundNotificationPass.
+  fun debugEnableProximity() {
+    IosContentStoreHolder.get().setNotifConfig(NotifConfig(enabled = true))
+    reRegisterGeofences()
   }
 
   // S2 verification scaffold — arms an exact local notification ~15s out via the time-lane scheduler
