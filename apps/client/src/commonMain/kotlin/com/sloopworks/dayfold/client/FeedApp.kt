@@ -232,6 +232,10 @@ private fun ContentHost(store: Store<AppState>, state: AppState, handle: (CardAc
   val popTarget: String? = state.detailStack.getOrNull(state.detailStack.lastIndex - 1)
   val seekable = remember { SeekableTransitionState<String?>(targetKey) }
   val reduceMotion = rememberReduceMotion()
+  // Hoisted ABOVE the AnimatedContent so the feed's scroll position survives Now→detail→Now: the feed
+  // (id == null) is disposed when a detail opens, so an internally-remembered LazyListState would reset
+  // to top on return. ContentHost is stable (a detail is a sub-state of Route.Feed), so this persists.
+  val feedListState = androidx.compose.foundation.lazy.rememberLazyListState()
 
   // Redux -> animation sync for NON-gesture transitions (tap-open, hero-arrow/hardware back,
   // deep pops). The gesture path drives the seekable directly and dispatches NavBack on commit;
@@ -287,7 +291,7 @@ private fun ContentHost(store: Store<AppState>, state: AppState, handle: (CardAc
       ) {
         val card = id?.let { cid -> state.cards.find { it.id == cid } }
         if (card != null) DetailScreen(card, onBack = { store.dispatch(NavBack) }, onAction = handle)
-        else FeedScreen(state, onAction = handle, onOpenAccount = { store.dispatch(OpenAccount) }, onConnectDevice = onConnectDevice, onNavHubs = onNavHubs, onRefresh = onRefresh)
+        else FeedScreen(state, onAction = handle, onOpenAccount = { store.dispatch(OpenAccount) }, onConnectDevice = onConnectDevice, onNavHubs = onNavHubs, onRefresh = onRefresh, listState = feedListState)
       }
     }
   }
