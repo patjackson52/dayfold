@@ -218,12 +218,14 @@ private fun StopRow(ps: PresentedStop, isLastRow: Boolean) {
                     )
                 }
             }
-            // Vertical connector (hidden on last row)
+            // Vertical connector (hidden on last row).
+            // Fixed height — NOT weight(1f) — so the rail Column stays intrinsic
+            // and the card wraps content height rather than consuming parent max height.
             if (!isLastRow) {
                 Box(
                     modifier = Modifier
                         .width(2.dp)
-                        .weight(1f)
+                        .height(20.dp)
                         .padding(vertical = 3.dp)
                         .background(cs.outlineVariant),
                 )

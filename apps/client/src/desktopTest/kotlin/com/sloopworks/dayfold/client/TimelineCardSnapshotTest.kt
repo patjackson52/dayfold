@@ -1,11 +1,18 @@
 package com.sloopworks.dayfold.client
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toAwtImage
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import com.sloopworks.dayfold.client.theme.DayfoldTheme
 import kotlinx.datetime.TimeZone
 import java.io.File
@@ -38,7 +45,18 @@ class TimelineCardSnapshotTest {
     }
 
     private fun shot(name: String, dark: Boolean) = runComposeUiTest {
-        setContent { DayfoldTheme(darkTheme = dark) { TimelineCard(dayModel(), onOpen = {}) } }
+        setContent {
+            DayfoldTheme(darkTheme = dark) {
+                Box(
+                    Modifier
+                        .width(390.dp)
+                        .background(Color(0xFFE9DDD7))
+                        .padding(16.dp)
+                ) {
+                    TimelineCard(dayModel(), onOpen = {})
+                }
+            }
+        }
         val img = onRoot().captureToImage()
         assertTrue(img.width > 0 && img.height > 0, "snapshot has no pixels")
         File("build/snapshots").apply { mkdirs() }
