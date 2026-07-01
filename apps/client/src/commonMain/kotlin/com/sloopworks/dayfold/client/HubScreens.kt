@@ -269,7 +269,7 @@ fun HubDetailScreen(
   // ADR 0045 13a: full-screen swap — render detail exclusively when open; TimelineDetail owns
   // its own background (cs.surface). 13b will layer Scaffold+detail for shared-element morph.
   if (state.timelineDetail != null && tl != null) {
-    TimelineDetail(tl, state.timelineDetail!!, nowIso, tz, onBack = onCloseTimeline, onAction = onTimelineAction)
+    TimelineDetail(tl, state.timelineDetail, nowIso, tz, onBack = onCloseTimeline, onAction = onTimelineAction)
   } else {
   Scaffold(
     topBar = {
@@ -296,8 +296,10 @@ fun HubDetailScreen(
       // must mirror the header items emitted below (the helper counts them).
       val hasCountdown = hubWhenLabel(tree.hub.countdownTo, tree.hub.startAt, tree.hub.endAt, kotlin.time.Clock.System.now().toString()) != null && tree.hub.status != "archived"
       LaunchedEffect(state.hubFocusBlockId, tree) {
-        focusedBlockItemIndex(tree, state.hubFocusBlockId, hasCountdown, tree.hub.visibility == "restricted")
-          ?.let { listState.animateScrollToItem(it) }
+        focusedBlockItemIndex(
+          tree, state.hubFocusBlockId, hasCountdown, tree.hub.visibility == "restricted",
+          hasTimelineCard = tl != null && presentTimelineCard(tl, nowIso, tz) != null,
+        )?.let { listState.animateScrollToItem(it) }
       }
       // Slice 4 (ADR 0038, States screen): the optimistic-write status, derived off the
       // blocks' local_state — one calm queue affordance, never a per-row alarm.
@@ -436,11 +438,12 @@ fun HubDetailScreen(
 // focus), so the arrival can scroll it into view. Mirrors HubDetailScreen's emission
 // order: [status header] + [countdown?] + [honesty?] + per section [header] + [blocks].
 // Unit-tested so it can't silently drift from the render.
-fun focusedBlockItemIndex(tree: HubTree, focusBlockId: String?, hasCountdown: Boolean, restricted: Boolean): Int? {
+fun focusedBlockItemIndex(tree: HubTree, focusBlockId: String?, hasCountdown: Boolean, restricted: Boolean, hasTimelineCard: Boolean = false): Int? {
   if (focusBlockId == null) return null
   var idx = 1                                       // status header (always)
   if (hasCountdown) idx += 1
   if (restricted) idx += 1
+  if (hasTimelineCard) idx += 1
   for (section in tree.sections.sortedBy { it.ord }) {
     val blocks = tree.blocks.filter { it.sectionId == section.id }.sortedBy { it.ord }
     if (blocks.isEmpty()) continue                   // empty sections render nothing → don't count a header
