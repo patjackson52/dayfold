@@ -71,10 +71,10 @@ fun TimelineDetail(
 ) {
     // Both scales present → offer the ephemeral day↔hub scope toggle (resets to the
     // auto-selected [scale] each time the detail is opened; spec §5).
-    val both = hasBothScales(tl, nowIso, tz)
-    var selectedScale by remember { mutableStateOf(scale) }
+    val both = remember(tl, nowIso, tz) { hasBothScales(tl, nowIso, tz) }
+    var selectedScale by remember(scale) { mutableStateOf(scale) }
     val active = if (both) selectedScale else scale
-    val presented = presentTimelineDetail(tl, active, nowIso, tz)
+    val presented = remember(tl, active, nowIso, tz) { presentTimelineDetail(tl, active, nowIso, tz) }
     val cs = MaterialTheme.colorScheme
 
     Column(

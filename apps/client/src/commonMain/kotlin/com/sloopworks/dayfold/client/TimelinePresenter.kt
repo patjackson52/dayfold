@@ -101,6 +101,27 @@ internal fun stopStatuses(stops: List<Stop>, nowIso: String, tz: TimeZone): List
     }
 }
 
+/**
+ * The focal day's stops, in chronological order, with the first non-done promoted to Next.
+ * Day scale is its own schedule: the global Next (first non-done across the *whole* timeline) may
+ * be an off-focal roadmap stop, so re-derive "next" within the day; and sort so the NOW line and
+ * intra-part-of-day order don't depend on authored order.
+ */
+private fun scopedDayStops(presented: List<PresentedStop>, focal: LocalDate?, tz: TimeZone): List<PresentedStop> {
+    val day = presented
+        .filter { it.instant?.toLocalDateTime(tz)?.date == focal }
+        .sortedWith(compareBy(nullsLast()) { it.instant })
+    var promoted = false
+    return day.map { ps ->
+        when {
+            ps.status == StopStatus.Done -> ps
+            !promoted -> { promoted = true; if (ps.status == StopStatus.Next) ps else ps.copy(status = StopStatus.Next) }
+            ps.status == StopStatus.Next -> ps.copy(status = StopStatus.Upcoming)   // demote the global next; it isn't first here
+            else -> ps
+        }
+    }
+}
+
 // --- Scale selection, focal day, NOW line (ADR 0045 Phase 1) ---
 
 private fun Stop.hasIntradayTime(): Boolean = at.trim().length > 10  // "YYYY-MM-DD" = 10; longer has a time component
@@ -181,6 +202,7 @@ data class TimelineCardModel(
     val tailCount: Int,
     val spine: List<SpineNode>? = null,
     val nextCallout: PresentedStop? = null,
+    val moreCount: Int = 0,   // roadmap: months beyond the ≤6-node spine cap (trailing "+M")
 )
 
 // ── Card windowing ──────────────────────────────────────────────────────────
@@ -210,7 +232,7 @@ fun presentTimelineCard(tl: Timeline, nowIso: String, tz: TimeZone): TimelineCar
             // Day scale is the focal day's schedule — scope to that date (a timeline may also
             // carry multi-month roadmap stops, reachable via the detail's "Whole hub" toggle).
             val focal = focalDay(tl, nowIso, tz)
-            val dayStops = presented.filter { it.instant?.toLocalDateTime(tz)?.date == focal }
+            val dayStops = scopedDayStops(presented, focal, tz)
             val doneCount = dayStops.count { it.status == StopStatus.Done }
             val nonDone = dayStops.filter { it.status != StopStatus.Done }
             val window = nonDone.take(3)
@@ -231,10 +253,11 @@ fun presentTimelineCard(tl: Timeline, nowIso: String, tz: TimeZone): TimelineCar
         }
 
         TimelineScale.Hub -> {
-            // Group stops by year-month label (e.g. "AUGUST", with year if different)
+            // Group stops by year-month label (e.g. "AUGUST", with year if different), chronological.
             val now = parseInstantFlexible(nowIso, tz)
             val todayYear = now?.toLocalDateTime(tz)?.year
-            val monthGroups = buildMonthGroups(presented, tz, todayYear)
+            val sorted = presented.sortedWith(compareBy(nullsLast()) { it.instant })
+            val monthGroups = buildMonthGroups(sorted, tz, todayYear)
 
             val allNodes = monthGroups.map { (label, stops) ->
                 val dominantStatus = when {
@@ -245,6 +268,7 @@ fun presentTimelineCard(tl: Timeline, nowIso: String, tz: TimeZone): TimelineCar
                 SpineNode(label = label, status = dominantStatus)
             }
             val nextCallout = presented.firstOrNull { it.status != StopStatus.Done }
+            val (spine, moreCount) = condenseSpine(allNodes)
 
             TimelineCardModel(
                 scale = TimelineScale.Hub,
@@ -252,8 +276,9 @@ fun presentTimelineCard(tl: Timeline, nowIso: String, tz: TimeZone): TimelineCar
                 nowTimeLabel = null,
                 window = emptyList(),
                 tailCount = 0,
-                spine = collapseLeadingDoneRun(allNodes),
+                spine = spine,
                 nextCallout = nextCallout,
+                moreCount = moreCount,
             )
         }
     }
@@ -290,6 +315,18 @@ internal fun collapseLeadingDoneRun(nodes: List<SpineNode>): List<SpineNode> {
     return listOf(SpineNode(label = "✓$run", status = StopStatus.Done, collapsedCount = run)) + nodes.drop(run)
 }
 
+/**
+ * Condense a roadmap spine to a hard ≤6-node cap (spec §4): first apply the leading-done ✓N
+ * collapse, then — for a still-long spine (e.g. a forward-heavy roadmap with no leading done-run)
+ * — keep the first 5 nodes and fold the rest into a trailing "+M" (returned as the moreCount).
+ * The fixed-width spine Row can't scroll, so an uncapped spine would clip its labels.
+ */
+internal fun condenseSpine(nodes: List<SpineNode>): Pair<List<SpineNode>, Int> {
+    val collapsed = collapseLeadingDoneRun(nodes)
+    if (collapsed.size <= 6) return collapsed to 0
+    return collapsed.take(5) to (collapsed.size - 5)
+}
+
 // ── Detail grouped feed ─────────────────────────────────────────────────────
 
 /**
@@ -307,9 +344,9 @@ fun presentTimelineDetail(tl: Timeline, scale: TimelineScale, nowIso: String, tz
 
     return when (scale) {
         TimelineScale.Day -> {
-            // Scope to the focal day (the roadmap stops live in the Hub scale).
+            // Scope to the focal day (the roadmap stops live in the Hub scale), chronological.
             val focal = focalDay(tl, nowIso, tz)
-            val dayStops = presented.filter { it.instant?.toLocalDateTime(tz)?.date == focal }
+            val dayStops = scopedDayStops(presented, focal, tz)
             val morning = dayStops.filter { (it.instant?.toLocalDateTime(tz)?.hour ?: 0) < 12 }
             val afternoon = dayStops.filter { val h = it.instant?.toLocalDateTime(tz)?.hour ?: 0; h in 12..16 }
             val evening = dayStops.filter { (it.instant?.toLocalDateTime(tz)?.hour ?: 0) >= 17 }
@@ -320,9 +357,8 @@ fun presentTimelineDetail(tl: Timeline, scale: TimelineScale, nowIso: String, tz
                 if (evening.isNotEmpty()) add(TimelineGroup("EVENING", evening))
             }
 
-            // NOW index must be relative to the GROUPED render order (morning→afternoon→evening),
-            // not the authored list order — the detail inserts the NOW line at this flat index and
-            // the two align only if the authored stops are already chronological.
+            // NOW index is relative to the grouped render order (morning→afternoon→evening);
+            // dayStops is chronological, so the concat is chronological and the line lands right.
             val nowIdx = nowLineIndex(morning + afternoon + evening, nowIso, tz)
 
             val now = parseInstantFlexible(nowIso, tz)
@@ -335,16 +371,21 @@ fun presentTimelineDetail(tl: Timeline, scale: TimelineScale, nowIso: String, tz
         TimelineScale.Hub -> {
             val now = parseInstantFlexible(nowIso, tz)
             val todayYear = now?.toLocalDateTime(tz)?.year
-            val monthGroupsList = buildMonthGroups(presented, tz, todayYear)
+            // Chronological so month groups (and the NOW band placement) don't depend on authored order.
+            val sorted = presented.sortedWith(compareBy(nullsLast()) { it.instant })
+            val monthGroupsList = buildMonthGroups(sorted, tz, todayYear)
             val groups = monthGroupsList.map { (label, stops) -> TimelineGroup(label, stops) }
 
-            // nowIndex = index of the current month group
-            val nowMonthLabel = if (now != null) {
-                val ldt = now.toLocalDateTime(tz)
-                val base = MONTH_NAMES[ldt.month.ordinal]
-                if (todayYear != null && ldt.year != todayYear) "$base ${ldt.year}" else base
-            } else null
-            val nowIndex = nowMonthLabel?.let { label -> groups.indexOfFirst { it.label == label }.takeIf { it >= 0 } }
+            // NOW band sits above the first month group that is on-or-after the current month —
+            // the current-month group when it exists, else the next future month (so a roadmap that
+            // skips the current month still shows a NOW line). Null when every month is already past.
+            val nowKey = now?.toLocalDateTime(tz)?.let { it.year * 12 + it.month.ordinal }
+            val nowIndex = nowKey?.let {
+                groups.indexOfFirst { g ->
+                    val k = g.stops.firstOrNull()?.instant?.toLocalDateTime(tz)?.let { d -> d.year * 12 + d.month.ordinal }
+                    k != null && k >= nowKey
+                }.takeIf { idx -> idx >= 0 }
+            }
 
             PresentedTimeline(scale = TimelineScale.Hub, groups = groups, nowIndex = nowIndex, nowTimeLabel = null)
         }

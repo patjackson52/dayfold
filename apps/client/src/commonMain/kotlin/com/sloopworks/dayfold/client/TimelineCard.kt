@@ -62,7 +62,7 @@ private fun TimelineRoadmapCard(model: TimelineCardModel, onOpen: () -> Unit) {
         Column(Modifier.padding(horizontal = 18.dp).padding(top = 18.dp, bottom = 15.dp)) {
             val spine = model.spine
             if (!spine.isNullOrEmpty()) {
-                RoadmapSpine(spine)
+                RoadmapSpine(spine, model.moreCount)
             }
             if (model.nextCallout != null) {
                 HorizontalDivider(
@@ -79,9 +79,9 @@ private fun TimelineRoadmapCard(model: TimelineCardModel, onOpen: () -> Unit) {
 // ── Phase spine ───────────────────────────────────────────────────────────────
 
 @Composable
-private fun RoadmapSpine(spine: List<SpineNode>) {
+private fun RoadmapSpine(spine: List<SpineNode>, moreCount: Int) {
     val cs = MaterialTheme.colorScheme
-    val totalNodes = spine.size
+    val totalNodes = spine.size + (if (moreCount > 0) 1 else 0)
     // Index of the Next node; fall back to last Done if none (all-done roadmap).
     val fillEndIdx = spine.indexOfFirst { it.status == StopStatus.Next }
         .let { idx -> if (idx >= 0) idx else spine.indexOfLast { it.status == StopStatus.Done } }
@@ -128,7 +128,32 @@ private fun RoadmapSpine(spine: List<SpineNode>) {
             spine.forEach { node ->
                 SpineNodeColumn(node)
             }
+            if (moreCount > 0) {
+                SpineMoreColumn(moreCount)
+            }
         }
+    }
+}
+
+@Composable
+private fun SpineMoreColumn(moreCount: Int) {
+    val cs = MaterialTheme.colorScheme
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .size(11.dp)
+                .background(cs.outlineVariant, CircleShape),
+        )
+        Text(
+            text = "+$moreCount",
+            fontSize = 9.sp,
+            fontWeight = FontWeight.W500,
+            color = cs.onSurfaceVariant,
+        )
     }
 }
 
