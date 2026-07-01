@@ -37,12 +37,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     IosNotifGlue.shared.start()
     submitReconcile()
 
-    // S3 verification scaffold — enable device-local proximity + register geofences for the seeded place
-    // so a simulator location crossing fires didEnterRegion → the pass. The real path is the settings
-    // toggle (S4). Slight delay lets the MainViewController seed the ContentStore first.
+    #if DEBUG
+    // DEBUG/sim affordance — auto-enable device-local proximity (drives the permission ladder + registers
+    // geofences for the seeded place) so a simulator location crossing fires the pass without navigating
+    // the settings toggle. Absent in release/TestFlight, where proximity is opt-in via Settings only.
+    // Slight delay lets MainViewController seed the ContentStore first.
     DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
       IosNotifGlue.shared.debugEnableProximity()
     }
+    #endif
     return true
   }
 

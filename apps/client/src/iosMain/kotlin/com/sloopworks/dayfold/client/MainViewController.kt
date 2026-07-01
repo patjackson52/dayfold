@@ -16,6 +16,7 @@ import platform.UIKit.UIViewController
 // NSUserDefaults (IosTokenStore). The dev-token sign-in secret + a real API base
 // stay unset here (iOS run config is operator-gated on Mac/Xcode), so sign-in is
 // inert on-device this slice; the gate + onboarding UI + restore are all wired.
+@OptIn(kotlin.experimental.ExperimentalNativeApi::class)   // Platform.isDebugBinary (DEBUG-only dev seed/entry)
 fun MainViewController(): UIViewController = ComposeUIViewController {
   val store = remember { createAppStore() }
   val tokenStore = remember { IosTokenStore() }
@@ -38,10 +39,10 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
   val actions = remember { com.sloopworks.dayfold.client.cards.PlatformActions() }
   val scope = rememberCoroutineScope()
   LaunchedEffect(Unit) {
-    // ADR 0044 iOS dev seed (ungated — real-backend sync auth is operator-gated): seed the shared
+    // ADR 0044 iOS dev seed (DEBUG-only — real-backend sync auth is operator-gated): seed the shared
     // ContentStore with sample cards + a saved place so the feed renders and both notification lanes
     // (time + geofence) have content to fire on, without a network/session. Mirrors Android's debug seed.
-    cs.applyDelta(
+    if (kotlin.native.Platform.isDebugBinary) cs.applyDelta(
       SampleData.cards,
       listOf(Hub(id = "hub-demo", type = "party-event", title = "Soccer Saturday", status = "active")),
       listOf(HubSection(id = "sec-demo", hubId = "hub-demo", title = "Game day", ord = 0)),
@@ -125,9 +126,10 @@ fun MainViewController(): UIViewController = ComposeUIViewController {
     onPlatformAction = actions::perform,
     onOpenUri = actions::openUri,
     onSignIn = { provider -> scope.launch { authEngine.signIn(provider); syncEngine.syncNow() } },
-    // ADR 0044 iOS dev entry (ungated): mint a local session (no network/Firebase) so the seeded feed
-    // is reachable past the AUTH-S5 route gate. Real Google/Apple sign-in stays operator-gated.
-    onDevSignIn = { scope.launch { authEngine.devSignIn() } },
+    // ADR 0044 iOS dev entry (DEBUG-only): mint a local session (no network/Firebase) so the seeded feed
+    // is reachable past the AUTH-S5 route gate. Null in release → the button is absent. Real Google/Apple
+    // sign-in stays operator-gated.
+    onDevSignIn = if (kotlin.native.Platform.isDebugBinary) ({ scope.launch { authEngine.devSignIn() } }) else null,
     onCreateFamily = { name -> scope.launch { authEngine.createFamily(name); syncEngine.syncNow() } },
     onSignOut = { scope.launch { authEngine.signOut() } },
     onRedeemInvite = { token -> scope.launch { authEngine.redeemInvite(token) } },
