@@ -13,6 +13,39 @@ NO-GO** → **building to learn**; the business unknowns (OQ-wtp / niche / gemin
 are **untouched by design**. The "brains" (G1 authoring loop) is a deliberate
 later milestone; interim authoring = operator + Claude Code via the CLI.
 
+**Status update (2026-06-30): Hub Timeline — Phase 1 BUILT (authored content type + on-device
+presentation, ADR 0045).** Worktree `derived-now-phase-b`, branch **`feat/hub-timeline`** (off the
+phase-B HEAD — the timeline reuses `NowDerive` date helpers, absent on `main`). Imported the
+`designs/hub-timeline/` hi-fi mock from Claude Design, 6-agent review (correctness/gaps/xplat +
+completeness/UX-M3/data-systems), brainstormed the source model, wrote `specs/hub-timeline-design.md` +
+**ADR 0045 (Accepted)**, revised + re-signed-off the mock (Gate A), planned
+(`docs/superpowers/plans/2026-06-30-hub-timeline.md`, 2 adversarial rounds), and built it subagent-driven
+(16 task-units, TDD, per-task review). **Shipped:** `Hub.timeline` authored property (schema + server +
+CLI content-blind structural validation), a pure on-device `TimelinePresenter` (status/scale/NOW/grouping/
+windowing, injected clock+tz — the multi-member wedge holds cross-tz), day-rail + hub-roadmap cards, a
+scrollable detail, nav substate + BackNav, attachment→CardAction handoff, and the card→detail
+shared-element morph. **Phase 1 = authored, render-only, Now-invisible, zero notifications**; provenance
+copy is authored-honest (no "derived on-device" claim). Full-stack gate green (codegen · api 345 · CLI ·
+client desktopTest).
+
+**Status update (2026-07-01): Hub Timeline — Phase 2 BUILT (branch `feat/hub-timeline-phase2` off
+`origin/now-derived-phase-b`).** Six commits, TDD, on-device-verified on emulator vs `designs/hub-timeline/`.
+**Shipped:** (S1) tz-aware **AM/PM** stop labels moved into the presenter — killed the raw-`at`
+string-parsers + DST/offset risk; robust detail-day NOW index. (S2) roadmap **`✓N` collapse**
+(`SpineNode.collapsedCount`; replaces the +M-more tail). (S3) per-member **"Hide for me"** on the hoisted
+card (synthetic id, reuses the W5 hide plumbing; swipe + a11y action + recovery row). (S4) in-detail
+**day↔hub scope toggle** (`SingleChoiceSegmentedButtonRow` + `hasBothScales`). (S5-fix) **Day scale scopes
+to the focal day** (on-device caught roadmap milestones bleeding into "Today's schedule"). (S5) **authoring
+enablement** — `dayfold template timeline` + `dayfold-curator` skill teaches timeline authoring. Enriched
+the fake college hub to a both-scales demo. **On-device VERIFIED** (day card "2 done"/AM-PM, toggle→roadmap
+month groups + tz "Mon D" labels + NOW band). Full gate green (`:client:desktopTest` + `apps/cli` test).
+**Operator-gated remainder (loop STOPPED here):** (a) **4b card "also a roadmap/day" hint** — not in any
+signed-off mock → design sign-off; (b) **ADR 0046** (client-derived `deriveTimeline` fallback — the
+ADR-0043-class second on-device projection) drafted **Proposed** → accept + a derived-states mock;
+(c) **dogfood** a real authored timeline onto the operator's own hub → external content; (d) **ship**
+`now-derived-phase-b → main` → deploy/spend. Governance (family-tz delivery, NOW-marker calm tuning) revisit
+vs real authored content.
+
 **Bugfix (2026-06-30, on-device report) ✅ FIXED + VERIFIED ON PIXEL 10 PRO: Hub link/document blocks
 were not tappable.** Root cause (two layers): (1) `LinkRow` (`HubScreens.kt`) rendered the "opens
 externally" arrow but had **no click handler** — the installed `LocalUriHandler` (PlatformUriHandler,

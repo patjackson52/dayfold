@@ -1,13 +1,21 @@
 package com.sloopworks.dayfold.client
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
+import androidx.compose.animation.core.ExperimentalTransitionApi
+import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,12 +28,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -60,10 +70,17 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
+import com.sloopworks.dayfold.client.cards.CardAction
+import com.sloopworks.dayfold.client.cards.LocalAnimatedVisibilityScope
+import com.sloopworks.dayfold.client.cards.LocalSharedTransitionScope
+import com.sloopworks.dayfold.client.cards.cardSharedBounds
 import com.sloopworks.dayfold.client.cards.vettedOpenUri
+import kotlinx.datetime.TimeZone
+import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.runtime.Composable
@@ -71,7 +88,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sloopworks.dayfold.client.ui.loading.ErrorRetry
@@ -233,7 +253,7 @@ private fun StatusChip(status: String) {
   }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class, ExperimentalTransitionApi::class)
 @Composable
 fun HubDetailScreen(
   state: AppState,
@@ -253,8 +273,53 @@ fun HubDetailScreen(
   onHideBlock: (String) -> Unit = {},
   onUnhideBlock: (String) -> Unit = {},
   onSetShowHidden: (Boolean) -> Unit = {},
+  // ADR 0045 — hub timeline card + detail overlay (Task 13a: static integration, no shared-element morph)
+  onOpenTimeline: (TimelineScale) -> Unit = {},
+  onCloseTimeline: () -> Unit = {},
+  onTimelineAction: (CardAction) -> Unit = {},
 ) {
   val tree = state.currentHubTree
+  // ADR 0045: compute once — used by both the hoisted TimelineCard item and the detail overlay.
+  val authoredTimeline = tree?.hub?.timeline
+  // tz: an authored timeline carries its own; a derived one falls back family→device (device for now).
+  val tz = authoredTimeline?.let { runCatching { TimeZone.of(it.tz) }.getOrElse { TimeZone.currentSystemDefault() } }
+    ?: TimeZone.currentSystemDefault()
+  // ADR 0046: when no authored timeline, derive one from the hub's already-dated blocks (≥2 stops).
+  val tl = authoredTimeline ?: tree?.let { deriveTimeline(it, tz) }
+  // "No timeline yet" nudge: no authored + not enough to derive, but exactly one dated block.
+  val showTimelineNudge = authoredTimeline == null && tl == null && tree != null && hubHasSingleDate(tree, tz)
+  val nowIso = kotlin.time.Clock.System.now().toString()
+  // ADR 0045 13b: shared-element container-transform (card→detail morph). Both branches of
+  // AnimatedContent apply cardSharedBounds("timeline") so the card bounds morph into the detail
+  // and back. Reduced motion → snapTo (no animation). System back dispatches CloseTimelineDetail
+  // → state.timelineDetail = null → morph back; no gesture handler needed for correctness.
+  val seekable = remember { SeekableTransitionState<TimelineScale?>(state.timelineDetail) }
+  val reduceMotion = rememberReduceMotion()
+  LaunchedEffect(state.timelineDetail, reduceMotion) {
+    if (seekable.currentState != state.timelineDetail) {
+      if (reduceMotion) seekable.snapTo(state.timelineDetail)
+      else seekable.animateTo(state.timelineDetail, animationSpec = tween(if (state.timelineDetail != null) 360 else 280, easing = EmphasizedDecelerate))
+    }
+  }
+  val transition = rememberTransition(seekable, label = "hub-timeline")
+  SharedTransitionLayout {
+    transition.AnimatedContent(
+      contentKey = { it != null },
+      transitionSpec = {
+        val opening = targetState != null
+        val dur = if (opening) 360 else 280
+        (fadeIn(tween(dur)) + slideInVertically(tween(dur)) { h -> h / 16 }) togetherWith fadeOut(tween(dur))
+      },
+    ) { scale ->
+      CompositionLocalProvider(
+        LocalSharedTransitionScope provides this@SharedTransitionLayout,
+        LocalAnimatedVisibilityScope provides this@AnimatedContent,
+      ) {
+        if (scale != null && tl != null) {
+          Box(Modifier.fillMaxSize().cardSharedBounds("timeline")) {
+            TimelineDetail(tl, scale, nowIso, tz, onBack = onCloseTimeline, onAction = onTimelineAction)
+          }
+        } else {
   Scaffold(
     topBar = {
       TopAppBar(
@@ -280,8 +345,12 @@ fun HubDetailScreen(
       // must mirror the header items emitted below (the helper counts them).
       val hasCountdown = hubWhenLabel(tree.hub.countdownTo, tree.hub.startAt, tree.hub.endAt, kotlin.time.Clock.System.now().toString()) != null && tree.hub.status != "archived"
       LaunchedEffect(state.hubFocusBlockId, tree) {
-        focusedBlockItemIndex(tree, state.hubFocusBlockId, hasCountdown, tree.hub.visibility == "restricted")
-          ?.let { listState.animateScrollToItem(it) }
+        focusedBlockItemIndex(
+          tree, state.hubFocusBlockId, hasCountdown, tree.hub.visibility == "restricted",
+          // one hoisted slot when a (non-hidden) timeline card OR the "No timeline yet" nudge shows
+          hasTimelineCard = (tl != null && !state.hiddenIds.contains("timeline:${tree.hub.id}") &&
+            presentTimelineCard(tl, nowIso, tz) != null) || showTimelineNudge,
+        )?.let { listState.animateScrollToItem(it) }
       }
       // Slice 4 (ADR 0038, States screen): the optimistic-write status, derived off the
       // blocks' local_state — one calm queue affordance, never a per-row alarm.
@@ -360,6 +429,57 @@ fun HubDetailScreen(
             )
           }
         }
+        // ADR 0045: hoisted timeline card — hub-level, above all content sections.
+        // presentTimelineCard selects Day vs Hub scale automatically from the stop cadence.
+        // Per-member "Hide for me" (ADR 0039 §W5): local-only, keyed by a synthetic id so the
+        // card partitions into the "Hidden for you" section like any other dossier element.
+        val timelineHideId = "timeline:${tree.hub.id}"
+        val timelineHidden = tl != null && state.hiddenIds.contains(timelineHideId)
+        tl?.let { timeline ->
+          if (!timelineHidden) {
+            presentTimelineCard(timeline, nowIso, tz)?.let { model ->
+              item(key = "timeline") {
+                // Swipe (on-brand) + a screen-reader custom action, mirroring HubBlockCard's W5 hide.
+                val dismissState = rememberSwipeToDismissBoxState(
+                  confirmValueChange = { v ->
+                    if (v == SwipeToDismissBoxValue.EndToStart || v == SwipeToDismissBoxValue.StartToEnd) {
+                      onHideBlock(timelineHideId); false
+                    } else false
+                  },
+                )
+                SwipeToDismissBox(
+                  state = dismissState,
+                  backgroundContent = { HideSwipeBackground() },
+                  modifier = Modifier.fillMaxWidth().semantics {
+                    customActions = listOf(CustomAccessibilityAction("Hide timeline for me") {
+                      onHideBlock(timelineHideId); true
+                    })
+                  },
+                ) {
+                  Box(Modifier.cardSharedBounds("timeline")) {
+                    TimelineCard(model) { onOpenTimeline(model.scale) }
+                  }
+                }
+              }
+            }
+          }
+        }
+        // Discoverability (ADR 0045 §4.2 / designs Tap-To-Detail): when a timeline has BOTH scales,
+        // the card shows one auto-selected scale; a small row invites the other (opens the detail there).
+        if (tl != null && !timelineHidden && presentTimelineCard(tl, nowIso, tz) != null &&
+            hasBothScales(tl, nowIso, tz)) {
+          val cardScale = selectScale(tl, nowIso, tz)
+          item(key = "timeline-scale-hint") {
+            TimelineScaleHintRow(cardScale) {
+              onOpenTimeline(if (cardScale == TimelineScale.Day) TimelineScale.Hub else TimelineScale.Day)
+            }
+          }
+        }
+        // ADR 0046: "No timeline yet" nudge — one dated block, not enough to lay out. Teaches the
+        // mechanic (add a couple more dates and a timeline appears) without faking a fuller hub.
+        if (showTimelineNudge) {
+          item(key = "timeline-nudge") { TimelineNudgeCard() }
+        }
         // sections (ordered) each followed by their blocks (grouped by section_id). Hidden
         // blocks (W5) are filtered out of the live sections and collected into the one
         // "Hidden for you" section below — hide is a pure VIEW split, never a deletion (D4).
@@ -390,11 +510,16 @@ fun HubDetailScreen(
         // ── "Hidden for you" (W5) — a collapsed, personal section; never a family-visible
         // signal. Each hidden item carries the "You hid this" self-reminder + an Unhide path.
         val hidden = tree.blocks.filter { state.hiddenIds.contains(it.id) }.sortedBy { it.ord }
-        if (hidden.isNotEmpty()) {
+        if (hidden.isNotEmpty() || timelineHidden) {
           item(key = "hidden-header") {
-            HiddenForYouHeader(hidden.size, state.showHidden, onToggle = { onSetShowHidden(!state.showHidden) })
+            HiddenForYouHeader(hidden.size + (if (timelineHidden) 1 else 0), state.showHidden, onToggle = { onSetShowHidden(!state.showHidden) })
           }
           if (state.showHidden) {
+            if (timelineHidden) {
+              item(key = "hidden-timeline") {
+                HiddenTimelineCard(onUnhide = { onUnhideBlock(timelineHideId) })
+              }
+            }
             items(hidden, key = { "hidden-${it.id}" }) { block ->
               HiddenBlockCard(block, onUnhide = { onUnhideBlock(block.id) })
             }
@@ -404,17 +529,22 @@ fun HubDetailScreen(
       }
     }
   }
+        } // closes else { dossier branch of AnimatedContent scale check
+      } // closes CompositionLocalProvider
+    } // closes AnimatedContent
+  } // closes SharedTransitionLayout
 }
 
 // Pure: the LazyColumn item index of the focused block (or null = not present / no
 // focus), so the arrival can scroll it into view. Mirrors HubDetailScreen's emission
 // order: [status header] + [countdown?] + [honesty?] + per section [header] + [blocks].
 // Unit-tested so it can't silently drift from the render.
-fun focusedBlockItemIndex(tree: HubTree, focusBlockId: String?, hasCountdown: Boolean, restricted: Boolean): Int? {
+fun focusedBlockItemIndex(tree: HubTree, focusBlockId: String?, hasCountdown: Boolean, restricted: Boolean, hasTimelineCard: Boolean = false): Int? {
   if (focusBlockId == null) return null
   var idx = 1                                       // status header (always)
   if (hasCountdown) idx += 1
   if (restricted) idx += 1
+  if (hasTimelineCard) idx += 1
   for (section in tree.sections.sortedBy { it.ord }) {
     val blocks = tree.blocks.filter { it.sectionId == section.id }.sortedBy { it.ord }
     if (blocks.isEmpty()) continue                   // empty sections render nothing → don't count a header
@@ -643,8 +773,12 @@ private fun HubBlockCard(
 // colour, never the coral delete owns).
 @Composable
 private fun HideSwipeBackground() {
+  // fillMaxSize (not fillMaxWidth): the affordance must match the card's FULL height so
+  // its rounded corners align with the card's. With fillMaxWidth it wrapped its content
+  // (~48dp), top-aligned, and its rounded top corners peeked through the card's rounded
+  // top corners at rest — the stray "greenish corners".
   Box(
-    Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+    Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp))
       .background(MaterialTheme.colorScheme.secondaryContainer).padding(horizontal = 20.dp),
   ) {
     Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -688,6 +822,93 @@ private fun HiddenBlockCard(block: HubBlock, onUnhide: () -> Unit) {
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Box(Modifier.alpha(0.6f)) {
         Text(blockPreviewText(block), style = MaterialTheme.typography.bodyMedium)
+      }
+      Row(verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.Icon(DayfoldIcons.VisibilityOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
+        Text("You hid this", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 6.dp).weight(1f))
+        TextButton(onClick = onUnhide) { Text("Unhide") }
+      }
+    }
+  }
+}
+
+// Second-scale discoverability row (designs/hub-timeline Tap-To-Detail): the card shows one scale;
+// this invites the other. cardScale = the shown scale → the row names the OTHER one.
+@Composable
+private fun TimelineScaleHintRow(cardScale: TimelineScale, onOpen: () -> Unit) {
+  val cs = MaterialTheme.colorScheme
+  val otherIsRoadmap = cardScale == TimelineScale.Day
+  Surface(
+    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+    color = cs.surfaceContainer,
+    shape = RoundedCornerShape(16.dp),
+  ) {
+    Row(
+      modifier = Modifier.heightIn(min = 48.dp).padding(horizontal = 15.dp, vertical = 11.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+      androidx.compose.material3.Icon(
+        if (otherIsRoadmap) DayfoldIcons.CalendarMonth else DayfoldIcons.WbSunny,
+        contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(19.dp),
+      )
+      Text(
+        buildAnnotatedString {
+          append("This hub also has a ")
+          withStyle(SpanStyle(color = cs.onSurface, fontWeight = FontWeight.SemiBold)) {
+            append(if (otherIsRoadmap) "roadmap" else "day view")
+          }
+          append(" — open to switch scales")
+        },
+        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+        modifier = Modifier.weight(1f),
+      )
+      androidx.compose.material3.Icon(
+        DayfoldIcons.ArrowOutward, contentDescription = null,
+        tint = cs.onSurfaceVariant, modifier = Modifier.size(18.dp),
+      )
+    }
+  }
+}
+
+// ADR 0046 "No timeline yet" nudge — shown when a hub has exactly one dated block (not enough to
+// derive a timeline). Teaches the mechanic; honest that nothing is authored.
+@Composable
+private fun TimelineNudgeCard() {
+  val cs = MaterialTheme.colorScheme
+  Card(
+    Modifier.fillMaxWidth(),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+    shape = RoundedCornerShape(22.dp),
+  ) {
+    Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
+      Box(
+        modifier = Modifier.size(40.dp).background(cs.surface, RoundedCornerShape(13.dp)),
+        contentAlignment = Alignment.Center,
+      ) {
+        androidx.compose.material3.Icon(DayfoldIcons.Event, contentDescription = null, tint = cs.outline, modifier = Modifier.size(22.dp))
+      }
+      Text("No timeline yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+      Text(
+        "This hub has just one date so far. Add due dates to a couple of checklist items or a milestone and they’ll lay out here automatically — nothing to set up.",
+        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+      )
+    }
+  }
+}
+
+// The hidden hoisted timeline card (ADR 0045 / 0039 §W5): dimmed label + "You hid this" +
+// Unhide, mirroring HiddenBlockCard. The family still sees the timeline; this is local-only.
+@Composable
+private fun HiddenTimelineCard(onUnhide: () -> Unit) {
+  Card(
+    Modifier.fillMaxWidth(),
+    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    shape = RoundedCornerShape(22.dp),
+  ) {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Box(Modifier.alpha(0.6f)) {
+        Text("Timeline", style = MaterialTheme.typography.bodyMedium)
       }
       Row(verticalAlignment = Alignment.CenterVertically) {
         androidx.compose.material3.Icon(DayfoldIcons.VisibilityOff, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(14.dp))
