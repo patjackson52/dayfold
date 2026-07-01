@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -87,7 +88,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sloopworks.dayfold.client.ui.loading.ErrorRetry
@@ -460,6 +464,17 @@ fun HubDetailScreen(
             }
           }
         }
+        // Discoverability (ADR 0045 §4.2 / designs Tap-To-Detail): when a timeline has BOTH scales,
+        // the card shows one auto-selected scale; a small row invites the other (opens the detail there).
+        if (tl != null && !timelineHidden && presentTimelineCard(tl, nowIso, tz) != null &&
+            hasBothScales(tl, nowIso, tz)) {
+          val cardScale = selectScale(tl, nowIso, tz)
+          item(key = "timeline-scale-hint") {
+            TimelineScaleHintRow(cardScale) {
+              onOpenTimeline(if (cardScale == TimelineScale.Day) TimelineScale.Hub else TimelineScale.Day)
+            }
+          }
+        }
         // ADR 0046: "No timeline yet" nudge — one dated block, not enough to lay out. Teaches the
         // mechanic (add a couple more dates and a timeline appears) without faking a fuller hub.
         if (showTimelineNudge) {
@@ -813,6 +828,45 @@ private fun HiddenBlockCard(block: HubBlock, onUnhide: () -> Unit) {
         Text("You hid this", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(start = 6.dp).weight(1f))
         TextButton(onClick = onUnhide) { Text("Unhide") }
       }
+    }
+  }
+}
+
+// Second-scale discoverability row (designs/hub-timeline Tap-To-Detail): the card shows one scale;
+// this invites the other. cardScale = the shown scale → the row names the OTHER one.
+@Composable
+private fun TimelineScaleHintRow(cardScale: TimelineScale, onOpen: () -> Unit) {
+  val cs = MaterialTheme.colorScheme
+  val otherIsRoadmap = cardScale == TimelineScale.Day
+  Surface(
+    modifier = Modifier.fillMaxWidth().clickable(onClick = onOpen),
+    color = cs.surfaceContainer,
+    shape = RoundedCornerShape(16.dp),
+  ) {
+    Row(
+      modifier = Modifier.heightIn(min = 48.dp).padding(horizontal = 15.dp, vertical = 11.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(11.dp),
+    ) {
+      androidx.compose.material3.Icon(
+        if (otherIsRoadmap) DayfoldIcons.CalendarMonth else DayfoldIcons.WbSunny,
+        contentDescription = null, tint = cs.onSurfaceVariant, modifier = Modifier.size(19.dp),
+      )
+      Text(
+        buildAnnotatedString {
+          append("This hub also has a ")
+          withStyle(SpanStyle(color = cs.onSurface, fontWeight = FontWeight.SemiBold)) {
+            append(if (otherIsRoadmap) "roadmap" else "day view")
+          }
+          append(" — open to switch scales")
+        },
+        style = MaterialTheme.typography.bodyMedium, color = cs.onSurfaceVariant,
+        modifier = Modifier.weight(1f),
+      )
+      androidx.compose.material3.Icon(
+        DayfoldIcons.ArrowOutward, contentDescription = null,
+        tint = cs.onSurfaceVariant, modifier = Modifier.size(18.dp),
+      )
     }
   }
 }
