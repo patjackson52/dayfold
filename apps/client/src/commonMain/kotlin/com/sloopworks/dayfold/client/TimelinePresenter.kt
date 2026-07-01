@@ -13,6 +13,11 @@ import kotlinx.datetime.toLocalDateTime
 enum class StopStatus { Done, Next, Upcoming }
 enum class TimelineScale { Day, Hub }
 
+private val MONTH_NAMES = arrayOf(
+    "JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
+    "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"
+)
+
 data class PresentedStop(val stop: Stop, val status: StopStatus, val instant: Instant?)
 
 /**
@@ -200,15 +205,11 @@ private fun buildMonthGroups(
     tz: TimeZone,
     todayYear: Int?,
 ): List<Pair<String, List<PresentedStop>>> {
-    val monthNames = arrayOf(
-        "JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
-        "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"
-    )
     val grouped = LinkedHashMap<String, MutableList<PresentedStop>>()
     for (ps in stops) {
         val ldt = ps.instant?.toLocalDateTime(tz)
         val label = if (ldt != null) {
-            val base = monthNames[ldt.monthNumber - 1]
+            val base = MONTH_NAMES[ldt.month.ordinal]
             if (todayYear != null && ldt.year != todayYear) "$base ${ldt.year}" else base
         } else "UPCOMING"
         grouped.getOrPut(label) { mutableListOf() }.add(ps)
@@ -262,11 +263,7 @@ fun presentTimelineDetail(tl: Timeline, scale: TimelineScale, nowIso: String, tz
             // nowIndex = index of the current month group
             val nowMonthLabel = if (now != null) {
                 val ldt = now.toLocalDateTime(tz)
-                val monthNames = arrayOf(
-                    "JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
-                    "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"
-                )
-                val base = monthNames[ldt.monthNumber - 1]
+                val base = MONTH_NAMES[ldt.month.ordinal]
                 if (todayYear != null && ldt.year != todayYear) "$base ${ldt.year}" else base
             } else null
             val nowIndex = nowMonthLabel?.let { label -> groups.indexOfFirst { it.label == label }.takeIf { it >= 0 } }
