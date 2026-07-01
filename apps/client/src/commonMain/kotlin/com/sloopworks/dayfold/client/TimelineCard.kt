@@ -203,33 +203,11 @@ private fun SpineMoreColumn(moreCount: Int) {
 
 // ── Next milestone callout ────────────────────────────────────────────────────
 
-private val MONTHS_3 = arrayOf(
-    "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-    "JUL", "AUG", "SEP", "OCT", "NOV", "DEC",
-)
-
-/** Returns (3-letter month ALL-CAPS, day number string) from an ISO date/datetime string. */
-private fun calloutMonthDay(at: String): Pair<String, String>? {
-    val datePart = at.substringBefore("T").trim()
-    val parts = datePart.split("-")
-    if (parts.size < 3) return null
-    val monthIdx = (parts[1].toIntOrNull() ?: return null) - 1
-    val day = parts[2].toIntOrNull() ?: return null
-    if (monthIdx !in 0..11) return null
-    return MONTHS_3[monthIdx] to day.toString()
-}
-
-/** Returns "Mon D" (e.g. "Aug 25") from an ISO date/datetime string. */
-private fun calloutDateLabel(at: String): String {
-    val (mon, day) = calloutMonthDay(at) ?: return at
-    val mon3cap = mon[0] + mon.substring(1).lowercase()  // "AUG" → "Aug"
-    return "$mon3cap $day"
-}
-
 @Composable
 private fun NextMilestoneRow(callout: PresentedStop) {
     val cs = MaterialTheme.colorScheme
-    val (mon, day) = calloutMonthDay(callout.stop.at) ?: Pair("", "")
+    val mon = callout.monthUpper
+    val day = callout.dayOfMonth
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -280,7 +258,7 @@ private fun NextMilestoneRow(callout: PresentedStop) {
                     )
                 }
                 Text(
-                    text = calloutDateLabel(callout.stop.at),
+                    text = callout.dateLabel,
                     fontSize = 11.5.sp,
                     color = cs.onSurfaceVariant,
                 )
@@ -588,10 +566,9 @@ private fun StopRow(ps: PresentedStop, isLastRow: Boolean) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                // Time label: parse HH:MM from ISO "...THH:MM:SS±offset", display as h:MM (12-hr, no am/pm)
-                val timeLabel = stopTimeLabel(stop.at)
+                // tz-aware "h:MM AM/PM" (date-only stop → its date); computed in the presenter.
                 Text(
-                    text = timeLabel,
+                    text = ps.timeLabel ?: ps.dateLabel,
                     fontSize = 12.5.sp,
                     color = cs.onSurfaceVariant,
                 )
@@ -641,24 +618,6 @@ private fun TailRow(tailCount: Int) {
             color = cs.onSurfaceVariant,
         )
     }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Parse "HH:MM" from an ISO-8601 [at] string and format as "h:MM" (12-hr, no am/pm),
- * matching the design's clockTime format. Falls back to the raw string on parse failure.
- */
-private fun stopTimeLabel(at: String): String {
-    val timePart = at.substringAfter("T", "")
-        .substringBefore("-")
-        .substringBefore("+")
-    val parts = timePart.split(":")
-    if (parts.size < 2) return at
-    val h = parts[0].toIntOrNull() ?: return at
-    val m = parts[1].padStart(2, '0')
-    val h12 = (h % 12).let { if (it == 0) 12 else it }
-    return "$h12:$m"
 }
 
 // ── Footer row ────────────────────────────────────────────────────────────────

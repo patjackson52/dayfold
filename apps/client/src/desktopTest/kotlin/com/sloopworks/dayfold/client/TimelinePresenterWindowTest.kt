@@ -114,6 +114,22 @@ class TimelinePresenterWindowTest {
         assertTrue(labels.contains("AFTERNOON"))
     }
 
+    @Test fun `detail-day nowIndex is robust to non-chronological authored order`() {
+        // Authored out of order: an afternoon (future) stop listed BEFORE the morning (past) ones.
+        // The NOW line must land in grouped render order (morning→afternoon), not authored order.
+        val tl = Timeline(
+            tz = "America/New_York",
+            stops = listOf(
+                Stop("2026-08-24T14:00:00-04:00", "pm"),   // afternoon, future
+                Stop("2026-08-24T08:00:00-04:00", "am1"),  // morning, past
+                Stop("2026-08-24T09:50:00-04:00", "am2"),  // morning, past
+            ),
+        )
+        val result = presentTimelineDetail(tl, TimelineScale.Day, "2026-08-24T10:40:00-04:00", ny)
+        // render order = [am1, am2, pm]; last past = am2 (idx 1) → NOW before pm (idx 2)
+        assertEquals(2, result.nowIndex)
+    }
+
     @Test fun `presentTimelineDetail hub groups by month`() {
         val stops = listOf(
             Stop("2026-08-01", "aug1"),

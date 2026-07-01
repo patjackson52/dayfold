@@ -411,7 +411,8 @@ private fun TlEntryRow(
                     else              -> cs.onSurface
                 }
                 Text(
-                    text = tlStopTimeLabel(stop.at, scale),
+                    // Day = tz-aware "h:MM AM/PM"; Hub = "Mon D". Computed in the presenter.
+                    text = if (scale == TimelineScale.Hub) ps.dateLabel else (ps.timeLabel ?: ps.dateLabel),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = timeColor,
@@ -543,31 +544,6 @@ private fun TlProvenanceCard(scale: TimelineScale) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Format stop time for detail display. Day = "h:MM AM/PM"; Hub = "Mon D". */
-private fun tlStopTimeLabel(at: String, scale: TimelineScale): String {
-    if (scale == TimelineScale.Hub) {
-        val datePart = at.substringBefore("T").trim()
-        val parts = datePart.split("-")
-        if (parts.size < 3) return at
-        val monthIdx = (parts[1].toIntOrNull() ?: return at) - 1
-        val day = parts[2].toIntOrNull() ?: return at
-        if (monthIdx !in 0..11) return at
-        val months = arrayOf("Jan", "Feb", "Mar", "Apr", "May", "Jun",
-                             "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
-        return "${months[monthIdx]} $day"
-    }
-    val timePart = at.substringAfter("T", "")
-        .substringBefore("-")
-        .substringBefore("+")
-    val parts = timePart.split(":")
-    if (parts.size < 2) return at
-    val h = parts[0].toIntOrNull() ?: return at
-    val m = parts[1].padStart(2, '0')
-    val h12 = (h % 12).let { if (it == 0) 12 else it }
-    val amPm = if (h < 12) "AM" else "PM"
-    return "$h12:$m $amPm"
-}
 
 /** Derive initials: "Pat + Maya" → "PM"; "Maya" → "MA". */
 private fun tlAssigneeInitials(name: String): String {

@@ -284,7 +284,7 @@ fun HubDetailScreen(
   // → state.timelineDetail = null → morph back; no gesture handler needed for correctness.
   val seekable = remember { SeekableTransitionState<TimelineScale?>(state.timelineDetail) }
   val reduceMotion = rememberReduceMotion()
-  LaunchedEffect(state.timelineDetail) {
+  LaunchedEffect(state.timelineDetail, reduceMotion) {
     if (seekable.currentState != state.timelineDetail) {
       if (reduceMotion) seekable.snapTo(state.timelineDetail)
       else seekable.animateTo(state.timelineDetail, animationSpec = tween(if (state.timelineDetail != null) 360 else 280, easing = EmphasizedDecelerate))

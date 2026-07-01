@@ -17,8 +17,50 @@ private val MONTH_NAMES = arrayOf(
     "JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE",
     "JULY","AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"
 )
+private val MONTHS_ABBR = arrayOf(
+    "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
+)
 
-data class PresentedStop(val stop: Stop, val status: StopStatus, val instant: Instant?)
+/**
+ * A stop with its computed status + tz-aware display labels.
+ *
+ * All labels are derived in the presenter from the parsed [instant] + injected tz — the card
+ * and detail render them verbatim (no raw-`at` string-parsing, which mis-renders when the
+ * authored offset differs from the timeline's tz, e.g. a UTC-stamped stop in a NY timeline).
+ *  - [timeLabel]  : "h:MM AM/PM" for an intraday-timed stop; null for a date-only stop.
+ *  - [dateLabel]  : "Mon D" (e.g. "Aug 25").
+ *  - [monthUpper] : "AUG" (roadmap next-milestone tile).
+ *  - [dayOfMonth] : "24"  (roadmap next-milestone tile).
+ */
+data class PresentedStop(
+    val stop: Stop,
+    val status: StopStatus,
+    val instant: Instant?,
+    val timeLabel: String? = null,
+    val dateLabel: String = "",
+    val monthUpper: String = "",
+    val dayOfMonth: String = "",
+)
+
+/** Compute the tz-aware display labels for a stop. */
+private fun stopLabels(stop: Stop, instant: Instant?, tz: TimeZone): PresentedStop {
+    val base = PresentedStop(stop, StopStatus.Upcoming, instant)
+    if (instant == null) return base.copy(dateLabel = stop.at.trim())
+    val ldt = instant.toLocalDateTime(tz)
+    val monIdx = ldt.month.ordinal
+    val timeLabel = if (stop.hasIntradayTime()) {
+        val t = ldt.time
+        val h12 = (t.hour % 12).let { if (it == 0) 12 else it }
+        val amPm = if (t.hour < 12) "AM" else "PM"
+        "$h12:${t.minute.toString().padStart(2, '0')} $amPm"
+    } else null
+    return base.copy(
+        timeLabel = timeLabel,
+        dateLabel = "${MONTHS_ABBR[monIdx]} ${ldt.dayOfMonth}",
+        monthUpper = MONTHS_ABBR[monIdx].uppercase(),
+        dayOfMonth = ldt.dayOfMonth.toString(),
+    )
+}
 
 /**
  * Classify each stop relative to [nowIso].
@@ -55,7 +97,7 @@ internal fun stopStatuses(stops: List<Stop>, nowIso: String, tz: TimeZone): List
     }
 
     return stops.mapIndexed { i, stop ->
-        PresentedStop(stop, statusByOrig[i]!!, parsed[i].second)
+        stopLabels(stop, parsed[i].second, tz).copy(status = statusByOrig[i]!!)
     }
 }
 
@@ -244,7 +286,10 @@ fun presentTimelineDetail(tl: Timeline, scale: TimelineScale, nowIso: String, tz
                 if (evening.isNotEmpty()) add(TimelineGroup("EVENING", evening))
             }
 
-            val nowIdx = nowLineIndex(presented, nowIso, tz)
+            // NOW index must be relative to the GROUPED render order (morning→afternoon→evening),
+            // not the authored list order — the detail inserts the NOW line at this flat index and
+            // the two align only if the authored stops are already chronological.
+            val nowIdx = nowLineIndex(morning + afternoon + evening, nowIso, tz)
 
             val now = parseInstantFlexible(nowIso, tz)
             val today = now?.toLocalDateTime(tz)?.date
