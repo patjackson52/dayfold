@@ -461,6 +461,7 @@ data class AppState(
   val currentHubId: String? = null,
   val currentHubTree: HubTree? = null,
   val hubFocusBlockId: String? = null,                        // deep-link arrival: the block to highlight
+  val timelineDetail: TimelineScale? = null,                  // ADR 0045 — non-null = timeline detail overlay open at this scale
   // W5 hide (ADR 0038 §W5) — DB-fed set of locally-hidden entity ids (bridge writes it);
   // showHidden is the per-view "Show hidden" toggle (reset on open/close hub). Hide is
   // local-only + personal — never synced, no family-visible signal.
@@ -535,6 +536,9 @@ data class NotificationPermissionLoaded(val state: NotificationPermission) : Act
 data object OpenAudienceSheet : Action                        // visibility chip tap → sheet (busy, loads)
 data class HubAudienceLoaded(val audience: HubAudience) : Action
 data object CloseAudienceSheet : Action
+// ADR 0045 — timeline detail overlay (substate within the hub detail, not a Route)
+data class OpenTimelineDetail(val scale: TimelineScale) : Action
+data object CloseTimelineDetail : Action
 
 // Auth actions (S5). All I/O lives in AuthEngine (suspend, mutex-guarded like
 // SyncEngine); the reducer is pure and derives `route`/`activeFamilyId` from

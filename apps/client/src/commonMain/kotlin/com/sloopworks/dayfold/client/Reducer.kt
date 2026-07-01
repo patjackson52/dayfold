@@ -62,7 +62,9 @@ fun rootReducer(state: AppState, action: Any): AppState = when (action) {
   is OpenHub -> state.copy(currentHubId = action.hubId, currentHubTree = null, hubsBusy = true, hubError = null, hubFocusBlockId = null, showHidden = false)
   is HubTreeLoaded -> state.copy(hubsBusy = false, currentHubTree = action.tree, hubError = null)
   is HubNotFound -> state.copy(hubsBusy = false, currentHubId = null, currentHubTree = null, hubError = "That hub is no longer available.")
-  is CloseHub -> state.copy(currentHubId = null, currentHubTree = null, hubFocusBlockId = null, showHidden = false)
+  is CloseHub -> state.copy(currentHubId = null, currentHubTree = null, hubFocusBlockId = null, showHidden = false, timelineDetail = null)
+  is OpenTimelineDetail -> state.copy(timelineDetail = action.scale)  // ADR 0045 — open the timeline detail overlay
+  is CloseTimelineDetail -> state.copy(timelineDetail = null)         // ADR 0045 — close the timeline detail overlay
   is SetHubFocus -> state.copy(hubFocusBlockId = action.blockId)
   is SetHubFilter -> state.copy(hubFilter = action.filter)
   // W5 hide (ADR 0038 §W5) — DB-fed hidden ids + the per-view "Show hidden" toggle.
