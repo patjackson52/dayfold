@@ -122,11 +122,11 @@ data class EmailPayload(
   val date: String? = null, val threadLen: Long? = null,
   // [E2E-ciphertext @ M1] authored over the operator's OWN mail (Guardrail 3)
   val bodyExcerpt: String? = null,
-  val attachments: List<Attachment>? = null, val labels: List<String>? = null,
+  val attachments: List<EmailAttachment>? = null, val labels: List<String>? = null,
 )
 
 @Serializable
-data class Attachment(val name: String? = null, val mime: String? = null, val size: Long? = null)
+data class EmailAttachment(val name: String? = null, val mime: String? = null, val size: Long? = null)
 
 // honesty chip (ADR 0014/0015) — stored verbatim; the client asserts nothing.
 @Serializable
@@ -163,6 +163,7 @@ data class Hub(
   val visibility: String = "family",                        // family | restricted (ADR 0030)
   @SerialName("created_by") val createdBy: String? = null,  // resolved author user id (null = legacy token)
   val media: HubMedia? = null,                              // ADR 0036 visual enrichment (null = unenriched)
+  val timeline: Timeline? = null,                           // ADR 0045 — authored stop list (camelCase wire, no @SerialName needed)
 )
 
 // ADR 0036 — hub visual enrichment. URLs are https + host-allowlisted (validated
@@ -184,6 +185,43 @@ data class HubSection(
   @SerialName("hub_id") val hubId: String? = null,
   val title: String? = null,
   val ord: Long = 0,
+)
+
+// ADR 0045 — Hub timeline: authored stop list. Wire is camelCase → no @SerialName needed.
+// Attachment is a flat bag: exactly one of tel/query/url/ref is set per kind (call/nav/link/open).
+@Serializable
+data class Timeline(
+  val title: String? = null,
+  val tz: String,
+  val stops: List<Stop> = emptyList(),
+)
+
+@Serializable
+data class Stop(
+  val at: String,
+  val title: String,
+  val sub: String? = null,
+  val major: Boolean = false,
+  val done: Boolean = false,
+  val assignee: String? = null,
+  val attachments: List<Attachment>? = null,
+)
+
+@Serializable
+data class Attachment(
+  val kind: String,
+  val label: String,
+  val tel: String? = null,
+  val query: String? = null,
+  val url: String? = null,
+  val ref: AttachmentRef? = null,
+)
+
+@Serializable
+data class AttachmentRef(
+  val hubId: String? = null,
+  val sectionId: String? = null,
+  val blockId: String? = null,
 )
 
 // ADR 0038/0039 — one egress-outbox row as the sender loop reads it. Not serialized
