@@ -715,8 +715,12 @@ private fun HubBlockCard(
 // colour, never the coral delete owns).
 @Composable
 private fun HideSwipeBackground() {
+  // fillMaxSize (not fillMaxWidth): the affordance must match the card's FULL height so
+  // its rounded corners align with the card's. With fillMaxWidth it wrapped its content
+  // (~48dp), top-aligned, and its rounded top corners peeked through the card's rounded
+  // top corners at rest — the stray "greenish corners".
   Box(
-    Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+    Modifier.fillMaxSize().clip(RoundedCornerShape(22.dp))
       .background(MaterialTheme.colorScheme.secondaryContainer).padding(horizontal = 20.dp),
   ) {
     Row(Modifier.align(Alignment.CenterEnd), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
